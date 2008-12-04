@@ -1,0 +1,475 @@
+2008-11-03  "Luis Fernando"
+
+	* Release: 0.20.0
+	- AII speedups and cleaning HW RAID support.
+	
+	HW RAID support won't get ready. I just drop it from Disk.pm (tests will still be there,
+	so it will be safer to resume the work on this).
+	
+	Making AII modules to format only the block devices that directly hold file systems, 
+	and to format only once. This version should be much faster.
+
+2008-09-21  "Luis Fernando"
+
+	* Release: 0.19.0
+	- Added support for manipulating hardware RAID arrays. This introduces some
+	dependencies:
+	
+	- We now need perl-CAF >= 1.6, to be able to log commands.
+	- We depend on hwraidtools, see http://ahorvath.web.cern.ch/ahorvath/hwraidtools/index.html
+
+2008-09-05  "Luis Fernando"
+
+	* Release: 0.18.5
+	- Anaconda sucks. It doesn't allow to set arbitrary labels on swap filesystems.
+	Applying a workaround so that swap filesystems get Anaconda's default label when a label
+	is required.
+
+2008-09-04  "Luis Fernando"
+
+	* Release: 0.18.4
+	- Fixed filesystem labels not being generated on AII scripts.
+
+2008-08-08  "Luis Fernando"
+
+	* Release: 0.18.3
+	- Fixing a bug where a filesystem marked for removal wouldn't get removed.
+
+2008-08-01  "Luis Fernando"
+
+	* Release: 0.18.2
+	- Adapted to CCM 2.1, which provides an "unescape" method.
+
+2008-06-24  "Luis Fernando"
+
+	* Release: 0.18.1
+	- Fixed extended partitions not being created on SL5.
+
+2008-06-19  "Luis Fernando"
+
+	* Release: 0.18.0
+	- Adapted to run on SL4 and SL5.
+	Added some arbitrary sleeps to give time to just-modified partitions to appear or
+	disappear.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Attempt to tag this.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Yet another try.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Last attempt, to get a better diagnose.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Trying to make a tag with broken build tools.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Filesystems not to be mounted are created but not declared on the KS. This
+	way they won't appear on the fstab.
+
+2008-06-10  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.12
+	- Yet another attempt to parse Parted's output on both SL4 and SL5.
+
+2008-06-09  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.11
+	- Parted's output changed from SL 4 to SL 5. The code works now on both.
+
+2008-05-27  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.10
+	- Added support to mkfsopts on AII methods.
+
+2008-04-30  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.9
+	- Patch by Stijn on logical volumes size, enabling the "grow" feature when
+	no size is specified on AII methods.
+
+2008-04-10  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.8
+	- Fixed some more bugs pointed by Ronald.
+
+2008-04-10  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.7
+	- Fixed some bugs on the file system formatting and software RAID definition at Anaconda
+	phase.
+
+2008-03-14  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.6
+	- Added support for LVM stripes.
+
+2008-03-11  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.5
+	- Added parted to the list of dependencies.
+
+2008-02-27  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.4
+	- Added a man page with some details on the implementation of the library.
+
+2008-02-22  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.3
+	- Added information for building at CERN.
+
+2008-02-22  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.2
+	- Improved the output and error reporting.
+	Added debugging information.
+
+2008-02-20  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.1
+	- Fixed the build after moving the TPL files to pan-templates.
+
+2008-02-20  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.0
+	- Moved the templatesfor blockdevices and filesystems to pan-templates.
+	Moved the data structures to the final /system/ tree.
+
+2008-01-25  Luis Fernando Muñoz Mejías
+
+	* Release: 0.16.0
+	- Added some safety checks, as requested by Andras.
+	- Check if a disk has any filesystems on it before creating a partition table.
+	- Overwrite the beginning of a disk when it is no longer in use.
+	- Check if a filesystem marked as !format was formatted before,
+	as might happen after a reinstallation.
+
+2007-10-16  Luis Fernando Muñoz Mejías
+
+	* Release: 0.15.0
+	- Improved the calls to mkfs.*, mkswap. No more attempts to mount swap. swapon /dev/X is
+	done instead.
+
+2007-09-24  Luis Fernando Muñoz Mejías
+
+	* Release: 0.14.2
+	- Removed the hack for shifting device names, as PrepareInstall works around
+	bug #28380 and AII is about to do it.
+
+2007-09-19  Luis Fernando Muñoz Mejías
+
+	* Release: 0.14.1
+	- Fixed a bug when handling mountpoints (/ whould match *all* lines on /etc/fstab)
+	that broke systems.
+
+2007-09-18  Luis Fernando Muñoz Mejías
+
+	* Release: 0.14.0
+	- Added full support for creating block devices from the system's actual
+	status instead of the profile. These block devices are suposed to be removed
+	immediately.
+
+2007-09-14  Luis Fernando Muñoz Mejías
+
+	* Release: 0.13.4
+	- Added a few, important, tests.
+
+2007-09-14  Luis Fernando Muñoz Mejías
+
+	* Release: 0.13.3
+	- Added new_from_system to LV and LVM. Only MD and File need this method
+	and ncm-filesystems will be able to detect and remove filesystems that
+	got removed from the profile.
+
+2007-09-13  Luis Fernando Muñoz Mejías
+
+	* Release: 0.13.2
+	- Added support for creating partition objects just by looking at the system.
+
+2007-09-13  Luis Fernando Muñoz Mejías
+
+	* Release: 0.13.1
+	- Fixed a bug that prevented partitions from being removed.
+	Starting the work for creating filesystems and block devices from the
+	system, instead of the profile.
+
+2007-09-10  Luis Fernando Muñoz Mejías
+
+	* Release: 0.13.0
+	- Added the ability to set the readahead of a disk.
+
+2007-09-04  Luis Fernando Muñoz Mejías
+
+	* Release: 0.12.5
+	- Improved the validation code for partition types.
+
+2007-09-03  Luis Fernando Muñoz Mejías
+
+	* Release: 0.12.4
+	- Removed 'grow' field from partitions. Now, 'size' is optional and, if it's not present,
+	it is assumed that the partition must use all available space on disk.
+
+2007-09-03  Luis Fernando Muñoz Mejías
+
+	* Release: 0.12.3
+	- 'size' field made optional for logical volumes.
+	If it's not present, the logical volume will use all the available extents
+	on the volume group.
+
+2007-09-03  Luis Fernando Muñoz Mejías
+
+	* Release: 0.12.2
+	- Fixing a missing ; and first tests for 'size' being optional.
+
+2007-09-03  Luis Fernando Muñoz Mejías
+
+	* Release: 0.12.1
+	- Fixed some bugs when removing logical volumes.
+
+2007-08-29  Luis Fernando Muñoz Mejías
+
+	* Release: 0.12.0
+	- Added support for tune2fs and friends.
+
+2007-08-29  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.12
+	- Added preliminar support for tune2fs-like commands.
+
+2007-08-24  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.11
+	- Improving remount of "none" filesystems.
+
+2007-08-24  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.10
+	- Added support for changing an fstab entry (e.g, mountopts or pass fields)
+	on existing filesystems.
+
+2007-08-20  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.9
+	- Fixed creation of filesystems other than XFS broken.
+	Improved some things on software RAID.
+	Minor cleanups.
+
+2007-08-17  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.8
+	- Added default stripe size to md devices.
+
+2007-08-17  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.7
+	- Forcing mkfs. It fixes mkfs.xfs being too cautious.
+
+2007-08-16  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.6
+	- Fixed format_if_needed. Now, filesystems are unmounted before
+	being formatted, and re-mounted after the format.
+
+2007-08-16  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.5
+	- Fixed a missing semicolon.
+
+2007-08-16  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.4
+	- Improved handling of filesystems with "format"=true.
+
+2007-08-16  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.3
+	- Fixed a bug when a non-existing filesystem marked with "format" && ! �"preserve"
+	would be removed, causing parted to fail and throwing a wrong exception.
+
+2007-08-16  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.2
+	- Changed the way partitions are detected and counted, fixing a bug
+	on which the code would try to re-generate existing extended partitions.
+
+2007-08-15  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.1
+	- Removed WIFEXITED macros, now this doesn't need to use POSIX.
+
+2007-08-14  Luis Fernando Muñoz Mejías
+
+	* Release: 0.11.0
+	- Fixed AII methods for LVM.
+	All AII methods are now completed and tested.
+
+2007-08-14  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.9
+	- Fixed some bugs on LVM creation for AII.
+
+2007-08-13  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.8
+	- Fixed some bugs on AII methods. AII KS generator now creates
+	software raid.
+
+2007-08-09  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.7
+	- Fixed some bugs on the AII methods.
+
+2007-08-06  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.6
+	- Implemented all the methods needed for doing the filesystem
+	creation during the %pre phase.
+	
+	Still needs some polishing, though. Special care must be taken on new partitions and the "format" tag.
+
+2007-08-02  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.5
+	- I hate CVS...
+
+2007-08-02  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.4
+	- Starting the implementation of device removal during the %pre phase.
+
+2007-08-02  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.3
+	- Starting the implementation of device removal during the %pre phase.
+
+2007-08-01  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.2
+	- Implemented Kickstart directives for block device and filesystem
+	creation. These modules will be used inside AII.
+
+2007-08-01  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.1
+	- Propagating the device name shifting to partitions.
+
+2007-07-30  Luis Fernando Muñoz Mejías
+
+	* Release: 0.10.0
+	- Removed some debugging code and debugged the shifting of device names. Still needs testing.
+
+2007-07-30  Luis Fernando Muñoz Mejías
+
+	* Release: 0.9.6
+	- Updated the code of the examples.
+	Added an ugly hack to allow CERN to do their installation on IMPI-enabled nodes
+	and shift device names. This is an installation issue, not a component one, but
+	let's give them time to fix it.
+
+2007-07-25  Luis Fernando Muñoz Mejías
+
+	* Release: 0.9.5
+	- Fixed the last release, where the component got broken.
+	Finally got dos labels working, and logical partitions with them.
+	It works even if there are primary partitions behind the extended partition that
+	should hold the logical ones.
+
+2007-07-25  Luis Fernando Muñoz Mejías
+
+	* Release: 0.9.4
+	- Fixed (hopefully) a bug when deciding the start point of logical partitions
+	if there are primary partitions behind the extended partition. Needs more testing.
+
+2007-07-24  Luis Fernando Muñoz Mejías
+
+	* Release: 0.9.3
+	- Fixed a bug where a logical partition would try to start after the end of the extended partition
+	that should hold it.
+
+2007-07-23  Luis Fernando Muñoz Mejías
+
+	* Release: 0.9.2
+	- Fixed a few spurious warnings.
+	Fixed a severe bug on the edition of fstab, where most combinations of "mount" and "type" would result
+	in incorrectly adding "noauto" to the filesystem's options.
+
+2007-07-20  Luis Fernando Muñoz Mejías
+
+	* Release: 0.9.1
+	- Fixed bug when filesystems with "mount"=false didn't get into the profile,
+	and they could be overwritten.
+
+2007-07-20  Luis Fernando Muñoz Mejías
+
+	* Release: 0.9.0
+	- Added support for filesystem labels.
+
+2007-07-19  Luis Fernando Muñoz Mejías
+
+	* Release: 0.8.3
+	- Removed calls to /sbin/blockdev, as it causes "device busy" errors.
+
+2007-07-18  Luis Fernando Muñoz Mejías
+
+	* Release: 0.8.2
+	- Added support for logical and extended partitions.
+
+2007-07-18  Luis Fernando Muñoz Mejías
+
+	* Release: 0.8.1
+	- Forced re-reading the partition table after each partition creation.
+	This allows virtual machines to recognize new partitions as soon as
+	they are created.
+
+2007-07-17  Luis Fernando Muñoz Mejías
+
+	* Release: 0.8.0
+	- Syncing with ncm-filesystems
+
+2007-07-17  Luis Fernando Muñoz Mejías
+
+	* Release: 0.7.4
+	- Improving regular expressions
+
+2007-07-17  Luis Fernando Muñoz Mejías
+
+	* Release: 0.7.3
+	- Improved a regular expression.
+
+2007-07-11  Luis Fernando Muñoz Mejías
+
+	* Release: 0.7.2
+	- Moved the Pan path into a layout that fits CERN's CDB structure.
+
+2007-06-28  Luis Fernando Muñoz Mejías
+
+	* Release: 0.7.1
+	- Added ability to pass extra options to mkfs
+
+2007-06-28  Luis Fernando Muñoz Mejías
+
+	* Release: 0.7.0
+	- Added support for files as block devices that may hold file systems.
+
+2007-06-27  Luis Fernando Muñoz Mejías
+
+	* Release: 0.6.0
+	- Added to CVS a full library for dealing with filesystems and block devices.
+	It needs better documentation, but it's a pre-1.0 release!
+
+2007-06-26  Luis Fernando Muñoz Mejías  <mejias@delta.ft.uam.es>
+
+	* Makefile: Integration on Quattor build tools.
+

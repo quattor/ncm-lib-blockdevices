@@ -1,0 +1,192 @@
+################################################################################
+# This is 'ncm-lib-blockdevices.pod', a ncm-lib-blockdevices's file
+################################################################################
+#
+# VERSION:    0.20.0, 03/11/08 20:11
+# AUTHOR:     Tim Bell, Andras Horvath and Luis Fernando Muñoz
+# MAINTAINER: Luis Fernando Muñoz
+# LICENSE:    http://cern.ch/eu-datagrid/license.html
+#
+################################################################################
+# Coding style: emulate <TAB> characters with 4 spaces, thanks!
+################################################################################
+
+=pod
+
+=head1 SYNOPSIS
+
+This is the Perl library for handling block devices and filesystems
+from Quattor. It can be resumed in two classes: C<Filesystem> and
+C<Blockdevices>
+
+
+This document briefly describes the design and implementation of the
+library. For details on how to model file systems and block devices in
+Quattor, see
+L<https://twiki.cern.ch/twiki/bin/view/FIOgroup/TsiCDBBlockDevices>.
+
+=head1 The classes
+
+There are two main classes on this library:
+
+=over 4
+
+=item * C<Filesystem>
+
+A class that models and handles a filesystem. This is the only class
+that should care of block device handling. External code just needs to
+instantiate a C<Filesystem> and the resulting object will do all the
+magic.
+
+=item * C<Blockdevices>
+
+An abstract class modelling any possible block device. This should be
+used only by the C<Filesystem> class. If you have a new type of block
+device, you should inherit from this class and provide the methods
+listed below.
+
+=back
+
+Class diagrams might follow on a separate TWiki page.
+
+Both class hierarchies provide methods for either directly handling
+the file systems and block devices directly (via an NCM component) or
+for writing the Kickstart and Bash code that may lead to the correct
+set-up during an installation or a re-installation.
+
+=head2 File systems
+
+The C<Filesystem> class gives the basic interface to physically
+creating file systems as well as their underlying block devices, no
+matter how complex they can get.
+
+There are three methods for public use on this class:
+
+=over 4
+
+=item * C<create_if_needed>
+
+Creates the file system and any block devices it might need, if it
+doesn't exist yet. If any block devices it might use already exist,
+they will be re-used.
+
+=item * C<remove_if_needed>
+
+If the file system was created with the C<preserve> flag set to false
+and the C<format> flag set to true, it will be destroyed and its block
+devices will be removed from the system. Otherwise, nothing will
+happen.
+
+=item * C<new_from_fstab>
+
+Creates a filesystem object from its /etc/fstab entry. The filesystem
+object is created to remove the filesystem and its block device, so it
+is created with "preserve" = 0 and "format = 1. It's a lightweight
+version of _initialize.
+
+It receives the line on /etc/fstab and the configuration object as its
+arguments.
+
+=item * C<should_print_ks>
+
+Returns whether the filesystem should be defined at the Kickstart.
+
+=item * C<print_ks>
+
+Prints the Anaconda directives on the Kickstart so that the file
+system is mounted on the correct place.
+
+=item * C<del_pre_ks>
+
+If the FS is not marked to be kept, it prints the Bash code for
+destroying it as well as its underlying block devices. To be used
+during the %pre phase of the KS.
+
+=item * C<create_ks>
+
+Prints the Bash code so that the block devices associated with the FS
+get created. To be used during the %pre phase of the KS.
+
+=item * C<format_ks>
+
+Prints the Bash code so that the block device on which the FS resides
+gets formatted. To be used during the %pre phase.
+
+=back
+
+=head2 Block devices
+
+The C<Blockdevices> class gives the basic interface to any block device
+that can be needed. The set of operations any class must provide is:
+
+=over 4
+
+=item * C<_initialize>
+
+Returns a new object (no need for Perl blessing) of the appropriate
+block device class. Its arguments are:
+
+=over 4
+
+=item * C<$cfg>
+
+The configuration object for the node's profile.
+
+=item * C<$path>
+
+The Pan path of the object being created.
+
+=back
+
+=item * C<create>
+
+Physically creates the block device. If the object is a partition, a
+partition will be created on the node. It returns 0 on success.
+
+=item * C<remove>
+
+Removes the block device from the system.
+
+=item * C<devexists>
+
+Returns true if the block device exists already in the system.
+
+=item * C<has_filesystem>
+
+Returns true if the block device has already a file system on it.
+
+=back
+
+=item * C<should_print_ks>
+
+Returns true if the block device should be printed on a KS file. This
+is, if all its underlying block devices lie on disks with MSDOS
+partition tables.
+
+=item * C<print_ks>
+
+Prints the appropriate Anaconda directives so that the file systems on
+top of this block device get correctly mounted.
+
+=item * C<create_pre_ks>
+
+Prints the Bash code for creating the block device. This includes
+checking whether the block device already exists and skipping it if
+that's the case.
+
+=item * C<del_pre_ks>
+
+Prints the Bash code for destroying the block device. This includes
+skipping non-empty volume groups.
+
+=head2 Comments
+
+Any other methods present on any modules but not documented here are
+supposed to be private to the class.
+
+=head1 SEE ALSO
+
+L<https://twiki.cern.ch/twiki/bin/view/FIOgroup/TsiCDBBlockDevices>,
+L<aii-ks(8)>, L<ncm-filesystems(8)>
+
+=cut
