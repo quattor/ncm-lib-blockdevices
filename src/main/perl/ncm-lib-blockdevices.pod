@@ -2,7 +2,7 @@
 # This is 'ncm-lib-blockdevices.pod', a ncm-lib-blockdevices's file
 ################################################################################
 #
-# VERSION:    0.20.0, 03/11/08 20:11
+# VERSION:    0.20.1, 18/03/09 10:44
 # AUTHOR:     Tim Bell, Andras Horvath and Luis Fernando Muñoz
 # MAINTAINER: Luis Fernando Muñoz
 # LICENSE:    http://cern.ch/eu-datagrid/license.html
@@ -52,7 +52,8 @@ Class diagrams might follow on a separate TWiki page.
 Both class hierarchies provide methods for either directly handling
 the file systems and block devices directly (via an NCM component) or
 for writing the Kickstart and Bash code that may lead to the correct
-set-up during an installation or a re-installation.
+set-up during an installation or a re-installation. Unless explicitly
+stated, methods don't accept any arguments.
 
 =head2 File systems
 
@@ -138,6 +139,23 @@ The Pan path of the object being created.
 
 =back
 
+=item * C<new_from_system>
+
+Creates a blockdevice object from its path on the system (e.g:
+/dev/sda1). It receives two arguments:
+
+=over 4
+
+=item * C<$dev>
+
+The device path.
+
+=item * C<$cfg>
+
+The configuration object.
+
+=back
+
 =item * C<create>
 
 Physically creates the block device. If the object is a partition, a
@@ -155,7 +173,6 @@ Returns true if the block device exists already in the system.
 
 Returns true if the block device has already a file system on it.
 
-=back
 
 =item * C<should_print_ks>
 
@@ -178,6 +195,20 @@ that's the case.
 
 Prints the Bash code for destroying the block device. This includes
 skipping non-empty volume groups.
+
+=back
+
+=head2 Instantiating different blockdevices
+
+A given block device may be used by another one. For instance, a
+partition may be used by a software RAID, and that software RAID can
+be used by a volume group which also contains a partition.
+
+If your block device lies on top of another one, and that must be
+decided at run time, then you need to call
+C<NCM::BlockdevFactory::build> or
+C<NCM::BlockdevFactory::build_from_dev>. Check the code, as it's
+really simple.
 
 =head2 Comments
 
