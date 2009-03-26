@@ -2,7 +2,7 @@
 # This is 'ncm-lib-blockdevices.pod', a ncm-lib-blockdevices's file
 ################################################################################
 #
-# VERSION:    0.20.3, 26/03/09 11:18
+# VERSION:    0.20.4, 26/03/09 12:42
 # AUTHOR:     Tim Bell, Andras Horvath and Luis Fernando Muñoz
 # MAINTAINER: Luis Fernando Muñoz
 # LICENSE:    http://cern.ch/eu-datagrid/license.html

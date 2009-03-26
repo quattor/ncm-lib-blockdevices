@@ -200,13 +200,20 @@ sub create
      if ($self->disk_empty) {
 	  $self->set_readahead if $self->{readahead};
 	  $self->remove;
+
 	  if ($self->{label} ne NOPART) {
-	       execute ([PARTED, $self->devpath,
-			 CREATE, $self->{label}]);
+	       $this_app->debug (5, "Initialising block device ",$self->devpath);
+	       my @partedcmdlist=(PARTED, $self->devpath,
+				  CREATE, $self->{label});
+	       $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
+	       execute (\@partedcmdlist);
 	       sleep (SLEEPTIME);
 	  }
 	  else {
-	       execute ([DD, DDARGS, "of=".$self->devpath]);
+	       my $buffout;
+	       $this_app->debug (5, "Disk ", $self->devpath,": create (zeroing partition table)");
+	       execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
+	       $this_app->debug (5, "dd output:\n", $buffout);
 	  }
 	  return $?;
      }
@@ -226,8 +233,12 @@ sub remove
 {
      my $self = shift;
      unless ($self->partitions_in_disk) {
-	  execute ([DD, DDARGS, "of=".$self->devpath]);
-	  delete $disks{"/system/blockdevices/physical_devs/$self->{devname}"};
+         my $buffout;
+         $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
+         execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
+         $this_app->debug (5, "dd output:\n ", $buffout);
+
+         delete $disks{"/system/blockdevices/physical_devs/$self->{devname}"};
      }
      return 0;
 }

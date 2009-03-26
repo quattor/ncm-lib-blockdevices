@@ -171,16 +171,28 @@ sub create
 
     # Check the device doesn't exist already.
     if ($self->devexists) {
-	$this_app->debug (5, "Device $self->{devname} already existed.",
-			  "Leaving");
+	$this_app->debug (5, "Partition $self->{devname} already exists: ",
+			  "leaving");
 	return 0
     }
-    $this_app->debug (5, "Creating $self->{devname}");
+
     my $hdname =  "/dev/" . $self->{holding_dev}->{devname};
+    $this_app->debug (5, "Partition $self->{devname}: ",
+		      "creating holding device ",$hdname );
     my $err = $self->{holding_dev}->create;
     return $err if $err;
-    execute ([PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE, $self->{type},
-	      $self->begin, $self->end]);
+    $this_app->debug (5, "Partition $self->{devname}: ",
+		      "creating" );
+    my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE, 
+		       $self->{type}, $self->begin, $self->end);
+    if ( $self->{holding_dev}->{label} eq "msdos" &&
+	 $self->{size} >= 2200000 ) {
+	$this_app->warn("Partition $self->{devname}: partition larger than 2.2TB defined on msdos partition table");
+    }
+
+    $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
+    execute (\@partedcmdlist);
+	     
     $? && $this_app->error ("Failed to create $self->{devname}");
     sleep (SLEEPTIME);
     return $?;
@@ -305,7 +317,7 @@ sub begin
     }
 
     $self->{begin} = $st;
-    $this_app->debug (5, "Partition begins at $st");
+    $this_app->debug (5, "Partition ",$self->{devname}," begins at $st");
     return $st;
 }
 

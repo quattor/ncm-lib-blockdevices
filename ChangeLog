@@ -1,5 +1,11 @@
 2009-03-26  Unknown
 
+	* Release: 0.20.4
+	- Warn if creating partition that's too large for msdos part table.
+	Further reporting cleanup.
+
+2009-03-26  Unknown
+
 	* Release: 0.20.3
 	- Further reporting changes, don't try and mount swap!
 
