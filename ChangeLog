@@ -1,5 +1,10 @@
 2009-03-26  Unknown
 
+	* Release: 0.20.3
+	- Further reporting changes, don't try and mount swap!
+
+2009-03-26  Unknown
+
 	* Release: 0.20.2
 	- Tidied up reporting.
 

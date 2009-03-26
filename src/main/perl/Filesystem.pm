@@ -135,8 +135,8 @@ sub remove_if_needed
     my $self = shift;
 
     if ($self->{preserve} || !$self->{format}) {
-	$this_app->debug (5, "File system ", $self->{mountpoint},
-			  " shouldn't be destroyed. Leaving.");
+	$this_app->debug (5, "Filesystem ", $self->{mountpoint},
+			  " shouldn't be destroyed according to profile.");
 	return 0;
     }
     $this_app->info ("Destroying filesystem on $self->{mountpoint}");
@@ -242,10 +242,10 @@ sub create_if_needed
     # The filesystem already exists. Update its fstab.
     execute ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB]);
     if (!$?) {
-	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: Updating.");
+	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: updating.");
 	$self->update_fstab;
 	execute ([REMOUNT, $self->{mountpoint}])
-	    if $self->{type} ne 'none' && $self->{mount};
+	    if $self->{type} ne 'none' && $self->{type} ne 'swap' && $self->{mount};
 	return 0;
     }
 
