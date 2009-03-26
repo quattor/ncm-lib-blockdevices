@@ -242,7 +242,7 @@ sub create_if_needed
     # The filesystem already exists. Update its fstab.
     execute ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB]);
     if (!$?) {
-	$this_app->debug (5, "Filesystem already exists. Updating.");
+	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: Updating.");
 	$self->update_fstab;
 	execute ([REMOUNT, $self->{mountpoint}])
 	    if $self->{type} ne 'none' && $self->{mount};
@@ -261,6 +261,7 @@ sub create_if_needed
 	    execute ([MOUNT, $self->{mountpoint}]);
 	}
     }
+    $this_app->info("Filesystem on $self->{mountpoint} successfully created");
     return 0;
 }
 
