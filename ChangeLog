@@ -1,3 +1,8 @@
+2009-08-07  Luis Fernando Muñoz Mejías
+
+	* Release: 0.20.5
+	- Quote properly some some arguments to sed in the KS, as it wasn't working as expected.
+
 2009-03-26  Unknown
 
 	* Release: 0.20.4
