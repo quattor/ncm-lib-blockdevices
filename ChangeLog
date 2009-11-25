@@ -1,3 +1,10 @@
+2009-11-25  <unknown>
+
+	* Release: 0.20.6
+	- Add support for Tmpfs, and switch to CAF::Process in filesystem creation.
+	
+	Other modules should be converted to CAF::Process as well. To be done.
+
 2009-08-07  Luis Fernando Muñoz Mejías
 
 	* Release: 0.20.5

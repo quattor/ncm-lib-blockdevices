@@ -11,12 +11,14 @@ use warnings;
 
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
-use LC::Process qw (execute output);
+use CAF::Process;
+use CAF::FileEditor;
 use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
 use File::Path;
 use File::Basename;
+use Fcntl qw(SEEK_END);
 
 use constant MOUNTPOINTPERMS => 0755;
 use constant BASEPATH	=> "/system/blockdevices/";
@@ -46,7 +48,8 @@ use constant MKFSCMDS	=> { xfs	=> '/sbin/mkfs.xfs',
 			     reiserfs	=> '/sbin/mkfs.reiserfs',
 			     reiser4	=> '/sbin/mkfs.reiser4',
 			     jfs	=> '/sbin/mkfs.jfs',
-			     swap	=> '/sbin/mkswap'
+			     swap	=> '/sbin/mkswap',
+			     tmpfs	=> '/bin/true',
 			   };
 # Use this instead of Perl's built-in mkdir to create everything in
 # one go.
@@ -73,7 +76,8 @@ sub new_from_fstab
 
     $line =~ m{^(\S+)\s+(\S+)\s};
     my ($dev, $mountp) = ($1, $2);
-    execute ([MOUNT, $mountp]);
+    my $p = CAF::Process->new ([MOUNT, $mountp],
+			      log => $this_app)->run();
 
     if ($dev =~ m/^LABEL=/) {
 	open (FH, MTAB);
@@ -116,7 +120,8 @@ Returns whether the filesystem is mounted
 sub mounted
 {
     my $self = shift;
-    execute ([GREP, $self->{mountpoint}, MTAB]);
+    CAF::Process->new ([GREP, $self->{mountpoint}, MTAB],
+		      log => $this_app)->run();
     return !$?;
 }
 
@@ -141,11 +146,13 @@ sub remove_if_needed
     }
     $this_app->info ("Destroying filesystem on $self->{mountpoint}");
     if ($self->mounted) {
-	execute ([UMOUNT, $self->{mountpoint}]);
+	CAF::Process->new ([UMOUNT, $self->{mountpoint}],
+			  log => $this_app)->run();
 	return $? if $?;
     }
     $self->{block_device}->remove==0 or return $?;
-    execute ([SED, "\\:$self->{mountpoint}\\s:d", FSTAB]);
+    CAF::Process->new ([SED, "\\:$self->{mountpoint}\\s:d", FSTAB],
+		      log => $this_app)->run();
     rmdir ($self->{mountpoint});
     return $?;
 }
@@ -154,19 +161,23 @@ sub remove_if_needed
 sub update_fstab
 {
     my $self = shift;
-    execute ([SED, "\\:$self->{mountpoint}\\s:d", FSTAB]);
-    my $fh = FileHandle->new ("/etc/fstab", "a");
+    my $fh = CAF::FileEditor->new ("/etc/fstab", log => $this_app);
+    my $s = $fh->string_ref();
+    $$s =~ s{.*$self->{mountpoint}.*}{};
+    $fh->set_contents($$s);
+    seek($fh, 0, SEEK_END);
     print $fh join (" ",
 		    (exists $self->{label}?
 		     "LABEL=$self->{label}":
-		     $self->{block_device}->devpath),
+			  $self->{block_device}->devpath),
 		    $self->{mountpoint},
 		    $self->{type},
 		    $self->{mountopts} .
-		    ((!$self->{mount} || $self->{type} eq 'none')?",noauto":""),
+			 ((!$self->{mount} || $self->{type} eq 'none')?
+			       ",noauto":""),
 		    $self->{freq},
 		    $self->{pass}), "\n";
-    $fh->close;
+    $fh->close();
 }
 
 =pod
@@ -195,11 +206,13 @@ sub formatfs
     if ($self->{type} ne 'none' &&
 	($self->{format} || !$self->{block_device}->has_filesystem)) {
 	$this_app->debug (5, "Formatting to get $self->{mountpoint}");
-	execute ([MKFSCMDS->{$self->{type}}, @opts,
-		  $self->{block_device}->devpath]);
+	CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
+			    $self->{block_device}->devpath],
+			   log => $this_app)->run();
 	return $? if $?;
-	execute ([$tunecmd, split ('\s+', $self->{tuneopts}),
-		  $self->{block_device}->devpath])
+	CAF::Process->new ([$tunecmd, split ('\s+', $self->{tuneopts}),
+			   $self->{block_device}->devpath],
+			  log => $this_app)->run()
 	  if exists $self->{tuneopts} && defined $tunecmd;
     }
     return $?;
@@ -240,12 +253,16 @@ sub create_if_needed
     my $self = shift;
 
     # The filesystem already exists. Update its fstab.
-    execute ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB]);
+    CAF::Process->new ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB],
+		      log => $this_app)->run();
     if (!$?) {
-	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: updating.");
+	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: ",
+			  "updating.");
 	$self->update_fstab;
-	execute ([REMOUNT, $self->{mountpoint}])
-	    if $self->{type} ne 'none' && $self->{type} ne 'swap' && $self->{mount};
+	CAF::Process->new ([REMOUNT, $self->{mountpoint}],
+			  log => $this_app)->run()
+	    if $self->{type} ne 'none' && $self->{type} ne 'swap'
+		 && $self->{mount};
 	return 0;
     }
 
@@ -256,9 +273,11 @@ sub create_if_needed
     $self->update_fstab;
     if ($self->{mount}) {
 	if ($self->{type} eq 'swap') {
-	    execute ([SWAPON, $self->{block_device}->devpath]);
+	    CAF::Process->new ([SWAPON, $self->{block_device}->devpath()],
+			       log => $this_app)->run();
 	} else {
-	    execute ([MOUNT, $self->{mountpoint}]);
+	    CAF::Process->new ([MOUNT, $self->{mountpoint}],
+			       log => $this_app)->run();
 	}
     }
     $this_app->info("Filesystem on $self->{mountpoint} successfully created");
@@ -279,10 +298,10 @@ sub format_if_needed
     my $self = shift;
     $self->{format} && $self->{type} ne 'none' or return 0;
     my $r;
-    execute ([UMOUNT, $self->{mountpoint}]);
-
+    CAF::Process->new ([UMOUNT, $self->{mountpoint}], log => $this_app)->run();
     $r = $self->formatfs;
-    execute ([MOUNT, $self->{mountpoint}]) if $self->{mount};
+    CAF::Process->new ([MOUNT, $self->{mountpoint}], log => $this_app)->run()
+	if $self->{mount};
     return $r;
 }
 
