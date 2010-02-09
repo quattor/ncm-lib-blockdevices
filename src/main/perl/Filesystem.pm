@@ -19,6 +19,7 @@ use FileHandle;
 use File::Path;
 use File::Basename;
 use Fcntl qw(SEEK_END);
+use Cwd qw(abs_path);
 
 use constant MOUNTPOINTPERMS => 0755;
 use constant BASEPATH	=> "/system/blockdevices/";
@@ -286,17 +287,62 @@ sub create_if_needed
 
 =pod
 
+=head2 can_be_formatted
+
+Returns true if the filesystem can be formatted. A filesystem can be
+formatted if:
+
+=over 4
+
+=item * It has marked C<format> to true, and
+
+=item * It has a valid filesystem type (something different from
+C<none>), and any of these hold:
+
+=over 4
+
+=item * Its mount point doesn't exist or,
+
+=item * Its mount point is not listed in the protected hash.
+
+=item * The underlying block device has just been created and doesn't
+have any filesystem yet.
+
+=back
+
+Takes as an argument a hash with the filesytems that should be kept.
+
+=cut
+
+sub can_be_formatted
+{
+    my ($self, %protected) = @_;
+
+    my $p = abs_path("$self->{mountpoint}/");
+
+    return $self->{format} && $self->{type} ne 'none' &&
+	!(defined($p) && exists($protected{$p}) &&
+	  $self->{block_device}->has_filesystem);
+}
+
+=pod
+
 =head2 format_if_needed
 
 If the filesystem's format tag is true, it formats (mkfs.) it
 appropiately.
 
+It accepts a hash with the protected mounts that shouldn't be
+formatted in case they exist already. The keys should be the canonical
+form of the mount points, otherwise it may be unsafe. I assume this
+piece will be called by ncm-filesystems, and thus it is safe.
+
 =cut
 
 sub format_if_needed
 {
-    my $self = shift;
-    $self->{format} && $self->{type} ne 'none' or return 0;
+    my ($self, %protected) = @_;
+    $self->can_be_formatted(%protected) or return 0;
     my $r;
     CAF::Process->new ([UMOUNT, $self->{mountpoint}], log => $this_app)->run();
     $r = $self->formatfs;

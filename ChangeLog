@@ -1,3 +1,13 @@
+2010-02-09  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
+
+	* Release: 0.21.0
+	- Don't format existing filesystems that are listed in the
+	protected_mounts field of the profile.
+
+	The format_if_needed method accepts the protected hash
+	ncm-filesystems is using internally for deciding what filesystems
+	shouldn't be removed even if they are not in the profile anymore.
+
 2009-11-25  <unknown>
 
 	* Release: 0.20.6
