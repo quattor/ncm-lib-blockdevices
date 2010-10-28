@@ -1,3 +1,10 @@
+2010-10-28  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
+
+	* Release: 0.21.1
+	- Make update_fstab accept a handle to the fstab file.
+
+	In the way, fix how lines are updated.
+
 2010-02-09  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
 
 	* Release: 0.21.0

@@ -135,7 +135,6 @@ block device it uses. Do nothing if preserve is true.
 
 =cut
 
-
 sub remove_if_needed
 {
     my $self = shift;
@@ -158,16 +157,18 @@ sub remove_if_needed
     return $?;
 }
 
-# Updates the fstab entry for a filesystem.
+# Updates the fstab entry for the $self filesystem. Optionally, the
+# handle to the fstab CAF::FileEditor handle can be passed as an
+# argument
 sub update_fstab
 {
-    my $self = shift;
-    my $fh = CAF::FileEditor->new ("/etc/fstab", log => $this_app);
+    my ($self, $fh) = @_;
+    $fh = CAF::FileEditor->new ("/etc/fstab", log => $this_app) unless $fh;
     my $s = $fh->string_ref();
-    $$s =~ s{.*$self->{mountpoint}.*}{};
+    $$s =~ s{.*\s+$self->{mountpoint}\s+.*\n}{};
     $fh->set_contents($$s);
     seek($fh, 0, SEEK_END);
-    print $fh join (" ",
+    print $fh join ("\t",
 		    (exists $self->{label}?
 		     "LABEL=$self->{label}":
 			  $self->{block_device}->devpath),
@@ -178,7 +179,6 @@ sub update_fstab
 			       ",noauto":""),
 		    $self->{freq},
 		    $self->{pass}), "\n";
-    $fh->close();
 }
 
 =pod

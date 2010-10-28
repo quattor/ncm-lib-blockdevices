@@ -51,7 +51,7 @@ use constant VGCREATE	=> '/usr/sbin/vgcreate';
 use constant PVREMOVE	=> '/usr/sbin/pvremove';
 use constant VGCOPTS	=> qw (--);
 use constant EXISTS	=> 5;
-use constant VGREMOVE	=> 'vgremove';
+use constant VGREMOVE	=> qw(vgremove -f);
 use constant VGRMOPTS	=> VGCOPTS;
 use constant EXTENTS	=> 15;
 
@@ -303,10 +303,13 @@ sub del_pre_ks
 {
     my $self = shift;
 
-    # The removal will succeed only if there are no logical
-    # volumes on this volume group. If that's the case, remove all
-    # the physical volumes too.
-    print  "lvm vgremove $self->{devname} && (\n";
+    # The removal will succeed only if there are no logical volumes on
+    # this volume group. If that's the case, remove all the physical
+    # volumes too.
+    print <<EOF;
+lvm vgreduce --removemissing $self->{devname} &&
+lvm vgremove $self->{devname} && (
+EOF
 
     foreach (@{$self->{device_list}})
     {
@@ -320,9 +323,9 @@ sub del_pre_ks
 sub create_ks
 {
     my ($self) = @_;
-    
+
     my $path = $self->devpath;
-    
+
     print <<EOC;
 if [ ! -b $path ]
 then
