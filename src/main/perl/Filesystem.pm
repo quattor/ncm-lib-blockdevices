@@ -204,8 +204,7 @@ sub formatfs
     # Format only if there must be a filesystem. After a
     # re-install, it can happen that $self->{format} is false and
     # the block device has a filesystem. Dont' destroy the data.
-    if ($self->{type} ne 'none' &&
-	($self->{format} || !$self->{block_device}->has_filesystem)) {
+    if ($self->{type} ne 'none' || !$self->{block_device}->has_filesystem) {
 	$this_app->debug (5, "Formatting to get $self->{mountpoint}");
 	CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
 			    $self->{block_device}->devpath],
@@ -253,34 +252,16 @@ sub create_if_needed
 {
     my $self = shift;
 
-    # The filesystem already exists. Update its fstab.
     CAF::Process->new ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB],
 		      log => $this_app)->run();
     if (!$?) {
 	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: ",
-			  "updating.");
-	$self->update_fstab;
-	CAF::Process->new ([REMOUNT, $self->{mountpoint}],
-			  log => $this_app)->run()
-	    if $self->{type} ne 'none' && $self->{type} ne 'swap'
-		 && $self->{mount};
+			  "leaving.");
 	return 0;
     }
 
-    # The filesystem doesn't exist. Create it and add it to fstab.
     $self->{block_device}->create && return $?;
     $self->formatfs && return $?;
-    mkmountpoint ($self->{mountpoint})==0 or return -1;
-    $self->update_fstab;
-    if ($self->{mount}) {
-	if ($self->{type} eq 'swap') {
-	    CAF::Process->new ([SWAPON, $self->{block_device}->devpath()],
-			       log => $this_app)->run();
-	} else {
-	    CAF::Process->new ([MOUNT, $self->{mountpoint}],
-			       log => $this_app)->run();
-	}
-    }
     $this_app->info("Filesystem on $self->{mountpoint} successfully created");
     return 0;
 }
@@ -289,40 +270,16 @@ sub create_if_needed
 
 =head2 can_be_formatted
 
-Returns true if the filesystem can be formatted. A filesystem can be
-formatted if:
-
-=over 4
-
-=item * It has marked C<format> to true, and
-
-=item * It has a valid filesystem type (something different from
-C<none>), and any of these hold:
-
-=over 4
-
-=item * Its mount point doesn't exist or,
-
-=item * Its mount point is not listed in the protected hash.
-
-=item * The underlying block device has just been created and doesn't
-have any filesystem yet.
-
-=back
-
-Takes as an argument a hash with the filesytems that should be kept.
+Returns true if the filesystem can be formatted. Currently, an
+existing filesystem cannot be re-formatted. We never had the real need
+to re-format anything from inside the component, and some users kept
+making mistakes with this.
 
 =cut
 
 sub can_be_formatted
 {
-    my ($self, %protected) = @_;
-
-    my $p = abs_path("$self->{mountpoint}/");
-
-    return $self->{format} && $self->{type} ne 'none' &&
-	!(defined($p) && exists($protected{$p}) &&
-	  $self->{block_device}->has_filesystem);
+    return 0;
 }
 
 =pod
