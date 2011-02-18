@@ -151,6 +151,7 @@ sub _initialize
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
 						      $st->{holding_dev},
 						      $config);
+    $self->_set_alignment($st, 0, 0);
     return $self;
 }
 
@@ -443,11 +444,16 @@ sub create_pre_ks
     my $n = $self->partition_number;
     my $type = substr ($self->{type}, 0, 1);
     my $size = exists $self->{size}? "+$self->{size}M":'';
+    my $path = $self->devpath;
+    my $disk = $self->{holding_dev}->devpath;
+    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
+    # TODO: add support for alignment_offset
 
     print <<EOF;
-if ! grep -q $self->{devname} /proc/partitions
+if ! grep -q '$self->{devname}\$' /proc/partitions
 then
-    fdisk @{[$self->{holding_dev}->devpath]} <<end_of_fdisk
+    echo "Creating partition $self->{devname}" >/dev/console
+    fdisk $disk <<end_of_fdisk
 n
 $type
 $n
@@ -455,7 +461,38 @@ $n
 $size
 w
 end_of_fdisk
-    echo @{[$self->devpath]} >> @{[PART_FILE]}
+
+    rereadpt $disk
+
+EOF
+    print <<EOF if $align_sect > 1;
+    # Align the start of the partition to $align_sect sectors
+    START=`fdisk -ul $disk | awk '{if (\$1 == "$self->{devname}") print \$2 == "*" ? \$3: \$2}'`
+    ALIGNED=\$(((\$START + $align_sect - 1) / $align_sect * $align_sect))
+    if [ \$START != \$ALIGNED ]; then
+        echo "Aligning $self->{devname}: old start sector: \$START, new: \$ALIGNED" >/dev/console
+        fdisk $disk <<end_of_fdisk
+x
+b
+$n
+\$ALIGNED
+w
+end_of_fdisk
+
+	rereadpt $disk
+    fi
+
+EOF
+    print <<EOF;
+    # Hack for RHEL 6: Create the device node if needed
+    sleep 2
+    if [ ! -b "$path" ]; then
+        echo "Creating device node $path" >/dev/console
+        grep '$self->{devname}\$' /proc/partitions | \\
+            awk '{print "mknod $path b " \$1 " " \$2}' | sh -x
+    fi
+
+    echo $path >> @{[PART_FILE]}
 fi
 EOF
 

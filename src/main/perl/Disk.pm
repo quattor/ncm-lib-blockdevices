@@ -51,6 +51,7 @@ use constant GREPARGS	=> "-c";
 use constant NOPART	=> "none";
 use constant RCLOCAL	=> "/etc/rc.local";
 
+use constant HWPATH	=> "/hardware/harddisks/";
 
 use constant FILES	=> qw (file -s);
 use constant SLEEPTIME	=> 2;
@@ -109,6 +110,20 @@ sub _initialize
      $self->{num_spares} = $st->{num_spares};
      $self->{label} = $st->{label};
      $self->{readahead} = $st->{readahead};
+
+     my $hw;
+     $hw = $config->getElement(HWPATH . $1)->getTree if $config->elementExists(HWPATH . $1);
+
+     # It is a bug in the templates if this happens
+     # XXX The error message does not contain which host is being configured, which is quite annoying
+     $this_app->error("Disk $self->{devname} is not defined under " . HWPATH) unless $hw;
+
+     # Inherit the topology from the physical device unless it is explicitely
+     # overridden
+     $self->_set_alignment($st,
+	     ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
+	     ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
+
      $disks{$path} = $self;
      return $self;
 }
@@ -310,10 +325,20 @@ Prints the Bash code to create a new msdos label on the disk
      my $path = $self->devpath;
 
      print <<EOF;
+# Hack for RHEL 6: force re-reading the partition table
+rereadpt () {
+	sync
+	sleep 2
+	hdparm -z \$1
+}
+
 fdisk $path <<end_of_fdisk
 o
 w
 end_of_fdisk
+
+rereadpt $path
+
 EOF
 }
 

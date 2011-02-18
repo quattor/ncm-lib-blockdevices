@@ -1,3 +1,8 @@
+2011-02-08  Gabor Gombas as <Gabor.Gombas@morganstanley.com>
+	* Release: 0.21.2-ms1
+	- Add support for partition alignment.
+	- Create the device files under /dev if missing (happens on RHEL6)
+
 2010-10-28  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
 
 	* Release: 0.21.2

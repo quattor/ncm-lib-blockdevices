@@ -58,6 +58,8 @@ sub _initialize
 						    $config);
 	$self->{size} = $st->{size};
 	$self->{stripe_size} = $st->{stripe_size} if exists $st->{stripe_size};
+	# TODO: consider the stripe size when computing the alignment
+	$self->_set_alignment($st, $self->{volume_group}->{alignment}, 0);
 	return $self;
 }
 
