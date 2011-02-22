@@ -1,3 +1,8 @@
+2011-02-09  Gabor Gombas as <Gabor.Gombas@morganstanley.com>
+	* Release: 0.21.2-ms2
+	- Zero out the beginning and end of newly created partitions to
+	  prevent old LVM volumes from re-appearing
+
 2011-02-08  Gabor Gombas as <Gabor.Gombas@morganstanley.com>
 	* Release: 0.21.2-ms1
 	- Add support for partition alignment.
