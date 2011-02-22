@@ -492,6 +492,12 @@ EOF
             awk '{print "mknod $path b " \$1 " " \$2}' | sh -x
     fi
 
+    # Clear LVM/filesystem/etc. metadata
+    dd if=/dev/zero of="$path" bs=1M count=1 2>/dev/null
+    SIZE=`fdisk -s "$path"`
+    START=\$((\$SIZE / 1024 - 1))
+    dd if=/dev/zero of="$path" bs=1M seek=\$START 2>/dev/null
+
     echo $path >> @{[PART_FILE]}
 fi
 EOF
