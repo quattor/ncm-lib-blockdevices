@@ -467,7 +467,7 @@ end_of_fdisk
 EOF
     print <<EOF if $align_sect > 1;
     # Align the start of the partition to $align_sect sectors
-    START=`fdisk -ul $disk | awk '{if (\$1 == "$self->{devname}") print \$2 == "*" ? \$3: \$2}'`
+    START=`fdisk -ul $disk | awk '{if (\$1 == "$path") print \$2 == "*" ? \$3: \$2}'`
     ALIGNED=\$(((\$START + $align_sect - 1) / $align_sect * $align_sect))
     if [ \$START != \$ALIGNED ]; then
         echo "Aligning $self->{devname}: old start sector: \$START, new: \$ALIGNED" >/dev/console
