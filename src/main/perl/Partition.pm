@@ -44,26 +44,47 @@ package NCM::Partition;
 use strict;
 use warnings;
 
-use EDG::WP4::CCM::Element;
+use EDG::WP4::CCM::Element qw (unescape);
 use EDG::WP4::CCM::Configuration;
+use NCM::Blockdevices qw ($this_app);
 use LC::Process qw (execute output);
-use Exporter;
 our @ISA = qw (NCM::Blockdevices Exporter);
 
 our @EXPORT_OK = qw (partition_compare);
 
 use constant {
-	PARTED		=> "/sbin/parted",
-	CREATE		=> "mkpart",
-	DELETE		=> "rm",
-#	TYPE		=> "primary"
+    PARTED		=> "/sbin/parted",
+    CREATE		=> "mkpart",
+    DELETE		=> "rm",
+    #	TYPE		=> "primary"
 };
 
-use constant PARTEDARGS	=> qw(-s --);
+# Regular expression for checking where the partition begins. The format of a Parted line is:
+# <minor> <begin> <end> <size (SL5 only)> <partition type (DOS-labels only)>
+use constant BEGIN_RE	=> '^\s*(\d+)\w*\s+(\d+\.?\d+)\w*\s+(\d+\.?\d+)\w*';
+use constant BEGIN_TAIL_RE=> '\s+(?:\d+\.?\d+\w*)?\s*(primary|extended|logical)';
+use constant MSDOS	=> 'msdos';
 
+# On recent kernels, partitions tend to appear slightly later than
+# when they are expected. We'll have to wait a little for this to
+# work.
+use constant SLEEPTIME => 4;
+
+# If we are using SL5 (parted 1.8) we need to specify we'll work with MB.
+sub extra_args()
+{
+    my $out = output (PARTED, "-v");
+    if ($out =~ m/1.8/) {
+	return qw (u MB);
+    }
+    return ();
+}
+
+use constant PARTEDEXTRA => extra_args;
+use constant PARTEDARGS	=> qw (-s --);
 use constant GREPCALL	=> qw (/bin/grep -q /proc/partitions -e);
 
-use constant BASEPATH	=> "/software/components/filesystems/blockdevices/";
+use constant BASEPATH	=> "/system/blockdevices/";
 use constant DISK	=> "physical_devs/";
 use constant BLOCKDEV	=> qw (/sbin/blockdev --rereadpt --);
 use constant PARTEDP	=> 'print';
@@ -72,12 +93,12 @@ use constant PARTEDP	=> 'print';
 # before $a, 0 if it doesn't matter. See bug #26137.
 sub partition_compare ($$)
 {
-	my ($a, $b) = @_;
-	$a->devpath =~ m!\D(\d+)$!;
-	my $an = $1;
-	$b->devpath =~ m!\D(\d+)$!;
-	my $bn = $1;
-	return $an <=> $bn;
+    my ($a, $b) = @_;
+    $a->devpath =~ m!\D(\d+)$!;
+    my $an = $1;
+    $b->devpath =~ m!\D(\d+)$!;
+    my $bn = $1;
+    return $an <=> $bn;
 }
 
 =pod
@@ -90,21 +111,22 @@ Creates a partition object from its path on the disk.
 
 sub new_from_system
 {
-	my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg) = @_;
 
-	$dev =~ m{/dev/(.*)};
-	my $devname = $1;
-	my $disk;
-	if ($dev =~ m{(/dev/ciss/c\d+d\+)p\d+}) {
-		$disk = $1;
-	} else {
-		$dev =~ m{(/dev/.*\D)\d+$};
-		$disk = $1;
-	}
-	my $self = { devname	=> $devname,
-		     holding_dev=> NCM::Disk->new_from_system ($disk, $cfg)
-		   };
-	return bless ($self, $class);
+    $dev =~ m{/dev/(.*)};
+    my $devname = $1;
+    my $disk;
+    if ($dev =~ m{(/dev/ciss/c\d+d\+)p\d+}) {
+	$disk = $1;
+    }
+    else {
+	$dev =~ m{(/dev/.*\D)\d+$};
+	$disk = $1;
+    }
+    my $self = { devname	=> $devname,
+		 holding_dev	=> NCM::Disk->new_from_system ($disk, $cfg)
+	       };
+    return bless ($self, $class);
 }
 
 =pod
@@ -118,18 +140,18 @@ the profile for the device and the configuration object.
 
 sub _initialize
 {
-	my ($self, $path, $config) = @_;
-	my $st = $config->getElement($path)->getTree;
-	# The block device is indexed by disk name
-	$path =~ m!([^/]+)$!;
-	# Watch for MEGARAID devices
-	$self->{devname} = $self->unescape ($1);
-	$self->{size} = $st->{size} if exists $st->{size};
-	$self->{type} = $st->{type};
-	$self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
-						    $st->{holding_dev},
-						    $config);
-	return $self;
+    my ($self, $path, $config) = @_;
+    my $st = $config->getElement($path)->getTree;
+    # The block device is indexed by disk name
+    $path =~ m!([^/]+)$!;
+    # Watch for MEGARAID devices
+    $self->{devname} = unescape ($1);
+    $self->{size} = $st->{size} if exists $st->{size};
+    $self->{type} = $st->{type};
+    $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
+						      $st->{holding_dev},
+						      $config);
+    return $self;
 }
 
 =pod
@@ -145,17 +167,23 @@ Extended partitions are not supported.
 
 sub create
 {
-	my $self = shift;
+    my $self = shift;
 
-	# Check the device doesn't exist already.
-	return 0 if $self->devexists;
-
-	my $hdname =  "/dev/" . $self->{holding_dev}->{devname};
-	my $err = $self->{holding_dev}->create;
-	return $err if $err;
-	execute ([PARTED, PARTEDARGS, $hdname, CREATE, $self->{type},
-		  $self->begin, $self->end]);
-	return $?;
+    # Check the device doesn't exist already.
+    if ($self->devexists) {
+	$this_app->debug (5, "Device $self->{devname} already existed.",
+			  "Leaving");
+	return 0
+    }
+    $this_app->debug (5, "Creating $self->{devname}");
+    my $hdname =  "/dev/" . $self->{holding_dev}->{devname};
+    my $err = $self->{holding_dev}->create;
+    return $err if $err;
+    execute ([PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE, $self->{type},
+	      $self->begin, $self->end]);
+    $? && $this_app->error ("Failed to create $self->{devname}");
+    sleep (SLEEPTIME);
+    return $?;
 }
 
 =pod
@@ -169,17 +197,23 @@ for erasing its partition table.
 
 sub remove
 {
-	my $self = shift;
+    my $self = shift;
 
-	my $num = $self->partition_number;
-	$self->{begin} = undef;
+    $this_app->debug (5, "Removing $self->{devname}");
+    my $num = $self->partition_number;
+    $self->{begin} = undef;
 
-	if ($self->devexists) {
-		execute ([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
-			  DELETE, $num]);
-		return $? if $?;
+    if ($self->devexists) {
+	execute ([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
+		  PARTEDEXTRA, DELETE, $num]);
+	if ($?) {
+	    $this_app->error ("Couldn't remove partition ",
+			      $self->{devname});
+	    return $?;
 	}
-	return $self->{holding_dev}->remove;
+    }
+    sleep (SLEEPTIME);
+    return $self->{holding_dev}->remove;
 }
 
 =pod
@@ -229,60 +263,65 @@ Returns the absolute path in the system to this block device (f.i:
 
 sub devpath
 {
-	my $self = shift;
-	return "/dev/$self->{devname}";
+    my $self = shift;
+    return "/dev/$self->{devname}";
 }
 
 # Returns the point where the partition must start. This is a private
 # method. It should work fine with > 10 partitions.
 sub begin
 {
-	my $self = shift;
-	return $self->{begin} if (defined $self->{begin});
+    my $self = shift;
+    return $self->{begin} if (defined $self->{begin});
 
-	# Parse parted's output because SL sucks so badly.
-	local $ENV{LANG} = 'C';
-	my $npart = $self->partition_number;
-	my $out = output (PARTED, PARTEDARGS, $self->{holding_dev}->devpath, "print");
-	my @lines = split /\n/, $out;
-	shift @lines for (1..3);
-	my $st = 0;
-
-	# The new partition starts where the previous one ends, except
-	# if the previous one is an extended and the new one a logical
-	# partition. Then, the new logical partition starts where the
-	# extended one starts.
-	foreach my $line (@lines) {
-		last unless $line =~ m!^(\d+)\s+(\d+\.?\d+)\s+(\d+\.?\d+)\s*([a-z]*).*!;
-		my ($n, $begin, $end, $type) = ($1, $2, $3, $4);
-		if ($npart > $n) {
-			if ($self->{type} ne 'logical' || $type eq 'logical') {
-				$st = $end;
-			} else {
-				$st = $begin if $type eq 'extended';
-			}
-		} else {
-			last;
-		}
+    # Parse parted's output because SL sucks so badly.
+    local $ENV{LANG} = 'C';
+    my $npart = $self->partition_number;
+    my $out = output (PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
+		      PARTEDEXTRA, "print");
+    my @lines = split /\n/, $out;
+    @lines = grep (m{^\s*\d+\s}, @lines);
+    my $st = 0;
+    my $re = BEGIN_RE;
+    $re .= BEGIN_TAIL_RE if $self->{holding_dev}->{label} eq MSDOS;
+    # The new partition starts where the previous one ends, except
+    # if the previous one is an extended and the new one a logical
+    # partition. Then, the new logical partition starts where the
+    # extended one starts.
+    foreach my $line (@lines) {
+	last unless $line =~ m!$re!;
+	my ($n, $begin, $end, $type) = ($1, $2, $3, $4);
+	if ($npart > $n) {
+	    if ($self->{type} ne 'logical' || $type eq 'logical') {
+		$st = $end;
+	    }
+	    else {
+		$st = $begin if $type eq 'extended';
+	    }
 	}
+	else {
+	    last;
+	}
+    }
 
-	$self->{begin} = $st;
-	return $st;
+    $self->{begin} = $st;
+    $this_app->debug (5, "Partition begins at $st");
+    return $st;
 }
 
 # Returns the end point of a partition.
 sub end
 {
-	my $self = shift;
-	return exists $self->{size}? $self->{begin} + $self->{size} : '-0';
+    my $self = shift;
+    return exists $self->{size}? $self->{begin} + $self->{size} : '-0';
 }
 
 # Returns the number of the partition.
 sub partition_number
 {
-	my $self = shift;
-	$self->{devname} =~ m!.*\D(\d+)!;
-	return $1;
+    my $self = shift;
+    $self->{devname} =~ m!.*\D(\d+)!;
+    return $1;
 }
 
 =pod
@@ -296,13 +335,14 @@ otherwise.
 
 sub devexists
 {
-	my $self = shift;
+    my $self = shift;
 
-	local $ENV{LANG} = 'C';
-	my $line = output (PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
-			   PARTEDP);
-	my $n = $self->partition_number;
-	return $line =~ m/^$n\s/m && $line !~ m/^Disk label type: loop/m;
+    local $ENV{LANG} = 'C';
+    my $line = output (PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
+		       PARTEDEXTRA, PARTEDP);
+    my $n = $self->partition_number;
+    return $line =~ m/^\s*$n\s/m &&
+	 $line !~ m/^(?:Disk label type|Partition Table): loop/m;
 }
 
 =pod
@@ -318,8 +358,8 @@ partition can be printed only if it is on a disk that an be printed.
 
 sub should_print_ks
 {
-	my $self = shift;
-	return $self->{holding_dev}->should_print_ks;
+    my $self = shift;
+    return $self->{holding_dev}->should_print_ks;
 }
 
 =pod
@@ -337,10 +377,17 @@ section.
 
 sub print_ks
 {
-    my ($self, $mountpoint, $fstype) = @_;
+    my ($self, $fs, $fstype) = @_;
 
-    print "part $mountpoint --onpart $self->{devname} --noformat\n"
-	if $mountpoint;
+    print join (" ",
+		"part", $fs->{mountpoint}, "--onpart",
+		$self->{devname},
+		# Anaconda doesn't recognize existing SWAP labels, if
+		# we want a label on swap, we'll have to re-format the
+		# partition and let it set its own label.
+		($fs->{type} eq "swap" && exists $fs->{label}) ?
+		"--fstype swap":"--noformat",
+		"\n") if $fs;
 }
 
 =pod
@@ -354,14 +401,14 @@ that's needed.
 
 sub del_pre_ks
 {
-	my $self = shift;
+    my $self = shift;
 
-	my $n = $self->partition_number;
-	my $devpath = $self->{holding_dev}->devpath;
+    my $n = $self->partition_number;
+    my $devpath = $self->{holding_dev}->devpath;
 
-	# Partitions are deleted only if they exist. This will make
-	# the partitioning phase much faster.
-	print <<EOF;
+    # Partitions are deleted only if they exist. This will make
+    # the partitioning phase much faster.
+    print <<EOF;
 if grep -q $self->{devname} /proc/partitions
 then
 
@@ -377,17 +424,17 @@ EOF
 
 sub create_pre_ks
 {
-	my $self = shift;
+    my $self = shift;
 	
-	return unless $self->should_print_ks;
+    return unless $self->should_print_ks;
 	
-	my $n = $self->partition_number;
-	my $hdpath = $self->{holding_dev}->devpath;
-	my $path = $self->devpath;
-	my $type = substr ($self->{type}, 0, 1);
-	my $size = exists $self->{size}? "+$self->{size}M":'';
+    my $n = $self->partition_number;
+    my $hdpath = $self->{holding_dev}->devpath;
+    my $path = $self->devpath;
+    my $type = substr ($self->{type}, 0, 1);
+    my $size = exists $self->{size}? "+$self->{size}M":'';
 
-	print <<EOF;
+    print <<EOF;
 if ! grep -q $self->{devname} /proc/partitions
 then
     fdisk $hdpath <<end_of_fdisk

@@ -1,17 +1,19 @@
 object template t4;
 
-include quattor/blockdevices;
+include {"bddummy"};
 
-include quattor/filesystems;
+include {"quattor/blockdevices"};
 
-"/software/components/filesystems/blockdevices" = nlist (
+include {"quattor/filesystems"};
+include {"fsdummy"};
+"/system/blockdevices" = nlist (
 	"physical_devs",
 	nlist (
 		"hdb", nlist ("label", "gpt")
 	)
 );
 
-"/software/components/filesystems/filesystemdefs" = list (
+"/system/filesystems" = list (
     nlist ("mountpoint", "/Mokona",
 	"type", "ext3",
 	"format", true,

@@ -21,9 +21,10 @@ use warnings;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw (execute output);
+use NCM::Blockdevices qw ($this_app);
 our @ISA = qw (NCM::Blockdevices);
 
-use constant BASEPATH	=> "/software/components/filesystems/blockdevices/";
+use constant BASEPATH	=> "/system/blockdevices/";
 use constant VGS	=> "volume_groups/";
 
 use constant { LVCREATE	=> '/usr/sbin/lvcreate',
@@ -32,7 +33,9 @@ use constant { LVCREATE	=> '/usr/sbin/lvcreate',
 	       LVNAME	=> '-n',
 	       LVREMOVE	=> '/usr/sbin/lvremove',
 	       LVRMARGS	=> '-f',
-	       LVDISP	=> '/usr/sbin/lvdisplay'
+	       LVDISP	=> '/usr/sbin/lvdisplay',
+	       LVSTRIPESZ	=> '--stripesize',
+	       LVSTRIPEN=> '--stripes'
        };
 
 =pod
@@ -54,6 +57,7 @@ sub _initialize
 						    $st->{volume_group},
 						    $config);
 	$self->{size} = $st->{size};
+	$self->{stripe_size} = $st->{stripe_size} if exists $st->{stripe_size};
 	return $self;
 }
 
@@ -98,9 +102,12 @@ sub create
 	my $self = shift;
 	my ($szflag, $sz);
 
-	return 0 if $self->devexists;
+	if ($self->devexists) {
+		$this_app->debug (5, "Logical volume ", $self->devpath,
+				  " already exists. Leaving");
+		return 0;
+	}
 	$self->{volume_group}->create==0 or return $?;
-	$self->{devname}. " ". $self->{volume_group}->{devname};
 	if ($self->{size}) {
 		$szflag = LVSIZE;
 		$sz = $self->{size}
@@ -108,8 +115,16 @@ sub create
 		$szflag = LVEXTENTS;
 		$sz = $self->{volume_group}->free_extents;
 	}
+	my @stopt = ();
+	if (exists $self->{stripe_size}) {
+	    @stopt = (LVSTRIPESZ, $self->{stripe_size},
+		      LVSTRIPEN,
+		      scalar (@{$self->{volume_group}->{device_list}}));
+	}
 	execute ([LVCREATE, $szflag, $sz, LVNAME, $self->{devname},
-		  $self->{volume_group}->{devname}]);
+		  $self->{volume_group}->{devname}, @stopt]);
+	$this_app->error ("Failed to create logical volume", $self->devpath)
+	    if $?;
 	return $?;
 }
 
@@ -128,7 +143,11 @@ sub remove
 	if ($self->devexists) {
 		execute ([LVREMOVE, LVRMARGS,
 			  $self->{volume_group}->devpath."/$self->{devname}"]);
-		return $? if $?;
+		if ($?) {
+			$this_app->error ("Failed to remove logical volume ",
+					  $self->devpath);
+			return $?;
+		}
 	}
 	$self->{volume_group}->remove;
 	return 0;
@@ -186,14 +205,17 @@ kickstart commands.
 
 sub print_ks
 {
-	my ($self, $mountpoint, $format, $fstype) = @_;
+	my ($self, $fs, $format, $fstype) = @_;
 
 	return unless $self->should_print_ks;
 
 	$self->{volume_group}->print_ks;
 
-	print "\nlogvol $mountpoint --vgname=$self->{volume_group}->{devname} ",
-	    "--name=$self->{devname} --noformat\n";
+	print join (" ", "\nlogvol", $fs->{mountpoint},
+		    "--vgname=$self->{volume_group}->{devname}",
+		    "--name=$self->{devname}",
+		    "--noformat",
+		    "\n");
 }
 
 =pod
@@ -215,9 +237,15 @@ sub del_pre_ks
 
 sub create_ks
 {
-	my ($self, $fstype) = @_;
+	my ($self, $fs) = @_;
 	my $path = $self->devpath;
 
+	my @stopts = ();
+	if (exists $self->{stripe_size}) {
+	    @stopts = (LVSTRIPESZ, $self->{stripe_size},
+		       LVSTRIPEN,
+		       scalar (@{$self->{volume_group}->{device_list}}));
+	}
 	print <<EOC;
 if ! lvm lvdisplay $self->{volume_group}->{devname}/$self->{devname} > /dev/null
 then
@@ -225,14 +253,19 @@ EOC
 
 	$self->{volume_group}->create_ks;
 
+    my $size="-l 95%FREE";
+    $size="-L $self->{size}M" if (exists($self->{size})
+				  && defined($self->{size})
+				  && "$self->{size}" =~ m/\d+/);
+
 	print <<EOC;
 	lvm lvcreate -n $self->{devname} \\
 	    $self->{volume_group}->{devname} \\
-	    -L $self->{size}M
-    mkfs.$fstype $path
-fi
+	    $size \\
+	    @stopts
 EOC
-	
+	$fs->do_format_ks;
+	print "fi\n";
 }
 
 1;

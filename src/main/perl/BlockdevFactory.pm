@@ -12,15 +12,14 @@ use warnings;
 use EDG::WP4::CCM::Configuration;
 use EDG::WP4::CCM::Element;
 use LC::Process qw (output);
-use NCM::Blockdevices;
+use NCM::Blockdevices qw ($this_app);
 use NCM::MD;
 use NCM::LVM;
 use NCM::LV;
 use NCM::Disk;
 use NCM::Partition;
 use NCM::File;
-use Exporter;
-use constant BASEPATH	=> "/software/components/filesystems/blockdevices/";
+use constant BASEPATH	=> "/system/blockdevices/";
 use constant PARTED	=> qw (/sbin/parted -s --);
 use constant PARTEDP	=> 'p';
 
@@ -61,7 +60,7 @@ sub build_from_dev
 {
 	my ($dev, $config) = @_;
 
-	warn $dev;
+	$this_app->debug (5, "Creating block device structure for $dev device");
 	if ($dev =~ m{^/dev/md\d+$}) {
 		return NCM::MD->new_from_system ($dev, $config);
 	} elsif (($dev =~ m{^/dev/mapper/}) ||

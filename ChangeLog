@@ -1,3 +1,150 @@
+2008-09-21  "Luis Fernando"
+
+	* Release: 0.19.0
+	- Added support for manipulating hardware RAID arrays. This introduces some
+	dependencies:
+	
+	- We now need perl-CAF >= 1.6, to be able to log commands.
+	- We depend on hwraidtools, see http://ahorvath.web.cern.ch/ahorvath/hwraidtools/index.html
+
+2008-09-05  "Luis Fernando"
+
+	* Release: 0.18.5
+	- Anaconda sucks. It doesn't allow to set arbitrary labels on swap filesystems.
+	Applying a workaround so that swap filesystems get Anaconda's default label when a label
+	is required.
+
+2008-09-04  "Luis Fernando"
+
+	* Release: 0.18.4
+	- Fixed filesystem labels not being generated on AII scripts.
+
+2008-08-08  "Luis Fernando"
+
+	* Release: 0.18.3
+	- Fixing a bug where a filesystem marked for removal wouldn't get removed.
+
+2008-08-01  "Luis Fernando"
+
+	* Release: 0.18.2
+	- Adapted to CCM 2.1, which provides an "unescape" method.
+
+2008-06-24  "Luis Fernando"
+
+	* Release: 0.18.1
+	- Fixed extended partitions not being created on SL5.
+
+2008-06-19  "Luis Fernando"
+
+	* Release: 0.18.0
+	- Adapted to run on SL4 and SL5.
+	Added some arbitrary sleeps to give time to just-modified partitions to appear or
+	disappear.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Attempt to tag this.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Yet another try.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Last attempt, to get a better diagnose.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Trying to make a tag with broken build tools.
+
+2008-06-13  "Luis Fernando"
+
+	* Release: 
+	- Filesystems not to be mounted are created but not declared on the KS. This
+	way they won't appear on the fstab.
+
+2008-06-10  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.12
+	- Yet another attempt to parse Parted's output on both SL4 and SL5.
+
+2008-06-09  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.11
+	- Parted's output changed from SL 4 to SL 5. The code works now on both.
+
+2008-05-27  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.10
+	- Added support to mkfsopts on AII methods.
+
+2008-04-30  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.9
+	- Patch by Stijn on logical volumes size, enabling the "grow" feature when
+	no size is specified on AII methods.
+
+2008-04-10  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.8
+	- Fixed some more bugs pointed by Ronald.
+
+2008-04-10  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.7
+	- Fixed some bugs on the file system formatting and software RAID definition at Anaconda
+	phase.
+
+2008-03-14  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.6
+	- Added support for LVM stripes.
+
+2008-03-11  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.5
+	- Added parted to the list of dependencies.
+
+2008-02-27  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.4
+	- Added a man page with some details on the implementation of the library.
+
+2008-02-22  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.3
+	- Added information for building at CERN.
+
+2008-02-22  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.2
+	- Improved the output and error reporting.
+	Added debugging information.
+
+2008-02-20  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.1
+	- Fixed the build after moving the TPL files to pan-templates.
+
+2008-02-20  Luis Fernando Muñoz Mejías
+
+	* Release: 0.17.0
+	- Moved the templatesfor blockdevices and filesystems to pan-templates.
+	Moved the data structures to the final /system/ tree.
+
+2008-01-25  Luis Fernando Muñoz Mejías
+
+	* Release: 0.16.0
+	- Added some safety checks, as requested by Andras.
+	- Check if a disk has any filesystems on it before creating a partition table.
+	- Overwrite the beginning of a disk when it is no longer in use.
+	- Check if a filesystem marked as !format was formatted before,
+	as might happen after a reinstallation.
+
 2007-10-16  Luis Fernando Muñoz Mejías
 
 	* Release: 0.15.0

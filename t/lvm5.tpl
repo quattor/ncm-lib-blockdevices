@@ -1,8 +1,10 @@
 object template lvm5;
 
-include quattor/blockdevices;
-
-"/software/components/filesystems/blockdevices" = nlist (
+include {"bddummy"};
+include {"quattor/blockdevices"};
+include {"quattor/filesystems"};
+include {"fsdummy"};
+"/system/blockdevices" = nlist (
 	"physical_devs", nlist (
 		"hdb", nlist ("label", "gpt")
 		),
@@ -29,7 +31,7 @@ include quattor/blockdevices;
 	);
 
 
-"/software/components/filesystems/filesystemdefs" = list (
+"/system/filesystems" = list (
     nlist (
 	"mount", true,
 	"mountpoint", "/Mokona",

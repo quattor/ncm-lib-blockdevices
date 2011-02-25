@@ -1,10 +1,10 @@
 object template t2;
 
-include quattor/blockdevices;
+include {"bddummy"};
+include {"quattor/blockdevices"};
 
-#include quattor/filesystems;
-
-"/software/components/filesystems/blockdevices" = nlist (
+#include {"quattor/filesystems"};
+"/system/blockdevices" = nlist (
 	"physical_devs",
 	nlist (
 		"hdb", nlist ("label", "gpt")

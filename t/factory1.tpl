@@ -1,8 +1,9 @@
 object template factory1;
 
-include quattor/blockdevices;
-
-"/software/components/filesystems/blockdevices" = nlist (
+include {"bddummy"};
+include {"quattor/blockdevices"};
+include {"bddummy"};
+"/system/blockdevices" = nlist (
 	"physical_devs", nlist (
 		"hdb", nlist ("label", "gpt")
 		),

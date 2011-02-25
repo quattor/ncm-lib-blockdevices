@@ -1,8 +1,8 @@
 object template lvm2;
 
-include quattor/blockdevices;
-
-"/software/components/filesystems/blockdevices" = nlist (
+include {"bddummy"};
+include {"quattor/blockdevices"};
+"/system/blockdevices" = nlist (
     "physical_devs", nlist (
 	"hdb", nlist ("label", "gpt")
 	),

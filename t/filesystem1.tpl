@@ -1,9 +1,10 @@
 object template filesystem1;
+include {"bddummy"};
 
-include quattor/blockdevices;
-include quattor/filesystems;
-
-"/software/components/filesystems/blockdevices" = nlist (
+include {"quattor/blockdevices"};
+include {"quattor/filesystems"};
+include {"fsdummy"};
+"/system/blockdevices" = nlist (
 	"physical_devs", nlist (
 		"hdb", nlist ("label", "gpt")
 		),
@@ -15,7 +16,7 @@ include quattor/filesystems;
 		)
 	);
 
-"/software/components/filesystems/filesystemdefs" = list (
+"/system/filesystems" = list (
 	nlist (
 		"mount", true,
 		"mountpoint", "/Lagoon",

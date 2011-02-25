@@ -1,8 +1,10 @@
 object template raid2;
 
-include quattor/blockdevices;
-
-"/software/components/filesystems/blockdevices" = nlist (
+include {"bddummy"};
+include {"quattor/blockdevices"};
+include {"quattor/filesystems"};
+include {"fsdummy"};
+"/system/blockdevices" = nlist (
 	"physical_devs", nlist (
 		"hdb", nlist ("label", "gpt")
 		),
@@ -28,7 +30,7 @@ include quattor/blockdevices;
 		)
 	);
 
-"/software/components/filesystems/filesystemdefs" = list (
+"/system/filesystems" = list (
     nlist ("block_device", "md/md0",
 	"type", "ext3",
 	"mount", true,

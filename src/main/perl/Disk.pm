@@ -19,18 +19,10 @@ The available fields on this class are:
 
 Name of the device.
 
-=item * raid_level : string
-
-RAID level. It only applies to hardware RAID devices.
-
 =item * num_spares : integer
 
 Number of hot spare drives on the RAID device. It only applies to
 hardware RAID.
-
-=item * stripe_size : integer
-
-Size of the stripes on RAID devices. It doesn't apply to single disks.
 
 =item * label : string
 
@@ -42,31 +34,37 @@ package NCM::Disk;
 
 use strict;
 use warnings;
+use NCM::Blockdevices qw ($this_app);
 use LC::Process qw (execute output);
+use EDG::WP4::CCM::Element qw (unescape);
+use LC::Exception;
+
+my $ec = LC::Exception::Context->new->will_store_all;
 
 our @ISA = qw (NCM::Blockdevices);
 
-use constant {
-	DD		=> "/bin/dd",
-	PARTEDARGS	=> "-s",
-	CREATE		=> "mklabel",
-	GREP		=> "/bin/grep",
-	GREPARGS	=> "-c",
-	NOPART		=> "none",
-	RCLOCAL		=> "/etc/rc.local"
-};
+use constant DD		=> "/bin/dd";
+use constant CREATE	=> "mklabel";
+use constant GREP	=> "/bin/grep";
+use constant GREPARGS	=> "-c";
+use constant NOPART	=> "none";
+use constant RCLOCAL	=> "/etc/rc.local";
 
+
+use constant FILES	=> qw (file -s);
+use constant SLEEPTIME	=> 2;
+use constant RAIDSLEEP	=> 10;
 use constant PARTED	=> qw (/sbin/parted -s --);
 use constant PARTEDP	=> 'print';
 use constant SETRA	=> qw (/sbin/blockdev --setra);
-use constant DDARGS	=> qw (if=/dev/zero count=1);
+use constant DDARGS	=> qw (if=/dev/zero count=1000);
 
 =pod
 
 =head2 %disks
 
 Holds all the disk objects instantiated so far. It is indexed by Pan
-path (i.e: /software/components/filesystems/blockdevices/disks/sda).
+path (i.e: /system/blockdevices/disks/sda).
 
 =cut
 
@@ -87,10 +85,10 @@ returned.
 
 sub new
 {
-	my ($class, $path, $config) = @_;
-	# Only one instance per disk is allowed.
-	return $disks{$path} if exists $disks{$path};
-	return $class->SUPER::new ($path, $config);
+     my ($class, $path, $config) = @_;
+     # Only one instance per disk is allowed.
+     return $disks{$path} if exists $disks{$path};
+     return $class->SUPER::new ($path, $config);
 }
 
 =pod
@@ -103,73 +101,78 @@ Where the object creation is actually done.
 
 sub _initialize
 {
-	my ($self, $path, $config) = @_;
-	my $st = $config->getElement($path)->getTree;
-	$path =~ m(.*/([^/]+));
-	$self->{devname} = $self->unescape ($1);
-	$self->{raid_level} = $st->{raid_level};
-	$self->{num_spares} = $st->{num_spares};
-	$self->{stripe_size} = $st->{stripe_size};
-	$self->{label} = $st->{label};
-	$self->{readahead} = $st->{readahead};
-	$disks{$path} = $self;
-	return $self;
+     my ($self, $path, $config) = @_;
+     my $st = $config->getElement($path)->getTree;
+     $path =~ m(.*/([^/]+));
+     $self->{devname} = unescape ($1);
+     $self->{num_spares} = $st->{num_spares};
+     $self->{label} = $st->{label};
+     $self->{readahead} = $st->{readahead};
+     $disks{$path} = $self;
+     $self->{raid} = NCM::HWRaid->new ($st->{device_path},
+						  $config, $self)
+	 if $st->{device_path};
+     return $self;
 }
 
 sub new_from_system
 {
-	my ($class, $dev, $cfg) = @_;
+     my ($class, $dev, $cfg) = @_;
 
-	$dev =~ m{/dev/(.*)};
-	return $disks{$1} if exists $disks{$1};
-	my $self = { devname	=> $1,
-		     label	=> 'none'
-		   };
-	return bless ($self, $class);
+     $dev =~ m{/dev/(.*)};
+     return $disks{$1} if exists $disks{$1};
+     my $self = { devname	=> $1,
+		  label	=> 'none'
+		};
+     return bless ($self, $class);
 }
 
 
 # Returns the number of partitions $self holds.
 sub partitions_in_disk
 {
-	my $self = shift;
+     my $self = shift;
 
-	local $ENV{LANG} = 'C';
+     local $ENV{LANG} = 'C';
 
-	my $line = output (PARTED, $self->devpath, PARTEDP);
+     my $line = output (PARTED, $self->devpath, PARTEDP);
 
-	my @n = $line=~m/^\d\s/mg;
-	$line =~ m/^Disk label type: (\w+)/m;
-	return $1 eq 'loop'? 0:scalar (@n);
+     my @n = $line=~m/^\s*\d\s/mg;
+     unless ($line =~ m/^(?:Disk label type|Partition Table): (\w+)/m) {
+	  return 0;
+     } 
+     return $1 eq 'loop'? 0:scalar (@n);
 }
 
 # Sets the readahead for the device.
 sub set_readahead
 {
-	my $self = shift;
+     my $self = shift;
 
-	open (FH, RCLOCAL);
-	my @lines = <FH>;
-	close (FH);
-	chomp (@lines);
-	my $re = join (" ", SETRA) . ".*", $self->devpath;
-	my $f = 0;
-	@lines = map {
-		if (m/$re/) {
-			$f = 1;
-			join (" ", SETRA, $self->{readahead}, $self->devpath);
-		} else {
-			$_;
-		}
-	} @lines;
-	push (@lines,
-	      "# Readahead set by Disk.pm\n",
-	      join (" ", SETRA, $self->{readahead}, $self->devpath))
-	    unless $f;
-	open (FH, ">".RCLOCAL);
-	print FH join ("\n", @lines), "\n";
-	close (FH);
+     open (FH, RCLOCAL);
+     my @lines = <FH>;
+     close (FH);
+     chomp (@lines);
+     my $re = join (" ", SETRA) . ".*", $self->devpath;
+     my $f = 0;
+     @lines = map {
+	  if (m/$re/) {
+	       $f = 1;
+	       join (" ", SETRA, $self->{readahead}, $self->devpath);
+	  }
+	  else {
+	       $_;
+	  }
+     } @lines;
+     push (@lines,
+	   "# Readahead set by Disk.pm\n",
+	   join (" ", SETRA, $self->{readahead}, $self->devpath))
+	  unless $f;
+     open (FH, ">".RCLOCAL);
+     print FH join ("\n", @lines), "\n";
+     close (FH);
 }
+
 
 =pod
 
@@ -177,25 +180,43 @@ sub set_readahead
 
 =head2 create
 
-If the disk has no partitions, it creates a new partition table in the
-disk. Otherwise, it does nothing.
+If the disk has no partitions or filesystems, it creates a new
+partition table in the disk. Otherwise, it does nothing.
+
+=head2 disk_empty
+
+Returns true if the disk has no partitions or filesystems in it.
 
 =cut
 
+sub disk_empty
+{
+     my $self = shift;
+
+     return !($self->partitions_in_disk || $self->has_filesystem);
+}
+
 sub create
 {
-	my $self = shift;
-	if ($self->partitions_in_disk == 0) {
-		$self->set_readahead if $self->{readahead};
-		if ($self->{label} ne NOPART) {
-			execute ([PARTED, $self->devpath,
-				  CREATE, $self->{label}]);
-		} else {
-			execute ([DD, DDARGS, "of=".$self->devpath]);
-		}
-		return $?;
-	}
-	return 0;
+     my $self = shift;
+     if ($self->disk_empty) {
+	  $self->set_readahead if $self->{readahead};
+	  $self->remove;
+	  if ($self->{raid}) {
+	      $self->{raid}->create;
+	      sleep (RAIDSLEEP);
+	  }
+	  if ($self->{label} ne NOPART) {
+	       execute ([PARTED, $self->devpath,
+			 CREATE, $self->{label}]);
+	       sleep (SLEEPTIME);
+	  }
+	  else {
+	       execute ([DD, DDARGS, "of=".$self->devpath]);
+	  }
+	  return $?;
+     }
+     return 0;
 }
 
 =pod
@@ -209,15 +230,19 @@ allows the disk to be re-defined.
 
 sub remove
 {
-	my $self = shift;
-	$self->partitions_in_disk or delete $disks{"/software/components/filesystems/blockdevices/physical_devs/$self->{devname}"};
-	return 0;
+     my $self = shift;
+     unless ($self->partitions_in_disk) {
+	  execute ([DD, DDARGS, "of=".$self->devpath]);
+	  delete $disks{"/system/blockdevices/physical_devs/$self->{devname}"};
+	  $self->{raid}->remove if $self->{raid};
+     }
+     return 0;
 }
 
 sub devpath
 {
-	my $self = shift;
-	return "/dev/" . $self->{devname};
+     my $self = shift;
+     return "/dev/" . $self->{devname};
 }
 
 =pod
@@ -230,8 +255,8 @@ Returns true if the disk exists in the system.
 
 sub devexists
 {
-	my $self = shift;
-	return (-b $self->devpath);
+     my $self = shift;
+     return (-b $self->devpath);
 }
 
 =pod
@@ -250,8 +275,8 @@ Kickstart file. This is true if the disk has an 'msdos' label.
 
 sub should_print_ks
 {
-	my $self = shift;
-	return $self->{label} eq 'msdos';
+     my $self = shift;
+     return $self->{label} eq 'msdos';
 }
 
 =pod
@@ -263,7 +288,8 @@ If the disk must be printed, it prints the related Kickstart commands.
 =cut
 
 sub print_ks
-{}
+{
+}
 
 =pod
 
@@ -273,13 +299,13 @@ Prints the Bash code to create a new msdos label on the disk
 
 =cut
 
-sub clearpart_ks
+     sub clearpart_ks
 {
-	my $self = shift;
+     my $self = shift;
 
-	my $path = $self->devpath;
+     my $path = $self->devpath;
 
-	print <<EOF;
+     print <<EOF;
 fdisk $path <<end_of_fdisk
 o
 w

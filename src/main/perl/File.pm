@@ -19,12 +19,13 @@ package NCM::File;
 use strict;
 use warnings;
 
-use EDG::WP4::CCM::Element;
+use EDG::WP4::CCM::Element qw (unescape);
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw (execute output);
+use NCM::Blockdevices qw ($this_app);
 our @ISA = qw (NCM::Blockdevices);
 
-use constant BASEPATH	=> "/software/components/filesystems/blockdevices/";
+use constant BASEPATH	=> "/system/blockdevices/";
 use constant DD		=> qw (/bin/dd if=/dev/zero bs=1M);
 use constant SIZE	=> 'count=';
 use constant OUT	=> 'of=';
@@ -37,7 +38,7 @@ sub _initialize
     my $st = $config->getElement($path)->getTree;
 
     $path =~ m!/([^/]+)$!;
-    $self->{devname} = $self->unescape ($1);
+    $self->{devname} = unescape ($1);
     my @vals = getpwnam ($st->{owner});
     $self->{size} = $st->{size};
     $self->{owner} = $vals[2];
@@ -65,7 +66,9 @@ sub create
 	return 0 if (-e $self->devpath);
 
 	execute ([DD, SIZE.$self->{size}, OUT.$self->devpath]);
-	unless ($?) {
+	if ($?) {
+		$this_app->error ("Couldn't create file: ", $self->devpath);
+	} else {
 		chmod ($self->{permissions}, $self->devpath);
 		chown ($self->{owner}, $self->{group}, $self->devpath);
 	}

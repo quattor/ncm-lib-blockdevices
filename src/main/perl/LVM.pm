@@ -24,6 +24,7 @@ Name of the device.
 The devices the volume group consists of.
 
 =back
+
 =cut
 
 package NCM::LVM;
@@ -31,6 +32,7 @@ package NCM::LVM;
 use strict;
 
 # Don't want warnings for this
+no warnings;
 use constant PVS	=> qw (/usr/sbin/pvs -o name,vg_name);
 
 use warnings;
@@ -38,10 +40,11 @@ use warnings;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw (execute output);
+use NCM::Blockdevices qw ($this_app);
 use NCM::BlockdevFactory qw (build build_from_dev);
 our @ISA = qw (NCM::Blockdevices);
 
-use constant BASEPATH	=> "/software/components/filesystems/blockdevices/";
+use constant BASEPATH	=> "/system/blockdevices/";
 use constant DISK	=> "physical_devs/";
 use constant PVCREATE	=> '/usr/sbin/pvcreate';
 use constant VGCREATE	=> '/usr/sbin/vgcreate';
@@ -80,7 +83,11 @@ sub create
 	my $self = shift;
 	my @devnames;
 
-	return 0 if $self->devexists;
+	if ($self->devexists) {
+		$this_app->debug (5, "Volume group $self->{devname} already ",
+				  " exists. Leaving");
+		return 0;
+	}
 	foreach my $dev (@{$self->{device_list}}) {
 		$dev->create==0 or return $?;
 		execute ([PVCREATE, $dev->devpath])
@@ -89,6 +96,8 @@ sub create
 		push (@devnames, $dev->devpath);
 	}
 	execute ([VGCREATE, $self->{devname}, VGCOPTS, @devnames]);
+	$this_app->error ("Failed to create volume group $self->{devname}")
+	    if $?;
 	return $?;
 }
 
@@ -110,17 +119,23 @@ sub remove
 
 	# Remove the VG only if it has no logical volumes left.
 	my @n = split /:/, output ((VGDISPLAY, $self->{devname}));
-	return 0 if $n[EXISTS];
-
+	if ($n[EXISTS]) {
+		$this_app->debug (5, "Volume group $self->{devname} ",
+				  "has ", $n[EXISTS], " logical volumes left.",
+				  " Not removing yet");
+		return 0;
+	}
 	if ($self->devexists) {
 		execute ([VGREMOVE, $self->{devname}]);
 		return 0 if $?;
 	}
 	foreach my $dev (@{$self->{device_list}}) {
 		execute ([PVREMOVE, $dev->devpath]);
-		$?==0 && $dev->remove==0 or last;
+		$this_app->error ("Failed to remove labels on PV",
+				  $dev->devpath) if $?;
+		$dev->remove==0 or last;
 	}
-	delete $vgs{"/software/components/filesystems/blockdevices/volume_groups/$self->{devname}"};
+	delete $vgs{"/system/blockdevices/volume_groups/$self->{devname}"};
 	return $?;
 }
 
@@ -295,7 +310,7 @@ sub del_pre_ks
 
 sub create_ks
 {
-	my $self = shift;
+	my ($self, $fs) = @_;
 
 	my $path = $self->devpath;
 
@@ -311,10 +326,9 @@ EOC
 		push (@devs, $pv->devpath);
 	}
 
-	print <<EOC;
-    lvm vgcreate $self->{devname} @devs
-fi
-EOC
-
+	print "lvm vgcreate $self->{devname} @devs\n";
+	$fs->do_format_ks if $fs;
+	print "fi\n";
 }
+
 1;
