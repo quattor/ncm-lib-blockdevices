@@ -11,12 +11,15 @@ use warnings;
 
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
-use LC::Process qw (execute output);
+use CAF::Process;
+use CAF::FileEditor;
 use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
 use File::Path;
 use File::Basename;
+use Fcntl qw(SEEK_END);
+use Cwd qw(abs_path);
 
 use constant MOUNTPOINTPERMS => 0755;
 use constant BASEPATH	=> "/system/blockdevices/";
@@ -46,7 +49,8 @@ use constant MKFSCMDS	=> { xfs	=> '/sbin/mkfs.xfs',
 			     reiserfs	=> '/sbin/mkfs.reiserfs',
 			     reiser4	=> '/sbin/mkfs.reiser4',
 			     jfs	=> '/sbin/mkfs.jfs',
-			     swap	=> '/sbin/mkswap'
+			     swap	=> '/sbin/mkswap',
+			     tmpfs	=> '/bin/true',
 			   };
 # Use this instead of Perl's built-in mkdir to create everything in
 # one go.
@@ -73,7 +77,8 @@ sub new_from_fstab
 
     $line =~ m{^(\S+)\s+(\S+)\s};
     my ($dev, $mountp) = ($1, $2);
-    execute ([MOUNT, $mountp]);
+    my $p = CAF::Process->new ([MOUNT, $mountp],
+			      log => $this_app)->run();
 
     if ($dev =~ m/^LABEL=/) {
 	open (FH, MTAB);
@@ -116,7 +121,8 @@ Returns whether the filesystem is mounted
 sub mounted
 {
     my $self = shift;
-    execute ([GREP, $self->{mountpoint}, MTAB]);
+    CAF::Process->new ([GREP, $self->{mountpoint}, MTAB],
+		      log => $this_app)->run();
     return !$?;
 }
 
@@ -129,7 +135,6 @@ block device it uses. Do nothing if preserve is true.
 
 =cut
 
-
 sub remove_if_needed
 {
     my $self = shift;
@@ -141,32 +146,39 @@ sub remove_if_needed
     }
     $this_app->info ("Destroying filesystem on $self->{mountpoint}");
     if ($self->mounted) {
-	execute ([UMOUNT, $self->{mountpoint}]);
+	CAF::Process->new ([UMOUNT, $self->{mountpoint}],
+			  log => $this_app)->run();
 	return $? if $?;
     }
     $self->{block_device}->remove==0 or return $?;
-    execute ([SED, "\\:$self->{mountpoint}\\s:d", FSTAB]);
+    CAF::Process->new ([SED, "\\:$self->{mountpoint}\\s:d", FSTAB],
+		      log => $this_app)->run();
     rmdir ($self->{mountpoint});
     return $?;
 }
 
-# Updates the fstab entry for a filesystem.
+# Updates the fstab entry for the $self filesystem. Optionally, the
+# handle to the fstab CAF::FileEditor handle can be passed as an
+# argument
 sub update_fstab
 {
-    my $self = shift;
-    execute ([SED, "\\:$self->{mountpoint}\\s:d", FSTAB]);
-    my $fh = FileHandle->new ("/etc/fstab", "a");
-    print $fh join (" ",
+    my ($self, $fh) = @_;
+    $fh = CAF::FileEditor->new ("/etc/fstab", log => $this_app) unless $fh;
+    my $s = $fh->string_ref();
+    $$s =~ s{.*\s+$self->{mountpoint}\s+.*\n}{};
+    $fh->set_contents($$s);
+    seek($fh, 0, SEEK_END);
+    print $fh join ("\t",
 		    (exists $self->{label}?
 		     "LABEL=$self->{label}":
-		     $self->{block_device}->devpath),
+			  $self->{block_device}->devpath),
 		    $self->{mountpoint},
 		    $self->{type},
 		    $self->{mountopts} .
-		    ((!$self->{mount} || $self->{type} eq 'none')?",noauto":""),
+			 ((!$self->{mount} || $self->{type} eq 'none')?
+			       ",noauto":""),
 		    $self->{freq},
 		    $self->{pass}), "\n";
-    $fh->close;
 }
 
 =pod
@@ -192,14 +204,15 @@ sub formatfs
     # Format only if there must be a filesystem. After a
     # re-install, it can happen that $self->{format} is false and
     # the block device has a filesystem. Dont' destroy the data.
-    if ($self->{type} ne 'none' &&
-	($self->{format} || !$self->{block_device}->has_filesystem)) {
+    if ($self->{type} ne 'none' || !$self->{block_device}->has_filesystem) {
 	$this_app->debug (5, "Formatting to get $self->{mountpoint}");
-	execute ([MKFSCMDS->{$self->{type}}, @opts,
-		  $self->{block_device}->devpath]);
+	CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
+			    $self->{block_device}->devpath],
+			   log => $this_app)->run();
 	return $? if $?;
-	execute ([$tunecmd, split ('\s+', $self->{tuneopts}),
-		  $self->{block_device}->devpath])
+	CAF::Process->new ([$tunecmd, split ('\s+', $self->{tuneopts}),
+			   $self->{block_device}->devpath],
+			  log => $this_app)->run()
 	  if exists $self->{tuneopts} && defined $tunecmd;
     }
     return $?;
@@ -239,29 +252,33 @@ sub create_if_needed
 {
     my $self = shift;
 
-    # The filesystem already exists. Update its fstab.
-    execute ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB]);
+    CAF::Process->new ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB],
+		      log => $this_app)->run();
     if (!$?) {
-	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: updating.");
-	$self->update_fstab;
-	execute ([REMOUNT, $self->{mountpoint}])
-	    if $self->{type} ne 'none' && $self->{type} ne 'swap' && $self->{mount};
+	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: ",
+			  "leaving.");
 	return 0;
     }
 
-    # The filesystem doesn't exist. Create it and add it to fstab.
     $self->{block_device}->create && return $?;
     $self->formatfs && return $?;
-    mkmountpoint ($self->{mountpoint})==0 or return -1;
-    $self->update_fstab;
-    if ($self->{mount}) {
-	if ($self->{type} eq 'swap') {
-	    execute ([SWAPON, $self->{block_device}->devpath]);
-	} else {
-	    execute ([MOUNT, $self->{mountpoint}]);
-	}
-    }
     $this_app->info("Filesystem on $self->{mountpoint} successfully created");
+    return 0;
+}
+
+=pod
+
+=head2 can_be_formatted
+
+Returns true if the filesystem can be formatted. Currently, an
+existing filesystem cannot be re-formatted. We never had the real need
+to re-format anything from inside the component, and some users kept
+making mistakes with this.
+
+=cut
+
+sub can_be_formatted
+{
     return 0;
 }
 
@@ -272,17 +289,22 @@ sub create_if_needed
 If the filesystem's format tag is true, it formats (mkfs.) it
 appropiately.
 
+It accepts a hash with the protected mounts that shouldn't be
+formatted in case they exist already. The keys should be the canonical
+form of the mount points, otherwise it may be unsafe. I assume this
+piece will be called by ncm-filesystems, and thus it is safe.
+
 =cut
 
 sub format_if_needed
 {
-    my $self = shift;
-    $self->{format} && $self->{type} ne 'none' or return 0;
+    my ($self, %protected) = @_;
+    $self->can_be_formatted(%protected) or return 0;
     my $r;
-    execute ([UMOUNT, $self->{mountpoint}]);
-
+    CAF::Process->new ([UMOUNT, $self->{mountpoint}], log => $this_app)->run();
     $r = $self->formatfs;
-    execute ([MOUNT, $self->{mountpoint}]) if $self->{mount};
+    CAF::Process->new ([MOUNT, $self->{mountpoint}], log => $this_app)->run()
+	if $self->{mount};
     return $r;
 }
 

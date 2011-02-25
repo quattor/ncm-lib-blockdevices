@@ -1,3 +1,37 @@
+2010-10-28  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
+
+	* Release: 0.21.2
+	- Fix a typo.
+
+2010-10-28  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
+
+	* Release: 0.21.1
+	- Make update_fstab accept a handle to the fstab file.
+
+	In the way, fix how lines are updated.
+
+2010-02-09  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
+
+	* Release: 0.21.0
+	- Don't format existing filesystems that are listed in the
+	protected_mounts field of the profile.
+
+	The format_if_needed method accepts the protected hash
+	ncm-filesystems is using internally for deciding what filesystems
+	shouldn't be removed even if they are not in the profile anymore.
+
+2009-11-25  <unknown>
+
+	* Release: 0.20.6
+	- Add support for Tmpfs, and switch to CAF::Process in filesystem creation.
+	
+	Other modules should be converted to CAF::Process as well. To be done.
+
+2009-08-07  Luis Fernando Muñoz Mejías
+
+	* Release: 0.20.5
+	- Quote properly some some arguments to sed in the KS, as it wasn't working as expected.
+
 2009-03-26  Unknown
 
 	* Release: 0.20.4
