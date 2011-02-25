@@ -16,26 +16,17 @@ use LC::Process qw (output);
 use Exporter;
 use constant FILES => qw (file -s);
 
+use constant PART_FILE => '/tmp/created_partitions';
+
 our @ISA = qw/CAF::Object Exporter/;
 
 our $this_app = $main::this_app;
 
-our @EXPORT_OK = qw ($this_app);
+our @EXPORT_OK = qw ($this_app PART_FILE);
 
 sub _initialize
 {
 	return $_[0];
-}
-
-# Set the alignment from either the profile or the given defaults
-sub _set_alignment
-{
-	my ($self, $cfg, $align, $offset) = @_;
-
-	$self->{alignment} = ($cfg && exists $cfg->{alignment}) ?
-		$cfg->{alignment} : $align;
-	$self->{alignment_offset} = ($cfg && exists $cfg->{alignment_offset}) ?
-		$cfg->{alignment_offset} : $offset;
 }
 
 sub create

@@ -21,7 +21,7 @@ use warnings;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw (execute output);
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($this_app PART_FILE);
 our @ISA = qw (NCM::Blockdevices);
 
 use constant BASEPATH	=> "/system/blockdevices/";
@@ -58,8 +58,6 @@ sub _initialize
 						    $config);
 	$self->{size} = $st->{size};
 	$self->{stripe_size} = $st->{stripe_size} if exists $st->{stripe_size};
-	# TODO: consider the stripe size
-	$self->_set_alignment($st, $self->{volume_group}->{alignment}, 0);
 	return $self;
 }
 
@@ -239,7 +237,7 @@ sub del_pre_ks
 
 sub create_ks
 {
-	my ($self, $fs) = @_;
+	my $self = shift;
 	my $path = $self->devpath;
 
 	my @stopts = ();
@@ -254,7 +252,9 @@ then
 EOC
 
 	$self->{volume_group}->create_ks;
-
+	print <<EOF;
+	sed -i '\\:@{[$self->{volume_group}->devpath]}:d' @{[PART_FILE]}
+EOF
     my $size="-l 95%FREE";
     $size="-L $self->{size}M" if (exists($self->{size})
 				  && defined($self->{size})
@@ -265,8 +265,9 @@ EOC
 	    $self->{volume_group}->{devname} \\
 	    $size \\
 	    @stopts
+        echo @{[$self->devpath]} >> @{[PART_FILE]}
+
 EOC
-	$fs->do_format_ks;
 	print "fi\n";
 }
 

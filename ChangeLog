@@ -1,7 +1,34 @@
-2010-04-19  "Gabor Gombas"
+2009-03-26  Unknown
 
-	* Morgan Stanley internal build
-	- Added support for partiton alignment.
+	* Release: 0.20.4
+	- Warn if creating partition that's too large for msdos part table.
+	Further reporting cleanup.
+
+2009-03-26  Unknown
+
+	* Release: 0.20.3
+	- Further reporting changes, don't try and mount swap!
+
+2009-03-26  Unknown
+
+	* Release: 0.20.2
+	- Tidied up reporting.
+
+2009-03-18  Luis Fernando Muñoz Mejías
+
+	* Release: 0.20.1
+	- Improving the documentation on the public API.
+
+2008-11-03  "Luis Fernando"
+
+	* Release: 0.20.0
+	- AII speedups and cleaning HW RAID support.
+	
+	HW RAID support won't get ready. I just drop it from Disk.pm (tests will still be there,
+	so it will be safer to resume the work on this).
+	
+	Making AII modules to format only the block devices that directly hold file systems, 
+	and to format only once. This version should be much faster.
 
 2008-09-21  "Luis Fernando"
 

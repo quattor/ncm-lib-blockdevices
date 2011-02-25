@@ -12,10 +12,11 @@ use warnings;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw (execute output);
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
 use File::Path;
+use File::Basename;
 
 use constant MOUNTPOINTPERMS => 0755;
 use constant BASEPATH	=> "/system/blockdevices/";
@@ -134,8 +135,8 @@ sub remove_if_needed
     my $self = shift;
 
     if ($self->{preserve} || !$self->{format}) {
-	$this_app->debug (5, "File system ", $self->{mountpoint},
-			  " shouldn't be destroyed. Leaving.");
+	$this_app->debug (5, "Filesystem ", $self->{mountpoint},
+			  " shouldn't be destroyed according to profile.");
 	return 0;
     }
     $this_app->info ("Destroying filesystem on $self->{mountpoint}");
@@ -241,10 +242,10 @@ sub create_if_needed
     # The filesystem already exists. Update its fstab.
     execute ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB]);
     if (!$?) {
-	$this_app->debug (5, "Filesystem already exists. Updating.");
+	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: updating.");
 	$self->update_fstab;
 	execute ([REMOUNT, $self->{mountpoint}])
-	    if $self->{type} ne 'none' && $self->{mount};
+	    if $self->{type} ne 'none' && $self->{type} ne 'swap' && $self->{mount};
 	return 0;
     }
 
@@ -260,6 +261,7 @@ sub create_if_needed
 	    execute ([MOUNT, $self->{mountpoint}]);
 	}
     }
+    $this_app->info("Filesystem on $self->{mountpoint} successfully created");
     return 0;
 }
 
@@ -352,7 +354,7 @@ sub create_ks
 
     return unless $self->should_print_ks;
 
-    $self->{block_device}->create_ks ($self);
+    $self->{block_device}->create_ks;
 }
 
 =pod
@@ -370,11 +372,11 @@ sub format_ks
     my $self = shift;
 
     return unless $self->should_print_ks;
-    if ($self->{format}) {
-	# Let's remove the absolute path, as Anaconda doesn't place
-	# the commands in the same place they'll be installed.
-	$self->do_format_ks;
-    }
+    print join (" ", "grep", "-q", $self->{block_device}->devpath,
+		PART_FILE, "&&", "")
+	unless $self->{format};
+    $self->do_format_ks;
+
     if (exists $self->{tuneopts}) {
 	my $h = TUNECMDS;
 	print "$h->{$self->{type}} $self->{tuneopts}\n";
@@ -396,12 +398,14 @@ sub do_format_ks
     my $self = shift;
 
     # Extract the absolute path to make it work on different SL versions.
-    MKFSCMDS->{$self->{type}} =~ m{/([^/]+)$};
-    print join (' ', $1,
-		$self->{block_device}->devpath,
-		exists ($self->{label}) ? (MKFSLABEL, $self->{label}) : (),
-		exists ($self->{mkfsopts})? $self->{mkfsopts}:())
-	, "\n";
+    if (exists (MKFSCMDS->{$self->{type}})) { 
+	my $mkfs = basename (MKFSCMDS->{$self->{type}});
+	print join (' ', $mkfs,
+		    $self->{block_device}->devpath,
+		    exists ($self->{label}) ? (MKFSLABEL, $self->{label}) : (),
+		    exists ($self->{mkfsopts})? $self->{mkfsopts}:())
+	    , "\n";
+    }
 }
 
 1;

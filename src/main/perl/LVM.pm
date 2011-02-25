@@ -40,7 +40,7 @@ use warnings;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw (execute output);
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 our @ISA = qw (NCM::Blockdevices);
 
@@ -63,8 +63,8 @@ our %vgs = ();
 
 sub new
 {
-	my ($class, $path, $config) = @_;
-	return (defined $vgs{$path}) ? $vgs{$path} : $class->SUPER::new ($path, $config);
+    my ($class, $path, $config) = @_;
+    return (defined $vgs{$path}) ? $vgs{$path} : $class->SUPER::new ($path, $config);
 }
 
 
@@ -80,25 +80,27 @@ volume group.
 
 sub create
 {
-	my $self = shift;
-	my @devnames;
+    my $self = shift;
+    my @devnames;
 
-	if ($self->devexists) {
-		$this_app->debug (5, "Volume group $self->{devname} already ",
-				  " exists. Leaving");
-		return 0;
-	}
-	foreach my $dev (@{$self->{device_list}}) {
-		$dev->create==0 or return $?;
-		execute ([PVCREATE, $dev->devpath])
-		    if !$self->pvexists ($dev->devpath);
-		return $? if $?;
-		push (@devnames, $dev->devpath);
-	}
-	execute ([VGCREATE, $self->{devname}, VGCOPTS, @devnames]);
-	$this_app->error ("Failed to create volume group $self->{devname}")
-	    if $?;
-	return $?;
+    if ($self->devexists)
+    {
+	$this_app->debug (5, "Volume group $self->{devname} already ",
+			  " exists. Leaving");
+	return 0;
+    }
+    foreach my $dev (@{$self->{device_list}})
+    {
+	$dev->create==0 or return $?;
+	execute ([PVCREATE, $dev->devpath])
+	    if !$self->pvexists ($dev->devpath);
+	return $? if $?;
+	push (@devnames, $dev->devpath);
+    }
+    execute ([VGCREATE, $self->{devname}, VGCOPTS, @devnames]);
+    $this_app->error ("Failed to create volume group $self->{devname}")
+	if $?;
+    return $?;
 }
 
 =pod
@@ -115,47 +117,51 @@ this.
 
 sub remove
 {
-	my $self = shift;
+    my $self = shift;
 
-	# Remove the VG only if it has no logical volumes left.
-	my @n = split /:/, output ((VGDISPLAY, $self->{devname}));
-	if ($n[EXISTS]) {
-		$this_app->debug (5, "Volume group $self->{devname} ",
-				  "has ", $n[EXISTS], " logical volumes left.",
-				  " Not removing yet");
-		return 0;
-	}
-	if ($self->devexists) {
-		execute ([VGREMOVE, $self->{devname}]);
-		return 0 if $?;
-	}
-	foreach my $dev (@{$self->{device_list}}) {
-		execute ([PVREMOVE, $dev->devpath]);
-		$this_app->error ("Failed to remove labels on PV",
-				  $dev->devpath) if $?;
-		$dev->remove==0 or last;
-	}
-	delete $vgs{"/system/blockdevices/volume_groups/$self->{devname}"};
-	return $?;
+    # Remove the VG only if it has no logical volumes left.
+    my @n = split /:/, output ((VGDISPLAY, $self->{devname}));
+    if ($n[EXISTS])
+    {
+	$this_app->debug (5, "Volume group $self->{devname} ",
+			  "has ", $n[EXISTS], " logical volumes left.",
+			  " Not removing yet");
+	return 0;
+    }
+    if ($self->devexists)
+    {
+	execute ([VGREMOVE, $self->{devname}]);
+	return 0 if $?;
+    }
+    foreach my $dev (@{$self->{device_list}})
+    {
+	execute ([PVREMOVE, $dev->devpath]);
+	$this_app->error ("Failed to remove labels on PV",
+			  $dev->devpath) if $?;
+	$dev->remove==0 or last;
+    }
+    delete $vgs{"/system/blockdevices/volume_groups/$self->{devname}"};
+    return $?;
 }
 
 sub new_from_system
 {
-	my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg) = @_;
 
-	$dev =~ m{dev/mapper/(.*)};
-	my $devname = $1;
-	$devname =~ s/-{2}/-/g;
-	# Have to do it this way because of a nasty bug on vgs.
-	my $pvs = output (PVS);
-	my @pv;
-	while ($pvs =~ m{^\s*(\S+)\s+$devname$}omgc) {
-		push (@pv, build_from_dev ($1, $cfg));
-	}
-	my $self = { devname => $devname,
-		     device_list => \@pv
-		   };
-	return bless ($self, $class);
+    $dev =~ m{dev/mapper/(.*)};
+    my $devname = $1;
+    $devname =~ s/-{2}/-/g;
+    # Have to do it this way because of a nasty bug on vgs.
+    my $pvs = output (PVS);
+    my @pv;
+    while ($pvs =~ m{^\s*(\S+)\s+$devname$}omgc)
+    {
+	push (@pv, build_from_dev ($1, $cfg));
+    }
+    my $self = { devname => $devname,
+		 device_list => \@pv
+	       };
+    return bless ($self, $class);
 }
 
 
@@ -170,17 +176,16 @@ Where the object creation is actually done
 
 sub _initialize
 {
-	my ($self,  $path, $config) = @_;
-	my $st = $config->getElement($path)->getTree;
-	$path =~ m!/([^/]+)$!;
-	$self->{devname} = $1;
-	foreach my $devpath (@{$st->{device_list}}) {
-		my $dev = NCM::BlockdevFactory::build ($config, $devpath);
-		push (@{$self->{device_list}}, $dev);
-	}
-	# TODO: check the requirements of the component devices
-	$self->_set_alignment($st, 0, 0);
-	return $vgs{$path} = $self;
+    my ($self,  $path, $config) = @_;
+    my $st = $config->getElement($path)->getTree;
+    $path =~ m!/([^/]+)$!;
+    $self->{devname} = $1;
+    foreach my $devpath (@{$st->{device_list}})
+    {
+	my $dev = NCM::BlockdevFactory::build ($config, $devpath);
+	push (@{$self->{device_list}}, $dev);
+    }
+    return $vgs{$path} = $self;
 }
 
 
@@ -194,12 +199,12 @@ Returns the number of physical extents available on the volume group.
 
 sub free_extents
 {
-	my $self = shift;
+    my $self = shift;
 
-	local $ENV{LANG} = 'C';
+    local $ENV{LANG} = 'C';
 
-	my @l = split (":", output (VGDISPLAY, $self->{devname}));
-	return $l[EXTENTS];
+    my @l = split (":", output (VGDISPLAY, $self->{devname}));
+    return $l[EXTENTS];
 }
 
 =pod
@@ -212,18 +217,18 @@ Returns the absolute path to the block device file.
 
 sub devpath
 {
-	my $self = shift;
+    my $self = shift;
 
-	return "/dev/$self->{devname}";
+    return "/dev/$self->{devname}";
 }
 
 # Returns true if the given partition is a physical volume
 sub pvexists
 {
-	my ($self, $path) = @_;
+    my ($self, $path) = @_;
 
-	output (PVDISPLAY, $path);
-	return !$?;
+    output (PVDISPLAY, $path);
+    return !$?;
 }
 
 =pod
@@ -235,13 +240,13 @@ Returns true if the volume group already exists.
 =cut
 sub devexists
 {
-	my $self = shift;
+    my $self = shift;
 
-	# Ugly hack because SL's vgdisplay sucks: the volume exists if
-	# vgdisplay has any output
-	my $output = output (VGDISPLAY, $self->{devname});
-	my @lines = split /:/, $output;
-	return scalar (@lines) > 1;
+    # Ugly hack because SL's vgdisplay sucks: the volume exists if
+    # vgdisplay has any output
+    my $output = output (VGDISPLAY, $self->{devname});
+    my @lines = split /:/, $output;
+    return scalar (@lines) > 1;
 }
 
 =pod
@@ -258,12 +263,13 @@ kickstart.
 
 sub should_print_ks
 {
-	my $self = shift;
+    my $self = shift;
 
-	foreach (@{$self->{device_list}}) {
-		return 0 unless $_->should_print_ks;
-	}
-	return 1;
+    foreach (@{$self->{device_list}})
+    {
+	return 0 unless $_->should_print_ks;
+    }
+    return 1;
 }
 
 =pod
@@ -277,11 +283,11 @@ kickstart commands.
 
 sub print_ks
 {
-	my $self = shift;
-	return unless $self->should_print_ks;
+    my $self = shift;
+    return unless $self->should_print_ks;
 
-	$_->print_ks foreach (@{$self->{device_list}});
-	print "\nvolgroup $self->{devname} --noformat\n";
+    $_->print_ks foreach (@{$self->{device_list}});
+    print "\nvolgroup $self->{devname} --noformat\n";
 }
 
 =pod
@@ -295,42 +301,47 @@ if that's needed.
 
 sub del_pre_ks
 {
-	my $self = shift;
+    my $self = shift;
 
-	# The removal will succeed only if there are no logical
-	# volumes on this volume group. If that's the case, remove all
-	# the physical volumes too.
-	print  "lvm vgremove $self->{devname} && (\n";
+    # The removal will succeed only if there are no logical
+    # volumes on this volume group. If that's the case, remove all
+    # the physical volumes too.
+    print  "lvm vgremove $self->{devname} && (\n";
 
-	foreach (@{$self->{device_list}}) {
-		print "lvm pvremove ", $_->devpath, "\n";
-		$_->del_pre_ks;
-	}
-	print ")\n";
+    foreach (@{$self->{device_list}})
+    {
+	print "lvm pvremove ", $_->devpath, "\n";
+	$_->del_pre_ks;
+    }
+    print ")\n";
 
 }
 
 sub create_ks
 {
-	my ($self, $fs) = @_;
-
-	my $path = $self->devpath;
-
-	print <<EOC;
+    my ($self) = @_;
+    
+    my $path = $self->devpath;
+    
+    print <<EOC;
 if [ ! -b $path ]
 then
 EOC
 
-	my @devs = ();
-	foreach my $pv (@{$self->{device_list}}) {
-		$pv->create_ks;
-		print " "x4, "lvm pvcreate ", $pv->devpath, "\n";
-		push (@devs, $pv->devpath);
-	}
+    my @devs = ();
+    foreach my $pv (@{$self->{device_list}})
+    {
+	$pv->create_ks;
+	print " "x4, "lvm pvcreate ", $pv->devpath, "\n";
+	push (@devs, $pv->devpath);
+	print " "x4, "sed -i \\:", $pv->devpath, ":d @{[PART_FILE]}\n";
+    }
 
-	print "lvm vgcreate $self->{devname} @devs\n";
-	$fs->do_format_ks if $fs;
-	print "fi\n";
+    print <<EOF;
+    lvm vgcreate $self->{devname} @devs
+    echo @{[$self->devpath]} >> @{[PART_FILE]}
+fi
+EOF
 }
 
 1;

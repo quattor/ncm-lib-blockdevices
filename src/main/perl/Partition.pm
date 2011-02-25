@@ -46,7 +46,7 @@ use warnings;
 
 use EDG::WP4::CCM::Element qw (unescape);
 use EDG::WP4::CCM::Configuration;
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($this_app PART_FILE);
 use LC::Process qw (execute output);
 our @ISA = qw (NCM::Blockdevices Exporter);
 
@@ -151,7 +151,6 @@ sub _initialize
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
 						      $st->{holding_dev},
 						      $config);
-    $self->_set_alignment($st, 0, 0);
     return $self;
 }
 
@@ -172,16 +171,28 @@ sub create
 
     # Check the device doesn't exist already.
     if ($self->devexists) {
-	$this_app->debug (5, "Device $self->{devname} already existed.",
-			  "Leaving");
+	$this_app->debug (5, "Partition $self->{devname} already exists: ",
+			  "leaving");
 	return 0
     }
-    $this_app->debug (5, "Creating $self->{devname}");
+
     my $hdname =  "/dev/" . $self->{holding_dev}->{devname};
+    $this_app->debug (5, "Partition $self->{devname}: ",
+		      "creating holding device ",$hdname );
     my $err = $self->{holding_dev}->create;
     return $err if $err;
-    execute ([PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE, $self->{type},
-	      $self->begin, $self->end]);
+    $this_app->debug (5, "Partition $self->{devname}: ",
+		      "creating" );
+    my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE, 
+		       $self->{type}, $self->begin, $self->end);
+    if ( $self->{holding_dev}->{label} eq "msdos" &&
+	 $self->{size} >= 2200000 ) {
+	$this_app->warn("Partition $self->{devname}: partition larger than 2.2TB defined on msdos partition table");
+    }
+
+    $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
+    execute (\@partedcmdlist);
+	     
     $? && $this_app->error ("Failed to create $self->{devname}");
     sleep (SLEEPTIME);
     return $?;
@@ -306,7 +317,7 @@ sub begin
     }
 
     $self->{begin} = $st;
-    $this_app->debug (5, "Partition begins at $st");
+    $this_app->debug (5, "Partition ",$self->{devname}," begins at $st");
     return $st;
 }
 
@@ -426,21 +437,17 @@ EOF
 sub create_pre_ks
 {
     my $self = shift;
-	
+
     return unless $self->should_print_ks;
-	
+
     my $n = $self->partition_number;
-    my $hdpath = $self->{holding_dev}->devpath;
-    my $path = $self->devpath;
     my $type = substr ($self->{type}, 0, 1);
     my $size = exists $self->{size}? "+$self->{size}M":'';
-    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
-    # TODO: add support for alignment_offset
 
     print <<EOF;
 if ! grep -q $self->{devname} /proc/partitions
 then
-    fdisk $hdpath <<end_of_fdisk
+    fdisk @{[$self->{holding_dev}->devpath]} <<end_of_fdisk
 n
 $type
 $n
@@ -448,25 +455,7 @@ $n
 $size
 w
 end_of_fdisk
-EOF
-    print <<EOF if $align_sect > 1;
-# Align the start of the partition to $align_sect sectors
-START=`fdisk -ul $hdpath | awk '{if (\$1 == "$path") print \$2 == "*" ? \$3: \$2}'`
-ALIGNED=\$(((\$START + $align_sect - 1) / $align_sect * $align_sect))
-if [ \$START != \$ALIGNED ]; then
-    # Uncomment for debugging
-    #echo Aligning $path: old start sector: \$START, new: \$ALIGNED >/dev/console
-    fdisk $hdpath <<end_of_fdisk
-x
-b
-$n
-\$ALIGNED
-w
-end_of_fdisk
-fi
-EOF
-    print <<EOF;
-    mkfs.ext3 $path
+    echo @{[$self->devpath]} >> @{[PART_FILE]}
 fi
 EOF
 

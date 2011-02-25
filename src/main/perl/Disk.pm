@@ -38,6 +38,7 @@ use NCM::Blockdevices qw ($this_app);
 use LC::Process qw (execute output);
 use EDG::WP4::CCM::Element qw (unescape);
 use LC::Exception;
+#use NCM::HWRaid;
 
 my $ec = LC::Exception::Context->new->will_store_all;
 
@@ -50,7 +51,6 @@ use constant GREPARGS	=> "-c";
 use constant NOPART	=> "none";
 use constant RCLOCAL	=> "/etc/rc.local";
 
-use constant HWPATH	=> "/hardware/harddisks/";
 
 use constant FILES	=> qw (file -s);
 use constant SLEEPTIME	=> 2;
@@ -110,15 +110,6 @@ sub _initialize
      $self->{label} = $st->{label};
      $self->{readahead} = $st->{readahead};
      $disks{$path} = $self;
-     $self->{raid} = NCM::HWRaid->new ($st->{device_path},
-						  $config, $self)
-	 if $st->{device_path};
-     # Inherit the topology from the physical device unless it is explicitely
-     # overridden
-     my $hw = $config->getElement(HWPATH . $1)->getTree;
-     $self->_set_alignment($st,
-	     ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
-	     ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
      return $self;
 }
 
@@ -209,17 +200,20 @@ sub create
      if ($self->disk_empty) {
 	  $self->set_readahead if $self->{readahead};
 	  $self->remove;
-	  if ($self->{raid}) {
-	      $self->{raid}->create;
-	      sleep (RAIDSLEEP);
-	  }
+
 	  if ($self->{label} ne NOPART) {
-	       execute ([PARTED, $self->devpath,
-			 CREATE, $self->{label}]);
+	       $this_app->debug (5, "Initialising block device ",$self->devpath);
+	       my @partedcmdlist=(PARTED, $self->devpath,
+				  CREATE, $self->{label});
+	       $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
+	       execute (\@partedcmdlist);
 	       sleep (SLEEPTIME);
 	  }
 	  else {
-	       execute ([DD, DDARGS, "of=".$self->devpath]);
+	       my $buffout;
+	       $this_app->debug (5, "Disk ", $self->devpath,": create (zeroing partition table)");
+	       execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
+	       $this_app->debug (5, "dd output:\n", $buffout);
 	  }
 	  return $?;
      }
@@ -239,9 +233,12 @@ sub remove
 {
      my $self = shift;
      unless ($self->partitions_in_disk) {
-	  execute ([DD, DDARGS, "of=".$self->devpath]);
-	  delete $disks{"/system/blockdevices/physical_devs/$self->{devname}"};
-	  $self->{raid}->remove if $self->{raid};
+         my $buffout;
+         $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
+         execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
+         $this_app->debug (5, "dd output:\n ", $buffout);
+
+         delete $disks{"/system/blockdevices/physical_devs/$self->{devname}"};
      }
      return 0;
 }

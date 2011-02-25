@@ -21,7 +21,7 @@ use warnings;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw (execute output);
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 our @ISA = qw (NCM::Blockdevices);
 
@@ -62,9 +62,6 @@ sub _initialize
 	my $dev = NCM::BlockdevFactory::build ($config, $devpath);
 	push (@{$self->{device_list}}, $dev);
     }
-    # TODO: compute the alignment from the properties of the component devices
-    # and the RAID parameters
-    $self->_set_alignment($st, 0, 0);
     return $mds{$path} = $self;
 }
 
@@ -259,16 +256,18 @@ fd
 w
 end_of_fdisk
 EOF
+
 	}
 	push (@devnames, $dev->devpath);
+	print "sed -i '\\:@{[$dev->devpath]}:d' @{[PART_FILE]}\n";
     }
     my $ndev = scalar(@devnames);
     print <<EOC;
     mdadm --create --run $path --level=$self->{raid_level} \\
         --chunk=$self->{stripe_size} --raid-devices=$ndev \\
          @devnames
+    echo @{[$self->devpath]} >> @{[PART_FILE]}
 EOC
-    $fs->do_format_ks if $fs;
     print "fi\n";
 }
 
