@@ -452,7 +452,7 @@ sub create_pre_ks
     print <<EOF;
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
-    echo "Creating partition $self->{devname}" >/dev/console
+    echo "Creating partition $self->{devname}"
     fdisk $disk <<end_of_fdisk
 n
 $type
@@ -470,7 +470,7 @@ EOF
     START=`fdisk -ul $disk | awk '{if (\$1 == "$path") print \$2 == "*" ? \$3: \$2}'`
     ALIGNED=\$(((\$START + $align_sect - 1) / $align_sect * $align_sect))
     if [ \$START != \$ALIGNED ]; then
-        echo "Aligning $self->{devname}: old start sector: \$START, new: \$ALIGNED" >/dev/console
+        echo "Aligning $self->{devname}: old start sector: \$START, new: \$ALIGNED"
         fdisk $disk <<end_of_fdisk
 x
 b
@@ -487,7 +487,7 @@ EOF
     # Hack for RHEL 6: Create the device node if needed
     sleep 2
     if [ ! -b "$path" ]; then
-        echo "Creating device node $path" >/dev/console
+        echo "Creating device node $path"
         grep '$self->{devname}\$' /proc/partitions | \\
             awk '{print "mknod $path b " \$1 " " \$2}' | sh -x
     fi
