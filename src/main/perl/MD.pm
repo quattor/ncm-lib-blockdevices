@@ -1,0 +1,264 @@
+# ${license-info}
+# ${developer-info
+# ${author-info}
+# ${build-info}
+################################################################################
+
+=pod
+
+=head1 MD
+
+This class defines a software RAID device. It is part of the
+blockdevices framework.
+
+=cut
+
+package NCM::MD;
+
+use strict;
+use warnings;
+
+use EDG::WP4::CCM::Element;
+use EDG::WP4::CCM::Configuration;
+use LC::Process qw (execute output);
+use NCM::BlockdevFactory qw (build build_from_dev);
+our @ISA = qw (NCM::Blockdevices);
+
+use constant BASEPATH	=> "/software/components/filesystems/blockdevices/";
+use constant MDPATH	=> "md/";
+use constant MDCREATE	=> qw (/sbin/mdadm --create --run);
+use constant MDLEVEL	=> '--level=';
+use constant MDDEVS	=> '--raid-devices=';
+use constant MDSTRIPE	=> '--chunk=';
+use constant MDSTOP	=> qw (/sbin/mdadm --stop);
+use constant MDFAIL	=> qw (/sbin/mdadm --fail);
+use constant MDREMOVE	=> qw (/sbin/mdadm --remove);
+use constant MDQUERY	=> qw (/sbin/mdadm --detail);
+use constant GREPCALL	=> qw (/bin/grep -q);
+
+our %mds = ();
+
+=pod
+
+=head2 _initialize
+
+Where the object is actually created.
+
+=cut
+
+sub _initialize
+{
+	my ($self, $path, $config) = @_;
+
+	my $st = $config->getElement($path)->getTree;
+	$path=~m!/([^/]+)$!;
+	$self->{devname} = $1;
+	$st->{raid_level} =~ m!(\d)$!;
+	$self->{raid_level} = $1;
+	$self->{stripe_size} = $st->{stripe_size};
+	foreach my $devpath (@{$st->{device_list}}) {
+		my $dev = NCM::BlockdevFactory::build ($config, $devpath);
+		push (@{$self->{device_list}}, $dev);
+	}
+	return $mds{$path} = $self;
+}
+
+=pod
+
+=head2 new
+
+Class constructor. It ensures there is only one object for each
+software RAID device.
+
+=cut
+
+sub new
+{
+	my ($class, $path, $config) = @_;
+	return (exists $mds{$path}) ? $mds{$path} : $class->SUPER::new ($path, $config);
+}
+
+=pod
+
+=head2 create
+
+Creates the MD device on the system, according to $self's state.
+
+=cut
+
+sub create
+{
+	my $self = shift;
+	my @devnames;
+	return 0 if $self->devexists;
+
+	foreach my $dev (@{$self->{device_list}}) {
+		$dev->create==0 or return $?;
+		push (@devnames, $dev->devpath);
+	}
+	execute ([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
+		  MDSTRIPE.$self->{stripe_size},
+		  MDDEVS.scalar(@{$self->{device_list}}), @devnames]);
+	return $?;
+}
+
+=pod
+
+=head2 remove
+
+Removes the MD device and all its associated devices from the system.
+
+=cut
+
+sub remove
+{
+	my $self = shift;
+
+	execute ([MDSTOP, $self->devpath]);
+	foreach my $dev (@{$self->{device_list}}) {
+		$dev->remove==0 or return $?;
+	}
+	delete $mds{BASEPATH().MDPATH().$self->{devname}};
+	return $?;
+}
+
+=pod
+
+=head2 devexists
+
+Returns true if the device exists on the system.
+
+=cut
+
+sub devexists
+{
+	my $self = shift;
+	execute ([GREPCALL, $self->{devname}, "/proc/mdstat"]);
+	return !$?;
+}
+
+=pod
+
+=head2 devpath
+
+Return the path in /dev/ of the MD device.
+
+=cut
+
+sub devpath
+{
+	my $self = shift;
+	return "/dev/$self->{devname}";
+}
+
+=pod
+
+=head2 new_from_system
+
+=cut
+
+sub new_from_system
+{
+	my ($class, $dev, $cfg) = @_;
+
+	$dev =~ m{/dev/(md.*)$};
+
+	my $devname = $1;
+
+	my $lines = output (MDQUERY, $dev);
+	my @devlist;
+	$lines =~ m{Raid Level : (\w+)$}omg;
+	my $level = uc ($1);
+	while ($lines =~ m{\w\s+(/dev.*)$}omg) {
+		push (@devlist, NCM::BlockdevFactory::build_from_dev ($1, $cfg));
+	}
+	my $self = { raid_level	=> $level,
+		     device_list=> \@devlist,
+		     devname	=> $devname};
+	return bless ($self, $class);
+}
+
+=pod
+
+=head1 Methods exposed to AII
+
+=head2 should_print_ks
+
+=cut
+
+sub should_print_ks
+{
+	my $self = shift;
+	foreach (@{$self->{device_list}}) {
+		return 0 unless $_->should_print_ks;
+	}
+	return 1;
+}
+
+sub print_ks
+{
+	my ($self, $mountpoint, $format, $fstype) = @_;
+
+	$_->print_ks foreach (@{$self->{device_list}});
+
+	print "raid $mountpoint --device=$self->{devname} --noformat\n";
+}
+
+sub del_pre_ks
+{
+	my $self = shift;
+
+	print join (" ", MDSTOP, $self->devpath), "\n";
+
+	$_->del_pre_ks foreach (@{$self->{device_list}});
+}
+
+sub create_ks
+{
+	my ($self, $fstype) = @_;
+
+	my @devnames = ();
+	my $path = $self->devpath;
+
+	print <<EOC;
+
+if  ! grep -q $self->{devname} /proc/mdstat
+then
+EOC
+	foreach my $dev (@{$self->{device_list}}) {
+		$dev->create_ks;
+		# Well, fdisk sucks and Anaconda is plain crap. Let's
+		# guess how we can set the partition hex code
+		if (ref ($dev) eq 'NCM::Partition') {
+			my $hdpath = $dev->{holding_dev}->devpath;
+			my $hdname = $dev->{holding_dev}->{devname};
+			my $n = $dev->partition_number;
+			$n = "" if ($n == 1);
+			print <<EOF;
+    fdisk $hdpath <<end_of_fdisk
+t
+\$(if [ \$(grep -c $hdname /proc/partitions) -gt 2 ]
+   then
+       echo $n
+   else
+       echo
+   fi)
+fd
+w
+end_of_fdisk
+EOF
+		}
+		push (@devnames, $dev->devpath);
+	}
+	my $n = scalar(@devnames);
+
+	print <<EOC;
+    mdadm --create --run $path --level=$self->{raid_level} \\
+        --chunk=$self->{stripe_size} --raid-devices=$n \\
+         @devnames
+    mkfs.$fstype $path
+fi
+EOC
+
+}
+1;
