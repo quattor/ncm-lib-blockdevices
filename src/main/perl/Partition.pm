@@ -151,6 +151,7 @@ sub _initialize
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
 						      $st->{holding_dev},
 						      $config);
+    $self->_set_alignment($st, 0, 0);
     return $self;
 }
 
@@ -433,6 +434,8 @@ sub create_pre_ks
     my $path = $self->devpath;
     my $type = substr ($self->{type}, 0, 1);
     my $size = exists $self->{size}? "+$self->{size}M":'';
+    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
+    # TODO: add support for alignment_offset
 
     print <<EOF;
 if ! grep -q $self->{devname} /proc/partitions
@@ -445,6 +448,24 @@ $n
 $size
 w
 end_of_fdisk
+EOF
+    print <<EOF if $align_sect > 1;
+# Align the start of the partition to $align_sect sectors
+START=`fdisk -ul $hdpath | awk '{if (\$1 == "$path") print \$2 == "*" ? \$3: \$2}'`
+ALIGNED=\$(((\$START + $align_sect - 1) / $align_sect * $align_sect))
+if [ \$START != \$ALIGNED ]; then
+    # Uncomment for debugging
+    #echo Aligning $path: old start sector: \$START, new: \$ALIGNED >/dev/console
+    fdisk $hdpath <<end_of_fdisk
+x
+b
+$n
+\$ALIGNED
+w
+end_of_fdisk
+fi
+EOF
+    print <<EOF;
     mkfs.ext3 $path
 fi
 EOF

@@ -50,6 +50,7 @@ use constant GREPARGS	=> "-c";
 use constant NOPART	=> "none";
 use constant RCLOCAL	=> "/etc/rc.local";
 
+use constant HWPATH	=> "/hardware/harddisks/";
 
 use constant FILES	=> qw (file -s);
 use constant SLEEPTIME	=> 2;
@@ -112,6 +113,12 @@ sub _initialize
      $self->{raid} = NCM::HWRaid->new ($st->{device_path},
 						  $config, $self)
 	 if $st->{device_path};
+     # Inherit the topology from the physical device unless it is explicitely
+     # overridden
+     my $hw = $config->getElement(HWPATH . $1)->getTree;
+     $self->_set_alignment($st,
+	     ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
+	     ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
      return $self;
 }
 

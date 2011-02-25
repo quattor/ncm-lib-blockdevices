@@ -178,6 +178,8 @@ sub _initialize
 		my $dev = NCM::BlockdevFactory::build ($config, $devpath);
 		push (@{$self->{device_list}}, $dev);
 	}
+	# TODO: check the requirements of the component devices
+	$self->_set_alignment($st, 0, 0);
 	return $vgs{$path} = $self;
 }
 

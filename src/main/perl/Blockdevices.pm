@@ -27,6 +27,17 @@ sub _initialize
 	return $_[0];
 }
 
+# Set the alignment from either the profile or the given defaults
+sub _set_alignment
+{
+	my ($self, $cfg, $align, $offset) = @_;
+
+	$self->{alignment} = ($cfg && exists $cfg->{alignment}) ?
+		$cfg->{alignment} : $align;
+	$self->{alignment_offset} = ($cfg && exists $cfg->{alignment_offset}) ?
+		$cfg->{alignment_offset} : $offset;
+}
+
 sub create
 {
 	my $self = shift;

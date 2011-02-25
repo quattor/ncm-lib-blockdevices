@@ -62,6 +62,9 @@ sub _initialize
 	my $dev = NCM::BlockdevFactory::build ($config, $devpath);
 	push (@{$self->{device_list}}, $dev);
     }
+    # TODO: compute the alignment from the properties of the component devices
+    # and the RAID parameters
+    $self->_set_alignment($st, 0, 0);
     return $mds{$path} = $self;
 }
 
