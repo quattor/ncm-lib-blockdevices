@@ -52,6 +52,8 @@ use constant NOPART	=> "none";
 use constant RCLOCAL	=> "/etc/rc.local";
 
 use constant HWPATH	=> "/hardware/harddisks/";
+use constant HOSTNAME	=> "/system/network/hostname";
+use constant DOMAINNAME	=> "/system/network/domainname";
 
 use constant FILES	=> qw (file -s);
 use constant SLEEPTIME	=> 2;
@@ -65,8 +67,8 @@ use constant DDARGS	=> qw (if=/dev/zero count=1000);
 
 =head2 %disks
 
-Holds all the disk objects instantiated so far. It is indexed by Pan
-path (i.e: /system/blockdevices/disks/sda).
+Holds all the disk objects instantiated so far. It is indexed by host name
+and Pan path (i.e: host1:/system/blockdevices/disks/sda).
 
 =cut
 
@@ -88,8 +90,12 @@ returned.
 sub new
 {
      my ($class, $path, $config) = @_;
-     # Only one instance per disk is allowed.
-     return $disks{$path} if exists $disks{$path};
+     # Only one instance per disk is allowed, but disks of different hosts
+     # should be separate objects
+     my $host = $config->getElement (HOSTNAME)->getValue;
+     my $domain = $config->getElement (DOMAINNAME)->getValue;
+     my $cache_key = $host . "." . $domain . ":" . $path;
+     return $disks{$cache_key} if exists $disks{$cache_key};
      return $class->SUPER::new ($path, $config);
 }
 
@@ -124,7 +130,10 @@ sub _initialize
 	     ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
 	     ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
 
-     $disks{$path} = $self;
+     my $host = $config->getElement (HOSTNAME)->getValue;
+     my $domain = $config->getElement (DOMAINNAME)->getValue;
+     $self->{cache_key} = $host . "." . $domain . ":" . $path;
+     $disks{$self->{cache_key}} = $self;
      return $self;
 }
 
@@ -132,9 +141,14 @@ sub new_from_system
 {
      my ($class, $dev, $cfg) = @_;
 
-     $dev =~ m{/dev/(.*)};
-     return $disks{$1} if exists $disks{$1};
-     my $self = { devname	=> $1,
+     my ($devname) = $dev =~ m{/dev/(.*)};
+
+     my $host = $cfg->getElement (HOSTNAME)->getValue;
+     my $domain = $cfg->getElement (DOMAINNAME)->getValue;
+     my $cache_key = $host . "." . $domain . ":/system/blockdevices/physical_devs/" . $devname;
+     return $disks{$cache_key} if exists $disks{$cache_key};
+
+     my $self = { devname	=> $devname,
 		  label	=> 'none'
 		};
      return bless ($self, $class);
@@ -253,7 +267,7 @@ sub remove
          execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
          $this_app->debug (5, "dd output:\n ", $buffout);
 
-         delete $disks{"/system/blockdevices/physical_devs/$self->{devname}"};
+         delete $disks{$self->{cache_key}};
      }
      return 0;
 }
