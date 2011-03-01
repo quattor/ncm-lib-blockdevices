@@ -119,10 +119,11 @@ sub _initialize
 
      my $hw;
      $hw = $config->getElement(HWPATH . $1)->getTree if $config->elementExists(HWPATH . $1);
+     my $host = $config->getElement (HOSTNAME)->getValue;
+     my $domain = $config->getElement (DOMAINNAME)->getValue;
 
      # It is a bug in the templates if this happens
-     # XXX The error message does not contain which host is being configured, which is quite annoying
-     $this_app->error("Disk $self->{devname} is not defined under " . HWPATH) unless $hw;
+     $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
 
      # Inherit the topology from the physical device unless it is explicitely
      # overridden
@@ -130,8 +131,6 @@ sub _initialize
 	     ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
 	     ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
 
-     my $host = $config->getElement (HOSTNAME)->getValue;
-     my $domain = $config->getElement (DOMAINNAME)->getValue;
      $self->{cache_key} = $host . "." . $domain . ":" . $path;
      $disks{$self->{cache_key}} = $self;
      return $self;
