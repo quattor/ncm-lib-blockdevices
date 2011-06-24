@@ -449,6 +449,10 @@ sub create_pre_ks
     my $align_sect = int($self->{holding_dev}->{alignment} / 512);
     # TODO: add support for alignment_offset
 
+    # Clear two times the alignment, but at least 1M
+    my $clear_mb = int($align_sect / 2 / 1024 * 2);
+    $clear_mb = 1 if $clear_mb < 1;
+
     print <<EOF;
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
@@ -493,10 +497,11 @@ EOF
     fi
 
     # Clear LVM/filesystem/etc. metadata
-    dd if=/dev/zero of="$path" bs=1M count=1 2>/dev/null
+    dd if=/dev/zero of="$path" bs=${clear_mb}M count=1 2>/dev/null
     SIZE=`fdisk -s "$path"`
     START=\$((\$SIZE / 1024 - 1))
-    dd if=/dev/zero of="$path" bs=1M seek=\$START 2>/dev/null
+    # Write a bit more to compensate rounding errors
+    dd if=/dev/zero of="$path" bs=2M seek=\$START 2>/dev/null
 
     echo $path >> @{[PART_FILE]}
 fi
