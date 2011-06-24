@@ -435,6 +435,24 @@ fi
 EOF
 }
 
+sub align_ks
+{
+    my $self = shift;
+
+    return unless $self->should_print_ks;
+
+    my $n = $self->partition_number;
+    my $path = $self->devpath;
+    my $disk = $self->{holding_dev}->devpath;
+    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
+    # TODO: add support for alignment_offset
+
+    if ($align_sect > 1) {
+	print join(" ", "grep", "-q", $path, PART_FILE, "&&",
+	    "align", $disk, $path, $n, $align_sect, "\n");
+    }
+}
+
 sub create_pre_ks
 {
     my $self = shift;
@@ -446,10 +464,9 @@ sub create_pre_ks
     my $size = exists $self->{size}? "+$self->{size}M":'';
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
-    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
-    # TODO: add support for alignment_offset
 
     # Clear two times the alignment, but at least 1M
+    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
     my $clear_mb = int($align_sect / 2 / 1024 * 2);
     $clear_mb = 1 if $clear_mb < 1;
 
@@ -468,26 +485,6 @@ end_of_fdisk
 
     rereadpt $disk
 
-EOF
-    print <<EOF if $align_sect > 1;
-    # Align the start of the partition to $align_sect sectors
-    START=`fdisk -ul $disk | awk '{if (\$1 == "$path") print \$2 == "*" ? \$3: \$2}'`
-    ALIGNED=\$(((\$START + $align_sect - 1) / $align_sect * $align_sect))
-    if [ \$START != \$ALIGNED ]; then
-        echo "Aligning $self->{devname}: old start sector: \$START, new: \$ALIGNED"
-        fdisk $disk <<end_of_fdisk
-x
-b
-$n
-\$ALIGNED
-w
-end_of_fdisk
-
-	rereadpt $disk
-    fi
-
-EOF
-    print <<EOF;
     # Hack for RHEL 6: Create the device node if needed
     sleep 2
     if [ ! -b "$path" ]; then

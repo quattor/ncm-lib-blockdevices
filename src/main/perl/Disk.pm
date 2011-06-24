@@ -338,13 +338,6 @@ Prints the Bash code to create a new msdos label on the disk
      my $path = $self->devpath;
 
      print <<EOF;
-# Hack for RHEL 6: force re-reading the partition table
-rereadpt () {
-	sync
-	sleep 2
-	hdparm -z \$1
-}
-
 fdisk $path <<end_of_fdisk
 o
 w
