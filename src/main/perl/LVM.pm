@@ -329,7 +329,7 @@ sub create_ks
     my $path = $self->devpath;
 
     print <<EOC;
-if [ ! -b $path ]
+if [ ! -e $path ]
 then
 EOC
 
