@@ -262,7 +262,7 @@ EOF
 
 	}
 	push (@devnames, $dev->devpath);
-	print "sed -i '\\:@{[$dev->devpath]}:d' @{[PART_FILE]}\n";
+	print "sed -i '\\:@{[$dev->devpath]}\$:d' @{[PART_FILE]}\n";
     }
     my $ndev = scalar(@devnames);
     print <<EOC;

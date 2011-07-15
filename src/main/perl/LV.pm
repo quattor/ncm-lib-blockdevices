@@ -255,7 +255,7 @@ EOC
 
 	$self->{volume_group}->create_ks;
 	print <<EOF;
-	sed -i '\\:@{[$self->{volume_group}->devpath]}:d' @{[PART_FILE]}
+	sed -i '\\:@{[$self->{volume_group}->devpath]}\$:d' @{[PART_FILE]}
 EOF
     my $size="-l 95%FREE";
     $size="-L $self->{size}M" if (exists($self->{size})

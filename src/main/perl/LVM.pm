@@ -339,7 +339,7 @@ EOC
 	$pv->create_ks;
 	print " "x4, "lvm pvcreate ", $pv->devpath, "\n";
 	push (@devs, $pv->devpath);
-	print " "x4, "sed -i '\\:", $pv->devpath, ":d' @{[PART_FILE]}\n";
+	print " "x4, "sed -i '\\:", $pv->devpath, "\$:d' @{[PART_FILE]}\n";
     }
 
     print <<EOF;
