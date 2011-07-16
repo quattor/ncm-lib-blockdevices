@@ -473,6 +473,7 @@ sub create_pre_ks
     print <<EOF;
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
+    echo "-----------------------------------"
     echo "Creating partition $self->{devname}"
     fdisk $disk <<end_of_fdisk
 n
