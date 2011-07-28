@@ -338,6 +338,8 @@ Prints the Bash code to create a new msdos label on the disk
      my $path = $self->devpath;
 
      print <<EOF;
+wipe_metadata $path 1
+
 fdisk $path <<end_of_fdisk
 o
 w

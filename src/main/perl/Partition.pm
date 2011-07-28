@@ -485,12 +485,7 @@ w
 end_of_fdisk
 
     rereadpt $disk
-
-    # Clear LVM/filesystem/etc. metadata
-    dd if=/dev/zero of="$path" bs=1M count=$clear_mb 2>/dev/null
-    SIZE=`fdisk -s "$path"`
-    START=\$((\$SIZE / 1024 - 1))
-    dd if=/dev/zero of="$path" bs=1M seek=\$START 2>/dev/null
+    wipe_metadata $path $clear_mb
 
     echo $path >> @{[PART_FILE]}
 fi
