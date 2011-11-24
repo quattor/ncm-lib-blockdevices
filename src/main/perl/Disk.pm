@@ -311,6 +311,19 @@ sub should_print_ks
      return $self->{label} eq 'msdos';
 }
 
+=head2 should_create_ks
+
+Returns whether block devices on this disk should appear on the
+%pre script. This is true if the disk has an 'msdos' label.
+
+=cut
+
+sub should_create_ks
+{
+     my $self = shift;
+     return $self->{label} eq 'msdos';
+}
+
 =pod
 
 =head2 print_ks

@@ -83,8 +83,15 @@ sub devexists
 sub should_print_ks
 {
 	my $self = shift;
-	$this_app->error ("should_print method not defined for this class");
+	$this_app->error ("should_print_ks method not defined for this class");
 }
+
+sub should_create_ks
+{
+	my $self = shift;
+	$this_app->error ("should_create_ks method not defined for this class");
+}
+
 
 sub print_ks
 {}

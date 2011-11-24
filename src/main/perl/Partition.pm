@@ -377,6 +377,21 @@ sub should_print_ks
 
 =pod
 
+=pod
+
+=head2 should_print_ks
+
+Returns whether the Partition should be printed on the %pre script. A
+partition can be printed only if it is on a disk that an be printed.
+
+=cut
+
+sub should_create_ks
+{
+    my $self = shift;
+    return $self->{holding_dev}->should_create_ks;
+}
+
 =head2 print_ks
 
 If the partition must be printed, it prints the related Kickstart
@@ -439,7 +454,7 @@ sub align_ks
 {
     my $self = shift;
 
-    return unless $self->should_print_ks;
+    return unless $self->should_create_ks;
 
     my $n = $self->partition_number;
     my $path = $self->devpath;
@@ -457,7 +472,7 @@ sub create_pre_ks
 {
     my $self = shift;
 
-    return unless $self->should_print_ks;
+    return unless $self->should_create_ks;
 
     my $n = $self->partition_number;
     my $type = substr ($self->{type}, 0, 1);

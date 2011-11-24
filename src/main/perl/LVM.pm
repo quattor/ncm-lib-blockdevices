@@ -276,6 +276,26 @@ sub should_print_ks
 
 =pod
 
+=head2 should_create_ks
+
+Returns whether the volume group should be defined in the
+%pre script.
+
+=cut
+
+sub should_create_ks
+{
+    my $self = shift;
+
+    foreach (@{$self->{device_list}})
+    {
+	return 0 unless $_->should_create_ks;
+    }
+    return 1;
+}
+
+=pod
+
 =head2 print_ks
 
 If the logical volume must be printed, it prints the appropriate
@@ -325,6 +345,8 @@ EOF
 sub create_ks
 {
     my ($self) = @_;
+
+    return unless $self->should_create_ks;
 
     my $path = $self->devpath;
 

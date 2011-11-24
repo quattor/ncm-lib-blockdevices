@@ -135,4 +135,16 @@ sub should_print_ks
 	return 0;
 }
 
+=head2 should_create_ks
+
+Returns whether the File should be printed on the %pre script. This is
+always false.
+
+=cut
+
+sub should_create_ks
+{
+	return 0;
+}
+
 1;

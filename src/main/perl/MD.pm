@@ -207,9 +207,21 @@ sub should_print_ks
     return 1;
 }
 
+sub should_create_ks
+{
+    my $self = shift;
+    foreach (@{$self->{device_list}}) {
+	return 0 unless $_->should_create_ks;
+    }
+    return 1;
+}
+
 sub print_ks
 {
     my ($self, $fs) = @_;
+
+    return unless $self->should_print_ks;
+
     if (scalar (@_) == 2) {
 	$_->print_ks foreach (@{$self->{device_list}});
 	print "raid $fs->{mountpoint} --device=$self->{devname} --noformat\n";
@@ -230,6 +242,8 @@ sub del_pre_ks
 sub create_ks
 {
     my ($self, $fs) = @_;
+
+    return unless $self->should_create_ks;
 
     my @devnames = ();
     my $path = $self->devpath;

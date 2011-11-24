@@ -198,6 +198,21 @@ sub should_print_ks
 
 =pod
 
+=head2 should_create_ks
+
+Returns whether the logical volume should be defined in the
+%pre script.
+
+=cut
+
+sub should_create_ks
+{
+	my $self = shift;
+	return $self->{volume_group}->should_create_ks;
+}
+
+=pod
+
 =head2 print_ks
 
 If the logical volume must be printed, it prints the appropriate
@@ -241,6 +256,8 @@ sub create_ks
 {
 	my $self = shift;
 	my $path = $self->devpath;
+
+	return unless $self->should_create_ks;
 
 	my @stopts = ();
 	if (exists $self->{stripe_size}) {
