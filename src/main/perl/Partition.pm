@@ -448,7 +448,7 @@ sub align_ks
     # TODO: add support for alignment_offset
 
     if ($align_sect > 1) {
-	print join(" ", "grep", "-q", $path, PART_FILE, "&&",
+	print join(" ", "grep", "-q", "'" . $path . "\$'", PART_FILE, "&&",
 	    "align", $disk, $path, $n, $align_sect, "\n");
     }
 }

@@ -394,7 +394,7 @@ sub format_ks
     my $self = shift;
 
     return unless $self->should_print_ks;
-    print join (" ", "grep", "-q", $self->{block_device}->devpath,
+    print join (" ", "grep", "-q", "'" . $self->{block_device}->devpath . "\$'",
 		PART_FILE, "&&", "")
 	unless $self->{format};
     $self->do_format_ks;
