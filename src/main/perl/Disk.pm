@@ -54,6 +54,7 @@ use constant RCLOCAL	=> "/etc/rc.local";
 use constant HWPATH	=> "/hardware/harddisks/";
 use constant HOSTNAME	=> "/system/network/hostname";
 use constant DOMAINNAME	=> "/system/network/domainname";
+use constant IGNOREDISK => "/system/aii/osinstall/ks/ignoredisk";
 
 use constant FILES	=> qw (file -s);
 use constant SLEEPTIME	=> 2;
@@ -121,6 +122,16 @@ sub _initialize
      $hw = $config->getElement(HWPATH . $1)->getTree if $config->elementExists(HWPATH . $1);
      my $host = $config->getElement (HOSTNAME)->getValue;
      my $domain = $config->getElement (DOMAINNAME)->getValue;
+
+     # If the disk is mentioned by the "ignoredisk --drives=..." statement,
+     # then partitions/logical volumes/etc. on this disk should also be ignored
+     # in the Anaconda configuration (but not in the %pre script)
+     if ($config->elementExists(IGNOREDISK)) {
+         my $ignore = $config->getElement(IGNOREDISK)->getTree();
+         foreach my $dev (@{$ignore}) {
+             $self->{_ignore_print_ks} = 1 if $dev eq $self->{devname};
+         }
+     }
 
      # It is a bug in the templates if this happens
      $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
@@ -308,6 +319,7 @@ Kickstart file. This is true if the disk has an 'msdos' label.
 sub should_print_ks
 {
      my $self = shift;
+     return 0 if (exists $self->{_ignore_print_ks} && $self->{_ignore_print_ks});
      return $self->{label} eq 'msdos';
 }
 
