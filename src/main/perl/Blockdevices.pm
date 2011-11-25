@@ -16,13 +16,22 @@ use LC::Process qw (output);
 use Exporter;
 use constant FILES => qw (file -s);
 
-use constant PART_FILE => '/tmp/created_partitions';
+use constant PART_FILE  => '/tmp/created_partitions';
+use constant HOSTNAME	=> "/system/network/hostname";
+use constant DOMAINNAME	=> "/system/network/domainname";
 
 our @ISA = qw/CAF::Object Exporter/;
 
 our $this_app = $main::this_app;
 
 our @EXPORT_OK = qw ($this_app PART_FILE);
+
+sub get_cache_key {
+     my ($self, $path, $config) = @_;
+     my $host = $config->getElement (HOSTNAME)->getValue;
+     my $domain = $config->getElement (DOMAINNAME)->getValue;
+     return $host . "." . $domain . ":" . $path;
+}
 
 sub _initialize
 {

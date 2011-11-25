@@ -93,9 +93,7 @@ sub new
      my ($class, $path, $config) = @_;
      # Only one instance per disk is allowed, but disks of different hosts
      # should be separate objects
-     my $host = $config->getElement (HOSTNAME)->getValue;
-     my $domain = $config->getElement (DOMAINNAME)->getValue;
-     my $cache_key = $host . "." . $domain . ":" . $path;
+     my $cache_key = $class->get_cache_key($path, $config);
      return $disks{$cache_key} if exists $disks{$cache_key};
      return $class->SUPER::new ($path, $config);
 }
@@ -142,8 +140,8 @@ sub _initialize
 	     ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
 	     ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
 
-     $self->{cache_key} = $host . "." . $domain . ":" . $path;
-     $disks{$self->{cache_key}} = $self;
+     $self->{_cache_key} = $self->get_cache_key($path, $config);
+     $disks{$self->{_cache_key}} = $self;
      return $self;
 }
 
@@ -153,13 +151,12 @@ sub new_from_system
 
      my ($devname) = $dev =~ m{/dev/(.*)};
 
-     my $host = $cfg->getElement (HOSTNAME)->getValue;
-     my $domain = $cfg->getElement (DOMAINNAME)->getValue;
-     my $cache_key = $host . "." . $domain . ":/system/blockdevices/physical_devs/" . $devname;
+     my $cache_key = $class->get_cache_key($cfg, "/system/blockdevices/physical_devs/" . $devname);
      return $disks{$cache_key} if exists $disks{$cache_key};
 
      my $self = { devname	=> $devname,
-		  label	=> 'none'
+		  label	        => 'none',
+		  _cache_key    => $cache_key
 		};
      return bless ($self, $class);
 }
@@ -277,7 +274,7 @@ sub remove
          execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
          $this_app->debug (5, "dd output:\n ", $buffout);
 
-         delete $disks{$self->{cache_key}};
+         delete $disks{$self->{_cache_key}};
      }
      return 0;
 }

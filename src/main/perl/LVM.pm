@@ -64,7 +64,8 @@ our %vgs = ();
 sub new
 {
     my ($class, $path, $config) = @_;
-    return (defined $vgs{$path}) ? $vgs{$path} : $class->SUPER::new ($path, $config);
+    my $cache_key = $class->get_cache_key($path, $config);
+    return (defined $vgs{$cache_key}) ? $vgs{$cache_key} : $class->SUPER::new ($path, $config);
 }
 
 
@@ -140,7 +141,7 @@ sub remove
 			  $dev->devpath) if $?;
 	$dev->remove==0 or last;
     }
-    delete $vgs{"/system/blockdevices/volume_groups/$self->{devname}"};
+    delete $vgs{$self->{_cache_key}} if exists $self->{_cache_key};
     return $?;
 }
 
@@ -187,7 +188,8 @@ sub _initialize
     }
     # TODO: check the requirements of the component devices
     $self->_set_alignment($st, 0, 0);
-    return $vgs{$path} = $self;
+    $self->{_cache_key} = $self->get_cache_key($path, $config);
+    return $vgs{$self->{_cache_key}} = $self;
 }
 
 

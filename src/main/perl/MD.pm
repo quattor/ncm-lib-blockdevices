@@ -65,7 +65,8 @@ sub _initialize
     # TODO: compute the alignment from the properties of the component devices
     # and the RAID parameters
     $self->_set_alignment($st, 0, 0);
-    return $mds{$path} = $self;
+    $self->{_cache_key} = $self->get_cache_key($path, $config);
+    return $mds{$self->{_cache_key}} = $self;
 }
 
 =pod
@@ -80,7 +81,8 @@ software RAID device.
 sub new
 {
     my ($class, $path, $config) = @_;
-    return (exists $mds{$path}) ? $mds{$path} : $class->SUPER::new ($path, $config);
+    my $cache_key = $class->get_cache_key($path, $config);
+    return (exists $mds{$cache_key}) ? $mds{$cache_key} : $class->SUPER::new ($path, $config);
 }
 
 =pod
@@ -129,7 +131,7 @@ sub remove
 	execute ([MDZERO, $dev->devpath]);
 	$dev->remove==0 or return $?;
     }
-    delete $mds{BASEPATH().MDPATH().$self->{devname}};
+    delete $mds{$self->{_cache_key}} if exists $self->{_cache_key};
     $? && $this_app->error ("Couldn't destroy ", $self->devpath);
     return $?;
 }
