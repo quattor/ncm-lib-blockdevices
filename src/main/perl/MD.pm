@@ -62,7 +62,11 @@ sub _initialize
 	my $dev = NCM::BlockdevFactory::build ($config, $devpath);
 	push (@{$self->{device_list}}, $dev);
     }
-    return $mds{$path} = $self;
+    # TODO: compute the alignment from the properties of the component devices
+    # and the RAID parameters
+    $self->_set_alignment($st, 0, 0);
+    $self->{_cache_key} = $self->get_cache_key($path, $config);
+    return $mds{$self->{_cache_key}} = $self;
 }
 
 =pod
@@ -77,7 +81,8 @@ software RAID device.
 sub new
 {
     my ($class, $path, $config) = @_;
-    return (exists $mds{$path}) ? $mds{$path} : $class->SUPER::new ($path, $config);
+    my $cache_key = $class->get_cache_key($path, $config);
+    return (exists $mds{$cache_key}) ? $mds{$cache_key} : $class->SUPER::new ($path, $config);
 }
 
 =pod
@@ -126,7 +131,7 @@ sub remove
 	execute ([MDZERO, $dev->devpath]);
 	$dev->remove==0 or return $?;
     }
-    delete $mds{BASEPATH().MDPATH().$self->{devname}};
+    delete $mds{$self->{_cache_key}} if exists $self->{_cache_key};
     $? && $this_app->error ("Couldn't destroy ", $self->devpath);
     return $?;
 }
@@ -204,9 +209,21 @@ sub should_print_ks
     return 1;
 }
 
+sub should_create_ks
+{
+    my $self = shift;
+    foreach (@{$self->{device_list}}) {
+	return 0 unless $_->should_create_ks;
+    }
+    return 1;
+}
+
 sub print_ks
 {
     my ($self, $fs) = @_;
+
+    return unless $self->should_print_ks;
+
     if (scalar (@_) == 2) {
 	$_->print_ks foreach (@{$self->{device_list}});
 	print "raid $fs->{mountpoint} --device=$self->{devname} --noformat\n";
@@ -227,6 +244,8 @@ sub del_pre_ks
 sub create_ks
 {
     my ($self, $fs) = @_;
+
+    return unless $self->should_create_ks;
 
     my @devnames = ();
     my $path = $self->devpath;
@@ -259,7 +278,7 @@ EOF
 
 	}
 	push (@devnames, $dev->devpath);
-	print "sed -i '\\:@{[$dev->devpath]}:d' @{[PART_FILE]}\n";
+	print "sed -i '\\:@{[$dev->devpath]}\$:d' @{[PART_FILE]}\n";
     }
     my $ndev = scalar(@devnames);
     print <<EOC;

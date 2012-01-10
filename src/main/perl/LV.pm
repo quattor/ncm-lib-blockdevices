@@ -58,6 +58,8 @@ sub _initialize
 						    $config);
 	$self->{size} = $st->{size};
 	$self->{stripe_size} = $st->{stripe_size} if exists $st->{stripe_size};
+	# TODO: consider the stripe size when computing the alignment
+	$self->_set_alignment($st, $self->{volume_group}->{alignment}, 0);
 	return $self;
 }
 
@@ -196,6 +198,21 @@ sub should_print_ks
 
 =pod
 
+=head2 should_create_ks
+
+Returns whether the logical volume should be defined in the
+%pre script.
+
+=cut
+
+sub should_create_ks
+{
+	my $self = shift;
+	return $self->{volume_group}->should_create_ks;
+}
+
+=pod
+
 =head2 print_ks
 
 If the logical volume must be printed, it prints the appropriate
@@ -240,6 +257,8 @@ sub create_ks
 	my $self = shift;
 	my $path = $self->devpath;
 
+	return unless $self->should_create_ks;
+
 	my @stopts = ();
 	if (exists $self->{stripe_size}) {
 	    @stopts = (LVSTRIPESZ, $self->{stripe_size},
@@ -253,7 +272,7 @@ EOC
 
 	$self->{volume_group}->create_ks;
 	print <<EOF;
-	sed -i '\\:@{[$self->{volume_group}->devpath]}:d' @{[PART_FILE]}
+	sed -i '\\:@{[$self->{volume_group}->devpath]}\$:d' @{[PART_FILE]}
 EOF
     my $size="-l 95%FREE";
     $size="-L $self->{size}M" if (exists($self->{size})

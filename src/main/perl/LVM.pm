@@ -64,7 +64,8 @@ our %vgs = ();
 sub new
 {
     my ($class, $path, $config) = @_;
-    return (defined $vgs{$path}) ? $vgs{$path} : $class->SUPER::new ($path, $config);
+    my $cache_key = $class->get_cache_key($path, $config);
+    return (defined $vgs{$cache_key}) ? $vgs{$cache_key} : $class->SUPER::new ($path, $config);
 }
 
 
@@ -140,7 +141,7 @@ sub remove
 			  $dev->devpath) if $?;
 	$dev->remove==0 or last;
     }
-    delete $vgs{"/system/blockdevices/volume_groups/$self->{devname}"};
+    delete $vgs{$self->{_cache_key}} if exists $self->{_cache_key};
     return $?;
 }
 
@@ -185,7 +186,10 @@ sub _initialize
 	my $dev = NCM::BlockdevFactory::build ($config, $devpath);
 	push (@{$self->{device_list}}, $dev);
     }
-    return $vgs{$path} = $self;
+    # TODO: check the requirements of the component devices
+    $self->_set_alignment($st, 0, 0);
+    $self->{_cache_key} = $self->get_cache_key($path, $config);
+    return $vgs{$self->{_cache_key}} = $self;
 }
 
 
@@ -274,6 +278,26 @@ sub should_print_ks
 
 =pod
 
+=head2 should_create_ks
+
+Returns whether the volume group should be defined in the
+%pre script.
+
+=cut
+
+sub should_create_ks
+{
+    my $self = shift;
+
+    foreach (@{$self->{device_list}})
+    {
+	return 0 unless $_->should_create_ks;
+    }
+    return 1;
+}
+
+=pod
+
 =head2 print_ks
 
 If the logical volume must be printed, it prints the appropriate
@@ -324,10 +348,12 @@ sub create_ks
 {
     my ($self) = @_;
 
+    return unless $self->should_create_ks;
+
     my $path = $self->devpath;
 
     print <<EOC;
-if [ ! -b $path ]
+if [ ! -e $path ]
 then
 EOC
 
@@ -337,7 +363,7 @@ EOC
 	$pv->create_ks;
 	print " "x4, "lvm pvcreate ", $pv->devpath, "\n";
 	push (@devs, $pv->devpath);
-	print " "x4, "sed -i '\\:", $pv->devpath, ":d' @{[PART_FILE]}\n";
+	print " "x4, "sed -i '\\:", $pv->devpath, "\$:d' @{[PART_FILE]}\n";
     }
 
     print <<EOF;

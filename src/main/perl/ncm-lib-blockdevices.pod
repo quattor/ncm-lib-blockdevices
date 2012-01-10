@@ -90,7 +90,8 @@ arguments.
 
 =item * C<should_print_ks>
 
-Returns whether the filesystem should be defined at the Kickstart.
+Returns whether the filesystem should be defined in the command section (used
+by Anaconda) of the Kickstart file.
 
 =item * C<print_ks>
 
@@ -102,6 +103,11 @@ system is mounted on the correct place.
 If the FS is not marked to be kept, it prints the Bash code for
 destroying it as well as its underlying block devices. To be used
 during the %pre phase of the KS.
+
+=item * C<should_create_ks>
+
+Returns whether code should be added to the Kickstart %pre script for this
+filesystem.
 
 =item * C<create_ks>
 

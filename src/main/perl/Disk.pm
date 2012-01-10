@@ -51,6 +51,10 @@ use constant GREPARGS	=> "-c";
 use constant NOPART	=> "none";
 use constant RCLOCAL	=> "/etc/rc.local";
 
+use constant HWPATH	=> "/hardware/harddisks/";
+use constant HOSTNAME	=> "/system/network/hostname";
+use constant DOMAINNAME	=> "/system/network/domainname";
+use constant IGNOREDISK => "/system/aii/osinstall/ks/ignoredisk";
 
 use constant FILES	=> qw (file -s);
 use constant SLEEPTIME	=> 2;
@@ -64,8 +68,8 @@ use constant DDARGS	=> qw (if=/dev/zero count=1000);
 
 =head2 %disks
 
-Holds all the disk objects instantiated so far. It is indexed by Pan
-path (i.e: /system/blockdevices/disks/sda).
+Holds all the disk objects instantiated so far. It is indexed by host name
+and Pan path (i.e: host1:/system/blockdevices/disks/sda).
 
 =cut
 
@@ -87,8 +91,10 @@ returned.
 sub new
 {
      my ($class, $path, $config) = @_;
-     # Only one instance per disk is allowed.
-     return $disks{$path} if exists $disks{$path};
+     # Only one instance per disk is allowed, but disks of different hosts
+     # should be separate objects
+     my $cache_key = $class->get_cache_key($path, $config);
+     return $disks{$cache_key} if exists $disks{$cache_key};
      return $class->SUPER::new ($path, $config);
 }
 
@@ -109,7 +115,33 @@ sub _initialize
      $self->{num_spares} = $st->{num_spares};
      $self->{label} = $st->{label};
      $self->{readahead} = $st->{readahead};
-     $disks{$path} = $self;
+
+     my $hw;
+     $hw = $config->getElement(HWPATH . $1)->getTree if $config->elementExists(HWPATH . $1);
+     my $host = $config->getElement (HOSTNAME)->getValue;
+     my $domain = $config->getElement (DOMAINNAME)->getValue;
+
+     # If the disk is mentioned by the "ignoredisk --drives=..." statement,
+     # then partitions/logical volumes/etc. on this disk should also be ignored
+     # in the Anaconda configuration (but not in the %pre script)
+     if ($config->elementExists(IGNOREDISK)) {
+         my $ignore = $config->getElement(IGNOREDISK)->getTree();
+         foreach my $dev (@{$ignore}) {
+             $self->{_ignore_print_ks} = 1 if $dev eq $self->{devname};
+         }
+     }
+
+     # It is a bug in the templates if this happens
+     $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
+
+     # Inherit the topology from the physical device unless it is explicitely
+     # overridden
+     $self->_set_alignment($st,
+	     ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
+	     ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
+
+     $self->{_cache_key} = $self->get_cache_key($path, $config);
+     $disks{$self->{_cache_key}} = $self;
      return $self;
 }
 
@@ -117,10 +149,14 @@ sub new_from_system
 {
      my ($class, $dev, $cfg) = @_;
 
-     $dev =~ m{/dev/(.*)};
-     return $disks{$1} if exists $disks{$1};
-     my $self = { devname	=> $1,
-		  label	=> 'none'
+     my ($devname) = $dev =~ m{/dev/(.*)};
+
+     my $cache_key = $class->get_cache_key($cfg, "/system/blockdevices/physical_devs/" . $devname);
+     return $disks{$cache_key} if exists $disks{$cache_key};
+
+     my $self = { devname	=> $devname,
+		  label	        => 'none',
+		  _cache_key    => $cache_key
 		};
      return bless ($self, $class);
 }
@@ -238,7 +274,7 @@ sub remove
          execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
          $this_app->debug (5, "dd output:\n ", $buffout);
 
-         delete $disks{"/system/blockdevices/physical_devs/$self->{devname}"};
+         delete $disks{$self->{_cache_key}};
      }
      return 0;
 }
@@ -280,6 +316,20 @@ Kickstart file. This is true if the disk has an 'msdos' label.
 sub should_print_ks
 {
      my $self = shift;
+     return 0 if (exists $self->{_ignore_print_ks} && $self->{_ignore_print_ks});
+     return $self->{label} eq 'msdos';
+}
+
+=head2 should_create_ks
+
+Returns whether block devices on this disk should appear on the
+%pre script. This is true if the disk has an 'msdos' label.
+
+=cut
+
+sub should_create_ks
+{
+     my $self = shift;
      return $self->{label} eq 'msdos';
 }
 
@@ -303,17 +353,22 @@ Prints the Bash code to create a new msdos label on the disk
 
 =cut
 
-     sub clearpart_ks
+sub clearpart_ks
 {
      my $self = shift;
 
      my $path = $self->devpath;
 
      print <<EOF;
+wipe_metadata $path 1
+
 fdisk $path <<end_of_fdisk
 o
 w
 end_of_fdisk
+
+rereadpt $path
+
 EOF
 }
 

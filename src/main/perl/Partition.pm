@@ -151,6 +151,7 @@ sub _initialize
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
 						      $st->{holding_dev},
 						      $config);
+    $self->_set_alignment($st, 0, 0);
     return $self;
 }
 
@@ -376,6 +377,21 @@ sub should_print_ks
 
 =pod
 
+=pod
+
+=head2 should_create_ks
+
+Returns whether the Partition should be printed on the %pre script. A
+partition can be printed only if it is on a disk that an be printed.
+
+=cut
+
+sub should_create_ks
+{
+    my $self = shift;
+    return $self->{holding_dev}->should_create_ks;
+}
+
 =head2 print_ks
 
 If the partition must be printed, it prints the related Kickstart
@@ -434,20 +450,47 @@ fi
 EOF
 }
 
+sub align_ks
+{
+    my $self = shift;
+
+    return unless $self->should_create_ks;
+
+    my $n = $self->partition_number;
+    my $path = $self->devpath;
+    my $disk = $self->{holding_dev}->devpath;
+    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
+    # TODO: add support for alignment_offset
+
+    if ($align_sect > 1) {
+	print join(" ", "grep", "-q", "'" . $path . "\$'", PART_FILE, "&&",
+	    "align", $disk, $path, $n, $align_sect, "\n");
+    }
+}
+
 sub create_pre_ks
 {
     my $self = shift;
 
-    return unless $self->should_print_ks;
+    return unless $self->should_create_ks;
 
     my $n = $self->partition_number;
     my $type = substr ($self->{type}, 0, 1);
     my $size = exists $self->{size}? "+$self->{size}M":'';
+    my $path = $self->devpath;
+    my $disk = $self->{holding_dev}->devpath;
+
+    # Clear two times the alignment, but at least 1M
+    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
+    my $clear_mb = int($align_sect / 2 / 1024) * 2;
+    $clear_mb = 1 if $clear_mb < 1;
 
     print <<EOF;
-if ! grep -q $self->{devname} /proc/partitions
+if ! grep -q '$self->{devname}\$' /proc/partitions
 then
-    fdisk @{[$self->{holding_dev}->devpath]} <<end_of_fdisk
+    echo "-----------------------------------"
+    echo "Creating partition $self->{devname}"
+    fdisk $disk <<end_of_fdisk
 n
 $type
 $n
@@ -455,7 +498,11 @@ $n
 $size
 w
 end_of_fdisk
-    echo @{[$self->devpath]} >> @{[PART_FILE]}
+
+    rereadpt $disk
+    wipe_metadata $path $clear_mb
+
+    echo $path >> @{[PART_FILE]}
 fi
 EOF
 

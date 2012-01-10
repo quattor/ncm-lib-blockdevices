@@ -320,10 +320,28 @@ sub should_print_ks
 {
     my $self = shift;
 
-    $self->{should_print_ks} = $self->{block_device}->should_print_ks?1:0
+    $self->{should_print_ks} = $self->{block_device}->should_print_ks ? 1 : 0
 	unless exists ($self->{should_print_ks});
 
     return $self->{should_print_ks};
+}
+
+=pod
+
+=head2 should_create_ks
+
+Returns whether the filesystem should be defined at the %pre script.
+
+=cut
+
+sub should_create_ks
+{
+    my $self = shift;
+
+    $self->{should_create_ks} = $self->{block_device}->should_create_ks ? 1 : 0
+	unless exists ($self->{should_create_ks});
+
+    return $self->{should_create_ks};
 }
 
 =pod
@@ -374,7 +392,7 @@ sub create_ks
 {
     my $self = shift;
 
-    return unless $self->should_print_ks;
+    return unless $self->should_create_ks;
 
     $self->{block_device}->create_ks;
 }
@@ -393,8 +411,8 @@ sub format_ks
 {
     my $self = shift;
 
-    return unless $self->should_print_ks;
-    print join (" ", "grep", "-q", $self->{block_device}->devpath,
+    return unless $self->should_create_ks;
+    print join (" ", "grep", "-q", "'" . $self->{block_device}->devpath . "\$'",
 		PART_FILE, "&&", "")
 	unless $self->{format};
     $self->do_format_ks;

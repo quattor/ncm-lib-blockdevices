@@ -31,6 +31,11 @@ sub should_print_ks
     return 0;
 }
 
+sub should_create_ks
+{
+    return 0;
+}
+
 __END__
 
 =pod

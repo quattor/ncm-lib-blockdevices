@@ -1,3 +1,13 @@
+2011-02-09  Gabor Gombas as <Gabor.Gombas@morganstanley.com>
+	* Release: 0.21.2-ms2
+	- Zero out the beginning and end of newly created partitions to
+	  prevent old LVM volumes from re-appearing
+
+2011-02-08  Gabor Gombas as <Gabor.Gombas@morganstanley.com>
+	* Release: 0.21.2-ms1
+	- Add support for partition alignment.
+	- Create the device files under /dev if missing (happens on RHEL6)
+
 2010-10-28  Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
 
 	* Release: 0.21.2
@@ -350,7 +360,7 @@
 2007-08-16  Luis Fernando Muñoz Mejías
 
 	* Release: 0.11.3
-	- Fixed a bug when a non-existing filesystem marked with "format" && ! �"preserve"
+	- Fixed a bug when a non-existing filesystem marked with "format" && ! �"preserve"
 	would be removed, causing parted to fail and throwing a wrong exception.
 
 2007-08-16  Luis Fernando Muñoz Mejías
