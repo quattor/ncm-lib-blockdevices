@@ -362,10 +362,7 @@ sub clearpart_ks
      print <<EOF;
 wipe_metadata $path 1
 
-fdisk $path <<end_of_fdisk
-o
-w
-end_of_fdisk
+parted $path -a opt -s -- mklabel $self->{label}
 
 rereadpt $path
 

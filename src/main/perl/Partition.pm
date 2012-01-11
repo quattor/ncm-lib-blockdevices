@@ -439,13 +439,7 @@ sub del_pre_ks
     print <<EOF;
 if grep -q $self->{devname} /proc/partitions
 then
-
-    fdisk $devpath <<end_of_fdisk
-d
-$n
-w
-end_of_fdisk
-
+    parted $devpath -s rm $n
 fi
 EOF
 }
@@ -475,8 +469,8 @@ sub create_pre_ks
     return unless $self->should_create_ks;
 
     my $n = $self->partition_number;
-    my $type = substr ($self->{type}, 0, 1);
-    my $size = exists $self->{size}? "+$self->{size}M":'';
+    #my $type = substr ($self->{type}, 0, 1);
+    my $size = exists $self->{size}? "$self->{size}":'-0';
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
 
@@ -488,19 +482,22 @@ sub create_pre_ks
     print <<EOF;
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
-    echo "-----------------------------------"
     echo "Creating partition $self->{devname}"
-    fdisk $disk <<end_of_fdisk
-n
-$type
-$n
-
-$size
-w
-end_of_fdisk
+    prev=\`parted $disk -s u MiB p |awk '\$1 == $n-1 {print \$5=="extended" ? \$2:\$3}'\`
+    if [ -z \$prev ]
+    then
+        prev=0
+    fi
+    if [ $size = '-0'  ]
+    then
+        end=$size
+    else
+        let end=\${prev/MiB}+$size
+    fi
+    parted /dev/sda -s -a opt -- mkpart  $self->{type} \$prev \$end
 
     rereadpt $disk
-    wipe_metadata $path $clear_mb
+    #wipe_metadata $path $clear_mb
 
     echo $path >> @{[PART_FILE]}
 fi
