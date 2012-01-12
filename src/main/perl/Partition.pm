@@ -498,7 +498,7 @@ then
     parted /dev/sda -s  -- u MiB mkpart $self->{type} \$prev \$end
 
     rereadpt $disk
-    #wipe_metadata $path $clear_mb
+    wipe_metadata $path $clear_mb
 
     echo $path >> @{[PART_FILE]}
 fi
