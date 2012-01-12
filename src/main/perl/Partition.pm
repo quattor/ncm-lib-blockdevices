@@ -486,7 +486,8 @@ then
     prev=\`parted $disk -s u MiB p |awk '\$1 == $n-1 {print \$5=="extended" ? \$2:\$3}'\`
     if [ -z \$prev ]
     then
-        prev=0%
+        # The first partition must be aligned to the first MiB (0%)
+        prev=1
     fi
     if [ $size = '100%'  ]
     then
@@ -494,7 +495,7 @@ then
     else
         let end=\${prev/MiB}+$size
     fi
-    parted /dev/sda -s -a opt -- mkpart  $self->{type} \$prev \$end
+    parted /dev/sda -s  -- u MiB mkpart $self->{type} \$prev \$end
 
     rereadpt $disk
     #wipe_metadata $path $clear_mb
