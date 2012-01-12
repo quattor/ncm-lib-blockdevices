@@ -470,7 +470,7 @@ sub create_pre_ks
 
     my $n = $self->partition_number;
     #my $type = substr ($self->{type}, 0, 1);
-    my $size = exists $self->{size}? "$self->{size}":'-0';
+    my $size = exists $self->{size}? "$self->{size}":'100%';
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
 
@@ -486,9 +486,9 @@ then
     prev=\`parted $disk -s u MiB p |awk '\$1 == $n-1 {print \$5=="extended" ? \$2:\$3}'\`
     if [ -z \$prev ]
     then
-        prev=0
+        prev=0%
     fi
-    if [ $size = '-0'  ]
+    if [ $size = '100%'  ]
     then
         end=$size
     else
