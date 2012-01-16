@@ -317,7 +317,7 @@ sub should_print_ks
 {
      my $self = shift;
      return 0 if (exists $self->{_ignore_print_ks} && $self->{_ignore_print_ks});
-     return $self->{label} eq 'msdos';
+     return ($self->{label} eq 'msdos' || $self->{label} eq 'gpt');
 }
 
 =head2 should_create_ks
