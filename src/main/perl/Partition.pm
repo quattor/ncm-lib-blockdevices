@@ -495,7 +495,7 @@ then
     else
         let end=\${prev/MiB}+$size
     fi
-    parted /dev/sda -s  -- u MiB mkpart $self->{type} \$prev \$end
+    parted $disk -s  -- u MiB mkpart $self->{type} \$prev \$end
 
     rereadpt $disk
     wipe_metadata $path $clear_mb
