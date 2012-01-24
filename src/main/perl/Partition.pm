@@ -498,7 +498,10 @@ then
     parted $disk -s  -- u MiB mkpart $self->{type} \$prev \$end
 
     rereadpt $disk
-    wipe_metadata $path $clear_mb
+    if [ $self->{type} != "extended" ]
+    then
+        wipe_metadata $path $clear_mb
+    fi
 
     echo $path >> @{[PART_FILE]}
 fi
