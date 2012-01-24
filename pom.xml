@@ -150,56 +150,10 @@
 	    <groupId>org.apache.maven.plugins</groupId>
 	    <artifactId>maven-resources-plugin</artifactId>
 
-	    <executions>
-	      
-	      <execution>
-		<id>filter-pan-sources</id>
-		<phase>process-sources</phase>
-		<goals>
-		  <goal>copy-resources</goal>
-		</goals>
-		<configuration>
-		  <encoding>UTF-8</encoding>
-		  <delimiters>
-		    <delimiter>${*}</delimiter>
-		  </delimiters>
-		  <outputDirectory>${project.build.directory}/pan/</outputDirectory>
-		  <resources>
-		    <resource>
-		      <directory>src/main/pan</directory>
-		      <filtering>true</filtering>
-		    </resource>
-		  </resources>
-		</configuration> 
-	      </execution>
-
-	    </executions>
 	    
 	  </plugin>
 	  
 
-	  <plugin>
-	    
-	    <groupId>org.quattor.pan</groupId>
-	    <artifactId>maven-panc-plugin</artifactId>
-	    <version>8.4.5</version>
-
-	    <executions>
-	      
-	      <execution>
-		<id>check-generated-pan-syntax</id>
-		<phase>compile</phase>
-		<goals>
-		  <goal>check-syntax</goal>
-		</goals>
-		<configuration>
-		<sourceDirectory>${basedir}/target/pan</sourceDirectory>
-		</configuration> 
-	      </execution>
-
-	    </executions>
-	    
-	  </plugin>
 	  
 
 	  <plugin>
@@ -412,19 +366,6 @@
 		</sources>
 	      </mapping>
 	      
-	      <mapping>
-		<directory>/usr/share/doc/pan</directory>
-		<filemode>644</filemode>
-		<username>root</username>
-		<groupname>root</groupname>
-		<documentation>true</documentation>
-		<directoryIncluded>false</directoryIncluded>
-		<sources>
-		  <source>
-		    <location>target/pan</location>
-		  </source>
-		</sources>
-	      </mapping>
 	      
 	      <mapping>
 		<directory>/usr/share/man</directory>
