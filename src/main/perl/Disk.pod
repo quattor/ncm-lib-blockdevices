@@ -1,0 +1,7 @@
+=pod
+
+=head1 NCM::Disk
+
+See source code
+
+=cut
