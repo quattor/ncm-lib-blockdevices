@@ -6,7 +6,7 @@
   <artifactId>blockdevices</artifactId>
 
   <packaging>pom</packaging>
-  <version>1.1.0</version>
+  <version>1.1.1</version>
   <name>build-profile</name>
   <url>http://quattor.org/cfg-modules/</url>
 
@@ -159,6 +159,7 @@
 	  <artifactId>rpm-maven-plugin</artifactId>
 
 	  <configuration>
+	    <name>ncm-lib-${project.artifactId}</name>
 	    <version>${no-snapshot-version}</version>
 	    <release>${RELEASE}</release>
 	    <summary>ncm-lib-${project.artifactId}</summary>
