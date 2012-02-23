@@ -330,7 +330,7 @@ Returns whether block devices on this disk should appear on the
 sub should_create_ks
 {
      my $self = shift;
-     return $self->{label} eq 'msdos';
+     return ($self->{label} eq 'msdos' || $self->{label} eq 'gpt');
 }
 
 =pod
