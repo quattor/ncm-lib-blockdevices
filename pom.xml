@@ -13,7 +13,7 @@
   <parent>
     <groupId>org.quattor.maven</groupId>
     <artifactId>build-profile</artifactId>
-    <version>1.15</version>
+    <version>1.16</version>
   </parent>
 
   <licenses>
@@ -24,7 +24,7 @@
     </license>
   </licenses>
 
-  
+
   <developers>
     <developer>
       <name>Luis Fernando Muñoz Mejías</name>
@@ -59,11 +59,11 @@
     <RELEASE>1</RELEASE>
 
     <build-info>
-# 
-# ${project.artifactId}, ${project.version}, ${maven.build.timestamp}
-#
-</build-info>
-  </properties>  
+      #
+      # ${project.artifactId}, ${project.version}, ${maven.build.timestamp}
+      #
+    </build-info>
+  </properties>
 
   <dependencies>
     <dependency>
@@ -88,142 +88,151 @@
       <url>http://lapp-repo01.in2p3.fr:8081/nexus/content/repositories/releases/</url>
     </repository>
   </repositories>
-  
 
-      <build>
-	<plugins>
 
-	  <plugin>
-	    
-	    <groupId>org.apache.maven.plugins</groupId>
-	    <artifactId>maven-resources-plugin</artifactId>
-
-	    
-	  </plugin>
-
-	  <plugin>
-	    
-	    <groupId>org.apache.maven.plugins</groupId>
-	    <artifactId>maven-resources-plugin</artifactId>
-
-	    <executions>
-	      
-	      <execution>
-		<id>filter-perl-sources</id>
-		<phase>process-sources</phase>
-		<goals>
-		  <goal>copy-resources</goal>
-		</goals>
-		<configuration>
-		  <outputDirectory>${project.build.directory}/lib/perl/NCM</outputDirectory>
-		</configuration> 
-	      </execution>
-
-	      <execution>
-		<id>filter-pod-sources</id>
-		<phase>process-sources</phase>
-		<configuration>
-		  <outputDirectory>${project.build.directory}/doc/pod/NCM</outputDirectory>
-		</configuration> 
-	      </execution>
-
-	    </executions>
-	    
-	  </plugin>
-	  
-	  <plugin>
-	    <artifactId>maven-assembly-plugin</artifactId>
-	    <extensions>true</extensions>
-	    
-	    <executions>
-	      
-	      <execution>
-		<id>tarballs</id>
-		<phase>package</phase>
-		<goals>
-		  <goal>single</goal>
-		</goals>
-		<configuration combine.self="override">
-		  <descriptors>
-		    <descriptor>target/dependency/assemblies/bin.xml</descriptor>
-		  </descriptors>
-		</configuration>
-	      </execution>
-	      
-	    </executions>
-	    
-	  </plugin>
-
+  <build>
+    <pluginManagement>
+      <plugins>
 	<plugin>
-	  <groupId>org.codehaus.mojo</groupId>
-	  <artifactId>rpm-maven-plugin</artifactId>
-
-	  <configuration>
-	    <name>ncm-lib-${project.artifactId}</name>
-	    <version>${no-snapshot-version}</version>
-	    <release>${RELEASE}</release>
-	    <summary>ncm-lib-${project.artifactId}</summary>
-	    <provides>
-	      <provide>ncm-lib-${project.artifactId}</provide>
-	    </provides>
-	    <requires>
-	      <require>ncm-ncd</require>
-	    </requires>
-
-	    <mappings>
-
-	      <mapping>
-		<directory>/usr/lib</directory>
-		<filemode>755</filemode>
-		<username>root</username>
-		<groupname>root</groupname>
-		<directoryIncluded>false</directoryIncluded>
-		<sources>
-		  <source>
-		    <location>target/lib</location>
-		  </source>
-		</sources>
-	      </mapping>
-
-	      <mapping>
-		<directory>/usr/share/doc/ncm-lib-${project.artifactId}-${project.version}</directory>
-		<filemode>644</filemode>
-		<username>root</username>
-		<groupname>root</groupname>
-		<documentation>true</documentation>
-		<directoryIncluded>false</directoryIncluded>
-		<sources>
-		  <source>
-		    <location>${basedir}</location>
-		    <includes>
-		      <include>ChangeLog</include>
-		    </includes>
-		  </source>
-		</sources>
-	      </mapping>
-	      
-	      
-	      <mapping>
-		<directory>/usr/share/man</directory>
-		<filemode>644</filemode>
-		<username>root</username>
-		<groupname>root</groupname>
-		<documentation>true</documentation>
-		<directoryIncluded>false</directoryIncluded>
-		<sources>
-		  <source>
-		    <location>target/doc/man</location>
-		  </source>
-		</sources>
-	      </mapping>
-
-	    </mappings>
-	  </configuration>
+	  <groupId>org.quattor.pan</groupId>
+	  <artifactId>panc-maven-plugin</artifactId>
+	  <version>9.0.0-RC3</version>
 	</plugin>
-
       </plugins>
+    </pluginManagement>
+    <plugins>
+
+      <plugin>
+
+	<groupId>org.apache.maven.plugins</groupId>
+	<artifactId>maven-resources-plugin</artifactId>
+
+
+      </plugin>
+
+      <plugin>
+
+	<groupId>org.apache.maven.plugins</groupId>
+	<artifactId>maven-resources-plugin</artifactId>
+
+	<executions>
+
+	  <execution>
+	    <id>filter-perl-sources</id>
+	    <phase>process-sources</phase>
+	    <goals>
+	      <goal>copy-resources</goal>
+	    </goals>
+	    <configuration>
+	      <outputDirectory>${project.build.directory}/lib/perl/NCM</outputDirectory>
+	    </configuration>
+	  </execution>
+
+	  <execution>
+	    <id>filter-pod-sources</id>
+	    <phase>process-sources</phase>
+	    <configuration>
+	      <outputDirectory>${project.build.directory}/doc/pod/NCM</outputDirectory>
+	    </configuration>
+	  </execution>
+
+	</executions>
+
+      </plugin>
+
+      <plugin>
+	<artifactId>maven-assembly-plugin</artifactId>
+	<extensions>true</extensions>
+
+	<executions>
+
+	  <execution>
+	    <id>tarballs</id>
+	    <phase>package</phase>
+	    <goals>
+	      <goal>single</goal>
+	    </goals>
+	    <configuration combine.self="override">
+	      <descriptors>
+		<descriptor>target/dependency/assemblies/bin.xml</descriptor>
+	      </descriptors>
+	    </configuration>
+	  </execution>
+
+	</executions>
+
+      </plugin>
+
+      <plugin>
+	<groupId>org.codehaus.mojo</groupId>
+	<artifactId>rpm-maven-plugin</artifactId>
+
+	<configuration>
+	  <name>ncm-lib-${project.artifactId}</name>
+	  <version>${no-snapshot-version}</version>
+	  <release>${RELEASE}</release>
+	  <summary>ncm-lib-${project.artifactId}</summary>
+	  <provides>
+	    <provide>ncm-lib-${project.artifactId}</provide>
+	  </provides>
+	  <requires>
+	    <require>ncm-ncd</require>
+	  </requires>
+
+	  <mappings>
+
+	    <mapping>
+	      <directory>/usr/lib</directory>
+	      <filemode>755</filemode>
+	      <username>root</username>
+	      <groupname>root</groupname>
+	      <directoryIncluded>false</directoryIncluded>
+	      <sources>
+		<source>
+		  <location>target/lib</location>
+		</source>
+	      </sources>
+	    </mapping>
+
+	    <mapping>
+	      <directory>/usr/share/doc/ncm-lib-${project.artifactId}-${project.version}</directory>
+	      <filemode>644</filemode>
+	      <username>root</username>
+	      <groupname>root</groupname>
+	      <documentation>true</documentation>
+	      <directoryIncluded>false</directoryIncluded>
+	      <sources>
+		<source>
+		  <location>${basedir}</location>
+		  <includes>
+		    <include>ChangeLog</include>
+		  </includes>
+		</source>
+	      </sources>
+	    </mapping>
+
+
+	    <mapping>
+	      <directory>/usr/share/man</directory>
+	      <filemode>644</filemode>
+	      <username>root</username>
+	      <groupname>root</groupname>
+	      <documentation>true</documentation>
+	      <directoryIncluded>false</directoryIncluded>
+	      <sources>
+		<source>
+		  <location>target/doc/man</location>
+		</source>
+	      </sources>
+	    </mapping>
+
+	  </mappings>
+	</configuration>
+      </plugin>
+
+    </plugins>
 
   </build>
-      
+
 
 </project>
