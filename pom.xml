@@ -138,10 +138,6 @@
 
 	  <execution>
 	    <id>tarballs</id>
-	    <phase>package</phase>
-	    <goals>
-	      <goal>single</goal>
-	    </goals>
 	    <configuration combine.self="override">
 	      <descriptors>
 		<descriptor>target/dependency/assemblies/bin.xml</descriptor>
