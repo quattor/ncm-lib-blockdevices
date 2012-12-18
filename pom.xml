@@ -25,6 +25,12 @@
   </licenses>
 
 
+  <scm>
+    <connection>scm:git:git://github.com/quattor/ncm-lib-blockdevices.git</connection>
+    <developerConnection>scm:git:git@github.com:quattor/ncm-lib-blockdevices.git</developerConnection>
+    <url>https://github.com/quattor/ncm-lib-blockdevices</url>
+  </scm>
+
   <developers>
     <developer>
       <name>Luis Fernando Muñoz Mejías</name>
