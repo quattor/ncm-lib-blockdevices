@@ -311,7 +311,6 @@ sub print_ks
     return unless $self->should_print_ks;
 
     $_->print_ks foreach (@{$self->{device_list}});
-    print "\nvolgroup $self->{devname} --noformat\n";
 }
 
 =pod
