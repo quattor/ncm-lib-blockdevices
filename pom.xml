@@ -13,7 +13,7 @@
   <parent>
     <groupId>org.quattor.maven</groupId>
     <artifactId>build-profile</artifactId>
-    <version>1.29</version>
+    <version>1.31</version>
   </parent>
 
   <licenses>
@@ -39,37 +39,11 @@
   </developers>
 
   <contributors>
-    <contributor>
-      <name>Jane SMITH</name>
-      <email>smith@example.com</email>
-      <roles>
-	<role>author</role>
-      </roles>
-    </contributor>
-    <contributor>
-      <name>Joe DOE</name>
-      <email>doe@example.org</email>
-      <roles>
-	<role>author</role>
-      </roles>
-    </contributor>
+      <contributor>
+	  <name>Gabor Gombas</name>
+	  <email>gabor.gombas@morganstanley.com</email>
+      </contributor>
   </contributors>
-
-
-
-
-  <properties>
-
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.build.timestamp.format>yyyyMMdd.HHmm.ss</maven.build.timestamp.format>
-    <RELEASE>1</RELEASE>
-
-    <build-info>
-      #
-      # ${project.artifactId}, ${project.version}, ${maven.build.timestamp}
-      #
-    </build-info>
-  </properties>
 
   <repositories>
     <repository>
@@ -155,8 +129,6 @@
 
 	<configuration>
 	  <name>ncm-lib-${project.artifactId}</name>
-	  <version>${no-snapshot-version}</version>
-	  <release>${RELEASE}</release>
 	  <summary>ncm-lib-${project.artifactId}</summary>
 	  <provides>
 	    <provide>ncm-lib-${project.artifactId}</provide>
