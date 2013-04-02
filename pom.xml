@@ -45,22 +45,6 @@
       </contributor>
   </contributors>
 
-
-
-
-  <properties>
-
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <maven.build.timestamp.format>yyyyMMdd.HHmm.ss</maven.build.timestamp.format>
-    <RELEASE>1</RELEASE>
-
-    <build-info>
-      #
-      # ${project.artifactId}, ${project.version}, ${maven.build.timestamp}
-      #
-    </build-info>
-  </properties>
-
   <repositories>
     <repository>
       <id>quattor-releases</id>
@@ -145,8 +129,6 @@
 
 	<configuration>
 	  <name>ncm-lib-${project.artifactId}</name>
-	  <version>${no-snapshot-version}</version>
-	  <release>${RELEASE}</release>
 	  <summary>ncm-lib-${project.artifactId}</summary>
 	  <provides>
 	    <provide>ncm-lib-${project.artifactId}</provide>
