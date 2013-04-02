@@ -58,6 +58,9 @@ use constant EXTENTS	=> 15;
 use constant VGDISPLAY	=> qw (/usr/sbin/vgdisplay -c);
 use constant PVDISPLAY	=> qw (/usr/sbin/pvdisplay -c);
 
+use constant VOLGROUP => 'volgroup';
+
+use constant VOLGROUP_REQUIRED_PATH => '/system/aii/osinstall/ks/volgroup_required';
 
 our %vgs = ();
 
@@ -179,6 +182,11 @@ sub _initialize
 {
     my ($self,  $path, $config) = @_;
     my $st = $config->getElement($path)->getTree;
+    if ( $config->elementExists(VOLGROUP_REQUIRED_PATH) ) {
+        $self->{_volgroup_required} = $config->getElement(VOLGROUP_REQUIRED_PATH)->getValue();
+    } else {
+        $self->{_volgroup_required} = 0;
+    };
     $path =~ m!/([^/]+)$!;
     $self->{devname} = $1;
     foreach my $devpath (@{$st->{device_list}})
@@ -311,6 +319,7 @@ sub print_ks
     return unless $self->should_print_ks;
 
     $_->print_ks foreach (@{$self->{device_list}});
+    print "\n".VOLGROUP." $self->{devname} --noformat\n" if $self->{_volgroup_required};
 }
 
 =pod
