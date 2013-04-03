@@ -1,5 +1,5 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
 ################################################################################
@@ -174,7 +174,7 @@ sub partitions_in_disk
      my @n = $line=~m/^\s*\d\s/mg;
      unless ($line =~ m/^(?:Disk label type|Partition Table): (\w+)/m) {
 	  return 0;
-     } 
+     }
      return $1 eq 'loop'? 0:scalar (@n);
 }
 

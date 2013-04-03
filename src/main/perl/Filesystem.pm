@@ -1,5 +1,5 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
 ################################################################################
@@ -438,7 +438,7 @@ sub do_format_ks
     my $self = shift;
 
     # Extract the absolute path to make it work on different SL versions.
-    if (exists (MKFSCMDS->{$self->{type}})) { 
+    if (exists (MKFSCMDS->{$self->{type}})) {
 	my $mkfs = basename (MKFSCMDS->{$self->{type}});
 	print join (' ', $mkfs,
 		    $self->{block_device}->devpath,

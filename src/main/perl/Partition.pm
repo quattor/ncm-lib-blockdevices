@@ -1,5 +1,5 @@
 # ${license-info}
-# ${developer-info
+# ${developer-info}
 # ${author-info}
 # ${build-info}
 ################################################################################
@@ -184,7 +184,7 @@ sub create
     return $err if $err;
     $this_app->debug (5, "Partition $self->{devname}: ",
 		      "creating" );
-    my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE, 
+    my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE,
 		       $self->{type}, $self->begin, $self->end);
     if ( $self->{holding_dev}->{label} eq "msdos" &&
 	 $self->{size} >= 2200000 ) {
@@ -193,7 +193,7 @@ sub create
 
     $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
     execute (\@partedcmdlist);
-	     
+
     $? && $this_app->error ("Failed to create $self->{devname}");
     sleep (SLEEPTIME);
     return $?;
