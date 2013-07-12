@@ -282,7 +282,7 @@ EOF
     }
     my $ndev = scalar(@devnames);
     print <<EOC;
-    mdadm --create --run $path --level=$self->{raid_level} \\
+    sleep 5; mdadm --create --run $path --level=$self->{raid_level} --metadata=0.90 \\
         --chunk=$self->{stripe_size} --raid-devices=$ndev \\
          @devnames
     echo @{[$self->devpath]} >> @{[PART_FILE]}
