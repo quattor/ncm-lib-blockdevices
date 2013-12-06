@@ -175,8 +175,7 @@ sub update_fstab
 		    $self->{mountpoint},
 		    $self->{type},
 		    $self->{mountopts} .
-			 ((!$self->{mount} || $self->{type} eq 'none')?
-			       ",noauto":""),
+			 (!$self->{mount} ? ",noauto":""),
 		    $self->{freq},
 		    $self->{pass}), "\n";
 }
