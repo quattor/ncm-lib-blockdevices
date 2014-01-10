@@ -16,8 +16,9 @@ use CAF::FileEditor;
 use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
-use File::Path;
 use File::Basename;
+use File::Path;
+use File::Temp qw/tempdir/;
 use Fcntl qw(SEEK_END);
 use Cwd qw(abs_path);
 
@@ -239,6 +240,76 @@ sub mkmountpoint
 
 =pod
 
+=head2 can_be_mounted
+
+Try to mount the blockdevice on temporary location, and unmount again.
+
+=cut
+
+sub can_be_mounted
+{
+    my $self = shift;
+
+    my $msg = "fstype $self->{type} blockdev ".$self->{block_device}->devpath;
+    $this_app->debug (5, "can_be_mounted $msg");
+
+    # create tmp_mountpoint
+    my $tmpdir = tempdir();
+    chmod 0700, $tmpdir;
+    my $tmp_mountpoint = "$tmpdir/mntpt";
+    mkdir $tmp_mountpoint;
+
+    $this_app->debug (5, "can_be_mounted tmp_mountpoint $tmp_mountpoint");
+
+    CAF::Process->new ([MOUNT, 
+			'-t', $self->{type},
+			'-o', $self->{mountopts},
+			$self->{block_device}->devpath,
+			$tmp_mountpoint],
+		       log => $this_app)->run();
+    
+    CAF::Process->new ([GREP, $tmp_mountpoint, MTAB],
+		       log => $this_app)->run();
+    
+    my $ec = !$?;
+    # don't cleanup unless you are certain
+    my $cleanup_tmpdir = 0;
+
+    if ($ec) {
+	# mounted
+	$this_app->debug (5, "can_be_mounted MOUNTED");	
+
+	CAF::Process->new ([UMOUNT,$tmp_mountpoint],
+			   log => $this_app)->run();
+
+	# cleanup tmp_mountpoint
+	CAF::Process->new ([GREP, $tmp_mountpoint, MTAB],
+			   log => $this_app)->run();
+	if (!$?) {
+	    # mounted. don't cleanup, just fail?
+	    # TODO: do we need to change the return code? (because it can be mounted)
+	    $this_app->error ("can_be_mounted still mounted,",
+			      " umount failed, no cleanup flagged ($msg)");	
+	} else {
+	    # remove $tmpdir
+	    $this_app->debug (5, "can_be_mounted unmount succesful, flagging cleanup");	
+	    $cleanup_tmpdir = 1;
+	}
+    } else {
+	# not mounted, just remove $tmpdir
+	$this_app->debug (5, "can_be_mounted can't be mounted, flagging cleanup.");	
+	$cleanup_tmpdir = 1;
+    }
+    
+    if($cleanup_tmpdir) {
+	rmtree($tmpdir);
+    }
+
+    return $ec;
+}
+
+=pod
+
 =head2 create_if_needed
 
 Creates the filesystem, if it doesn't exist yet.
@@ -251,12 +322,25 @@ sub create_if_needed
 {
     my $self = shift;
 
+    $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
+		      " blockdev ", $self->{block_device}->devpath);
+
+    if($self->mounted()) {
+	$this_app->debug (5, "Filesystem MOUNTED: leaving.");
+	return 0;
+    }
+
     CAF::Process->new ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB],
 		      log => $this_app)->run();
     if (!$?) {
-	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: ",
-			  "leaving.");
+	$this_app->debug (5, "Filesystem mountpoint already exists in ",FSTAB,
+			  ": leaving.");
 	return 0;
+    }
+
+    if($self->can_be_mounted()) {
+	$this_app->debug (5, "Filesystem can be mounted: leaving.");
+	return 0;    
     }
 
     $self->{block_device}->create && return $?;
