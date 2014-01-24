@@ -238,75 +238,6 @@ sub mkmountpoint
     return 0;
 }
 
-=pod
-
-=head2 can_be_mounted
-
-Try to mount the blockdevice on temporary location, and unmount again.
-
-=cut
-
-sub can_be_mounted
-{
-    my $self = shift;
-
-    my $msg = "fstype $self->{type} blockdev ".$self->{block_device}->devpath;
-    $this_app->debug (5, "can_be_mounted $msg");
-
-    # create tmp_mountpoint
-    my $tmpdir = tempdir();
-    chmod 0700, $tmpdir;
-    my $tmp_mountpoint = "$tmpdir/mntpt";
-    mkdir $tmp_mountpoint;
-
-    $this_app->debug (5, "can_be_mounted tmp_mountpoint $tmp_mountpoint");
-
-    CAF::Process->new ([MOUNT, 
-                        '-t', $self->{type},
-                        '-o', $self->{mountopts},
-                        $self->{block_device}->devpath,
-                        $tmp_mountpoint],
-                       log => $this_app)->run();
-    
-    CAF::Process->new ([GREP, $tmp_mountpoint, MTAB],
-                       log => $this_app)->run();
-    
-    my $ec = !$?;
-    # don't cleanup unless you are certain
-    my $cleanup_tmpdir = 0;
-
-    if ($ec) {
-        # mounted
-        $this_app->debug (5, "can_be_mounted MOUNTED");    
-    
-        CAF::Process->new ([UMOUNT,$tmp_mountpoint],
-                            log => $this_app)->run();
-    
-        # cleanup tmp_mountpoint
-        CAF::Process->new ([GREP, $tmp_mountpoint, MTAB],
-                            log => $this_app)->run();
-        if (!$?) {
-            # mounted. don't cleanup, just fail?
-            # TODO: do we need to change the return code? (because it can be mounted)
-            $this_app->error ("can_be_mounted still mounted,",
-                              " umount failed, no cleanup flagged ($msg)");    
-        } else {
-            # remove $tmpdir
-            $this_app->debug (5, "can_be_mounted unmount succesful, flagging cleanup");    
-            $cleanup_tmpdir = 1;
-        }
-    } else {
-        # not mounted, just remove $tmpdir
-        $this_app->debug (5, "can_be_mounted can't be mounted, flagging cleanup.");    
-        $cleanup_tmpdir = 1;
-    }
-    
-    if($cleanup_tmpdir) {
-        rmtree($tmpdir);
-    }
-
-    return $ec;
-}
 
 =pod
 
@@ -338,8 +269,8 @@ sub create_if_needed
         return 0;
     }
 
-    if($self->can_be_mounted()) {
-        $this_app->debug (5, "Filesystem can be mounted: leaving.");
+    if($self->{block_device}->has_filesystem($self->{type})) {
+        $this_app->debug (5, "Filesystem $self->{type} exists: leaving.");
         return 0;    
     }
 
