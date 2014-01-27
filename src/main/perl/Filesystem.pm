@@ -185,13 +185,14 @@ sub update_fstab
 
 =head2 format
 
-Formats the filesystem, unconditionatlly.
+Formats the filesystem, if the blockdevice has no supported filesystem.
 
 =cut
 
 sub formatfs
 {
     my $self = shift;
+
     my $tunecmd;
     my @opts = exists $self->{label} ? (MKFSLABEL, $self->{label}):();
     push (@opts, split ('\s+', $self->{mkfsopts})) if exists $self->{mkfsopts};
@@ -204,7 +205,7 @@ sub formatfs
     # Format only if there must be a filesystem. After a
     # re-install, it can happen that $self->{format} is false and
     # the block device has a filesystem. Dont' destroy the data.
-    if ($self->{type} ne 'none' || !$self->{block_device}->has_filesystem) {
+    if ($self->{type} ne 'none' && !$self->{block_device}->has_filesystem) {
 	$this_app->debug (5, "Formatting to get $self->{mountpoint}");
 	CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
 			    $self->{block_device}->devpath],
