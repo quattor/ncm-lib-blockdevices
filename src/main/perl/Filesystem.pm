@@ -209,7 +209,7 @@ sub formatfs
     if ($self->{type} eq 'none') {
         $this_app->debug(3, "type 'none', no format.");
         $has_filesystem = 1;
-    } else if(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
+    } elsif(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
         $has_filesystem = $self->{block_device}->has_filesystem($self->{type});
         $this_app->debug(3, "force_filesystemtype with type $self->{type}",
                             " has_filesystem $has_filesystem");
@@ -277,7 +277,7 @@ sub create_if_needed
     }
 
     if(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
-        $this_app->debug (5, "force_filesystemtype: not checking if filesystem"
+        $this_app->debug (5, "force_filesystemtype: not checking if filesystem",
                              " mountpoint already exists in ",FSTAB,": leaving.");
     } else {
         CAF::Process->new ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB],
