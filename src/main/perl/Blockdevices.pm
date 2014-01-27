@@ -130,22 +130,26 @@ Current supported filesystems are ext2-4, reiser, jfs, xfs, btrfs and swap.
 =cut                                                                                                                                                                                     
 sub has_filesystem
 {
-    my $self = shift;
-    my $fs = shift;
+    my ($self, $fs) = @_;
 
     my $all_fs_regex = "ext[2-4]|reiser|jfs|xfs|btrfs|swap";
     my $fsregex = $all_fs_regex;
 
     if (defined($fs)) {
         # a supported fs?                                                                                                                                                                
-        return 0 if ($fs !~ m{$all_fs_regex});
-        $fsregex = $fs;
+        if ($fs !~ m{$all_fs_regex}) {
+            $this_app->warn("Requested filesystem $fs is not supported.",
+                            " Checking for any supported filesystem as fallback.");
+        } else {
+            $fsregex = $fs;
+        };
     };
 
     my $p = $self->devpath;
     $p = readlink ($p) if -l $p;
     my $f = output (FILES, $p);
 
+    $this_app->debug(4, "Checking for filesystem on device $p with regexp '$fsregex' in output $f.",
     return $f =~ m{$fsregex}i;
 }
 
