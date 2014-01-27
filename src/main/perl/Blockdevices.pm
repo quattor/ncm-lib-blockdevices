@@ -139,7 +139,7 @@ sub has_filesystem
         # a supported fs?                                                                                                                                                                
         if ($fs !~ m{$all_fs_regex}) {
             $this_app->warn("Requested filesystem $fs is not supported.",
-                            " Checking for any supported filesystem as fallback.");
+                            " Fallback to default supported filesystems.");
         } else {
             $fsregex = $fs;
         };
@@ -149,7 +149,8 @@ sub has_filesystem
     $p = readlink ($p) if -l $p;
     my $f = output (FILES, $p);
 
-    $this_app->debug(4, "Checking for filesystem on device $p with regexp '$fsregex' in output $f.",
+    $this_app->debug(4, "Checking for filesystem on device $p",
+                        " with regexp '$fsregex' in output $f.");
     return $f =~ m{$fsregex}i;
 }
 
