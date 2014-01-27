@@ -206,15 +206,15 @@ sub formatfs
     # re-install, it can happen that $self->{format} is false and
     # the block device has a filesystem. Dont' destroy the data.
     if ($self->{type} ne 'none' && !$self->{block_device}->has_filesystem) {
-	$this_app->debug (5, "Formatting to get $self->{mountpoint}");
-	CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
-			    $self->{block_device}->devpath],
-			   log => $this_app)->run();
-	return $? if $?;
-	CAF::Process->new ([$tunecmd, split ('\s+', $self->{tuneopts}),
-			   $self->{block_device}->devpath],
-			  log => $this_app)->run()
-	  if exists $self->{tuneopts} && defined $tunecmd;
+        $this_app->debug (5, "Formatting to get $self->{mountpoint}");
+        CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
+                            $self->{block_device}->devpath],
+                            log => $this_app)->run();
+        return $? if $?;
+        CAF::Process->new ([$tunecmd, split ('\s+', $self->{tuneopts}),
+                            $self->{block_device}->devpath],
+                            log => $this_app)->run()
+                if exists $self->{tuneopts} && defined $tunecmd;
     }
     return $?;
 }
