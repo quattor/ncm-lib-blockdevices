@@ -204,8 +204,22 @@ sub formatfs
 
     # Format only if there must be a filesystem. After a
     # re-install, it can happen that $self->{format} is false and
-    # the block device has a filesystem. Dont' destroy the data.
-    if ($self->{type} ne 'none' && !$self->{block_device}->has_filesystem) {
+    # the block device has a filesystem. Don't destroy the data.
+    my $has_filesystem = 1; 
+    if ($self->{type} eq 'none') {
+        $this_app->debug(3, "type 'none', no format.");
+        $has_filesystem = 1;
+    } else if(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
+        $has_filesystem = $self->{block_device}->has_filesystem($self->{type});
+        $this_app->debug(3, "force_filesystemtype with type $self->{type}",
+                            " has_filesystem $has_filesystem");
+    } else {
+        $has_filesystem = $self->{block_device}->has_filesystem;
+        $this_app->debug(3, "any supported filesystem",
+                            " has_filesystem $has_filesystem");
+    };
+    
+    if (!$has_filesystem) {
         $this_app->debug (5, "Formatting to get $self->{mountpoint}");
         CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
                             $self->{block_device}->devpath],
@@ -268,11 +282,6 @@ sub create_if_needed
         $this_app->debug (5, "Filesystem mountpoint already exists in ",FSTAB,
                           ": leaving.");
         return 0;
-    }
-
-    if($self->{block_device}->has_filesystem($self->{type})) {
-        $this_app->debug (5, "Filesystem $self->{type} exists: leaving.");
-        return 0;    
     }
 
     $self->{block_device}->create && return $?;
