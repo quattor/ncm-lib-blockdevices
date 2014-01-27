@@ -276,12 +276,17 @@ sub create_if_needed
         return 0;
     }
 
-    CAF::Process->new ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB],
-                       log => $this_app)->run();
-    if (!$?) {
-        $this_app->debug (5, "Filesystem mountpoint already exists in ",FSTAB,
-                          ": leaving.");
-        return 0;
+    if(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
+        $this_app->debug (5, "force_filesystemtype: not checking if filesystem"
+                             " mountpoint already exists in ",FSTAB,": leaving.");
+    } else {
+        CAF::Process->new ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB],
+                           log => $this_app)->run();
+        if (!$?) {
+            $this_app->debug (5, "Filesystem mountpoint already exists in ",FSTAB,
+                              ": leaving.");
+            return 0;
+        }
     }
 
     $self->{block_device}->create && return $?;
