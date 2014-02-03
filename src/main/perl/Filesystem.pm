@@ -204,7 +204,7 @@ sub formatfs
     # Format only if there must be a filesystem. After a
     # re-install, it can happen that $self->{format} is false and
     # the block device has a filesystem. Dont' destroy the data.
-    if ($self->{type} ne 'none' || !$self->{block_device}->has_filesystem) {
+    if ($self->{type} ne 'none' && !$self->{block_device}->has_filesystem) {
 	$this_app->debug (5, "Formatting to get $self->{mountpoint}");
 	CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
 			    $self->{block_device}->devpath],
