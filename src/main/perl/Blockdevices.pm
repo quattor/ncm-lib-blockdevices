@@ -120,17 +120,38 @@ sub create_ks
 
 =head2 has_filesystem
 
-Returns true if the block device has been formatted with any filesystem.
-
-=cut
+Returns true if the block device has been formatted with a supported filesystem.                                                                                                         
+If a second argument is set, returns true if the block device has been formatted                                                                                                         
+with that filesystem (if it is supported). If the filesystem is not supported,                                                                                                           
+returns false.                                                                                                                                                                           
+                                                                                                                                                                                         
+Current supported filesystems are ext2-4, reiser, jfs, xfs, btrfs and swap.                                                                                                              
+                                                                                                                                                                                         
+=cut                                                                                                                                                                                     
 sub has_filesystem
 {
-    my $self = shift;
+    my ($self, $fs) = @_;
+
+    my $all_fs_regex = "ext[2-4]|reiser|jfs|xfs|btrfs|swap";
+    my $fsregex = $all_fs_regex;
+
+    if (defined($fs)) {
+        # a supported fs?                                                                                                                                                                
+        if ($fs !~ m{$all_fs_regex}) {
+            $this_app->warn("Requested filesystem $fs is not supported.",
+                            " Fallback to default supported filesystems.");
+        } else {
+            $fsregex = $fs;
+        };
+    };
 
     my $p = $self->devpath;
     $p = readlink ($p) if -l $p;
     my $f = output (FILES, $p);
-    return $f =~ m{ext[2-4]|reiser|jfs|xfs}i;
+
+    $this_app->debug(4, "Checking for filesystem on device $p",
+                        " with regexp '$fsregex' in output $f.");
+    return $f =~ m{$fsregex}i;
 }
 
 1;
