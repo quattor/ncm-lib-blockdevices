@@ -16,7 +16,7 @@ having run, at least, this test.
 
 use strict;
 use warnings;
-use Test::More tests => 1;
+use Test::More tests => 11;
 
 use constant ALLMODS => qw(
     BlockdevFactory
