@@ -4,26 +4,32 @@ object template factory1;
 "/system/network/hostname" = 'x';
 "/system/network/domainname" = 'y';
 
-"/hardware/harddisks/hdb" = nlist();
+"/hardware/harddisks/sdb" = nlist(
+    "capacity", 4000, 
+);
 
 "/system/blockdevices" = nlist (
 	"physical_devs", nlist (
-		"hdb", nlist ("label", "gpt")
+		"sdb", nlist ("label", "gpt")
 		),
 	"partitions", nlist (
-		"hdb1", nlist (
-			"holding_dev", "hdb",
-			"size", 4096,
-			)
-		),
+		"sdb1", nlist (
+			"holding_dev", "sdb",
+			"size", 100,
+			),
+        "sdb2", nlist (
+            "holding_dev", "sdb",
+            "size", 100,
+            )
+        ),
 	"volume_groups", nlist (
 		"vg0", nlist (
-			"device_list", list ("partitions/hdb1"),
+			"device_list", list ("partitions/sdb1"),
 			)
 		),
 	"md", nlist (
 		"md0", nlist (
-			"device_list", list ("partitions/hdb1"),
+			"device_list", list ("partitions/sdb1"),
 			"raid_level", "RAID0",
 			"stripe_size", 64,
 			)
@@ -38,7 +44,7 @@ object template factory1;
 		),
 	"logical_volumes", nlist (
 		"lv0", nlist (
-			"size", 4096,
+			"size", 800,
 			"volume_group", "vg0"
 			),
 		)
