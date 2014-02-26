@@ -47,7 +47,7 @@ use warnings;
 use EDG::WP4::CCM::Element qw (unescape);
 use EDG::WP4::CCM::Configuration;
 use NCM::Blockdevices qw ($this_app PART_FILE);
-use LC::Process qw (execute output);
+use CAF::Process;
 our @ISA = qw (NCM::Blockdevices Exporter);
 
 our @EXPORT_OK = qw (partition_compare);
@@ -73,7 +73,7 @@ use constant SLEEPTIME => 4;
 # If we are using SL5 (parted 1.8) we need to specify we'll work with MB.
 sub extra_args()
 {
-    my $out = output (PARTED, "-v");
+    my $out = CAF::Process->new([PARTED, "-v"], log => $this_app)->output();
     if ($out =~ m/1.8/) {
         return qw (u MB);
     }
@@ -192,7 +192,7 @@ sub create
     }
 
     $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
-    execute (\@partedcmdlist);
+    CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
 
     $? && $this_app->error ("Failed to create $self->{devname}");
     sleep (SLEEPTIME);
@@ -217,8 +217,9 @@ sub remove
     $self->{begin} = undef;
 
     if ($self->devexists) {
-        execute ([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
-                  PARTEDEXTRA, DELETE, $num]);
+        CAF::Process->new([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
+                           PARTEDEXTRA, DELETE, $num],
+                           log => $this_app)->execute();
         if ($?) {
             $this_app->error ("Couldn't remove partition ",
                               $self->{devname});
@@ -290,8 +291,9 @@ sub begin
     # Parse parted's output because SL sucks so badly.
     local $ENV{LANG} = 'C';
     my $npart = $self->partition_number;
-    my $out = output (PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
-                      PARTEDEXTRA, "print");
+    my $out = CAF::Process->new([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
+                                 PARTEDEXTRA, PARTEDP],
+                                 log => $this_app)->output();
     my @lines = split /\n/, $out;
     @lines = grep (m{^\s*\d+\s}, @lines);
     my $st = 0;
@@ -351,8 +353,9 @@ sub devexists
     my $self = shift;
 
     local $ENV{LANG} = 'C';
-    my $line = output (PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
-                       PARTEDEXTRA, PARTEDP);
+    my $line = CAF::Process->new([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
+                                  PARTEDEXTRA, PARTEDP],
+                                  log => $this_app)->output();
     my $n = $self->partition_number;
     return $line =~ m/^\s*$n\s/m &&
         $line !~ m/^(?:Disk label type|Partition Table): loop/m;
