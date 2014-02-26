@@ -75,7 +75,7 @@ sub extra_args()
 {
     my $out = output (PARTED, "-v");
     if ($out =~ m/1.8/) {
-	return qw (u MB);
+        return qw (u MB);
     }
     return ();
 }
@@ -117,15 +117,15 @@ sub new_from_system
     my $devname = $1;
     my $disk;
     if ($dev =~ m{(/dev/ciss/c\d+d\+)p\d+}) {
-	$disk = $1;
+        $disk = $1;
     }
     else {
-	$dev =~ m{(/dev/.*\D)\d+$};
-	$disk = $1;
+        $dev =~ m{(/dev/.*\D)\d+$};
+        $disk = $1;
     }
-    my $self = { devname	=> $devname,
-		 holding_dev	=> NCM::Disk->new_from_system ($disk, $cfg)
-	       };
+    my $self = {devname	=> $devname,
+                holding_dev	=> NCM::Disk->new_from_system ($disk, $cfg)
+                };
     return bless ($self, $class);
 }
 
@@ -149,8 +149,8 @@ sub _initialize
     $self->{size} = $st->{size} if exists $st->{size};
     $self->{type} = $st->{type};
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
-						      $st->{holding_dev},
-						      $config);
+                                           $st->{holding_dev},
+                                           $config);
     $self->_set_alignment($st, 0, 0);
     return $self;
 }
@@ -172,23 +172,23 @@ sub create
 
     # Check the device doesn't exist already.
     if ($self->devexists) {
-	$this_app->debug (5, "Partition $self->{devname} already exists: ",
-			  "leaving");
-	return 0
+        $this_app->debug (5, "Partition $self->{devname} already exists: ",
+                             "leaving");
+        return 0
     }
 
     my $hdname =  "/dev/" . $self->{holding_dev}->{devname};
     $this_app->debug (5, "Partition $self->{devname}: ",
-		      "creating holding device ",$hdname );
+                         "creating holding device ",$hdname );
     my $err = $self->{holding_dev}->create;
     return $err if $err;
     $this_app->debug (5, "Partition $self->{devname}: ",
-		      "creating" );
+                         "creating" );
     my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE,
-		       $self->{type}, $self->begin, $self->end);
+                       $self->{type}, $self->begin, $self->end);
     if ( $self->{holding_dev}->{label} eq "msdos" &&
-	 $self->{size} >= 2200000 ) {
-	$this_app->warn("Partition $self->{devname}: partition larger than 2.2TB defined on msdos partition table");
+        $self->{size} >= 2200000 ) {
+        $this_app->warn("Partition $self->{devname}: partition larger than 2.2TB defined on msdos partition table");
     }
 
     $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
@@ -217,13 +217,13 @@ sub remove
     $self->{begin} = undef;
 
     if ($self->devexists) {
-	execute ([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
-		  PARTEDEXTRA, DELETE, $num]);
-	if ($?) {
-	    $this_app->error ("Couldn't remove partition ",
-			      $self->{devname});
-	    return $?;
-	}
+        execute ([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
+                  PARTEDEXTRA, DELETE, $num]);
+        if ($?) {
+            $this_app->error ("Couldn't remove partition ",
+                              $self->{devname});
+            return $?;
+        }
     }
     sleep (SLEEPTIME);
     return $self->{holding_dev}->remove;
@@ -291,7 +291,7 @@ sub begin
     local $ENV{LANG} = 'C';
     my $npart = $self->partition_number;
     my $out = output (PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
-		      PARTEDEXTRA, "print");
+                      PARTEDEXTRA, "print");
     my @lines = split /\n/, $out;
     @lines = grep (m{^\s*\d+\s}, @lines);
     my $st = 0;
@@ -302,19 +302,19 @@ sub begin
     # partition. Then, the new logical partition starts where the
     # extended one starts.
     foreach my $line (@lines) {
-	last unless $line =~ m!$re!;
-	my ($n, $begin, $end, $type) = ($1, $2, $3, $4);
-	if ($npart > $n) {
-	    if ($self->{type} ne 'logical' || $type eq 'logical') {
-		$st = $end;
-	    }
-	    else {
-		$st = $begin if $type eq 'extended';
-	    }
-	}
-	else {
-	    last;
-	}
+        last unless $line =~ m!$re!;
+        my ($n, $begin, $end, $type) = ($1, $2, $3, $4);
+        if ($npart > $n) {
+            if ($self->{type} ne 'logical' || $type eq 'logical') {
+                $st = $end;
+            }
+            else {
+                $st = $begin if $type eq 'extended';
+            }
+        }
+        else {
+            last;
+        }
     }
 
     $self->{begin} = $st;
@@ -352,10 +352,10 @@ sub devexists
 
     local $ENV{LANG} = 'C';
     my $line = output (PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
-		       PARTEDEXTRA, PARTEDP);
+                       PARTEDEXTRA, PARTEDP);
     my $n = $self->partition_number;
     return $line =~ m/^\s*$n\s/m &&
-	 $line !~ m/^(?:Disk label type|Partition Table): loop/m;
+        $line !~ m/^(?:Disk label type|Partition Table): loop/m;
 }
 
 =pod
@@ -408,14 +408,14 @@ sub print_ks
     my ($self, $fs, $fstype) = @_;
 
     print join (" ",
-		"part", $fs->{mountpoint}, "--onpart",
-		$self->{devname},
-		# Anaconda doesn't recognize existing SWAP labels, if
-		# we want a label on swap, we'll have to re-format the
-		# partition and let it set its own label.
-		($fs->{type} eq "swap" && exists $fs->{label}) ?
-		"--fstype swap":"--noformat",
-		"\n") if $fs;
+                "part", $fs->{mountpoint}, "--onpart",
+                $self->{devname},
+                # Anaconda doesn't recognize existing SWAP labels, if
+                # we want a label on swap, we'll have to re-format the
+                # partition and let it set its own label.
+                ($fs->{type} eq "swap" && exists $fs->{label}) ?
+                "--fstype swap":"--noformat",
+                "\n") if $fs;
 }
 
 =pod
@@ -457,8 +457,8 @@ sub align_ks
     # TODO: add support for alignment_offset
 
     if ($align_sect > 1) {
-	print join(" ", "grep", "-q", "'" . $path . "\$'", PART_FILE, "&&",
-	    "align", $disk, $path, $n, $align_sect, "\n");
+        print join(" ", "grep", "-q", "'" . $path . "\$'", PART_FILE, "&&",
+                   "align", $disk, $path, $n, $align_sect, "\n");
     }
 }
 
