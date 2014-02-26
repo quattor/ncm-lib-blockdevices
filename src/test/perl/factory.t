@@ -11,9 +11,9 @@ $CAF::Object::NoAction = 1;
 
 my $cfg = get_config_for_profile('factory1');
 
-my $o = build ($cfg, "physical_devs/hdb");
+my $o = build ($cfg, "physical_devs/sdb");
 is (ref ($o), "NCM::Disk", "Disk correctly instantiated");
-$o = build ($cfg, "partitions/hdb1");
+$o = build ($cfg, "partitions/sdb1");
 is (ref ($o), "NCM::Partition", "Partition correctly instantiated");
 $o = build ($cfg, "volume_groups/vg0");
 is (ref ($o), "NCM::LVM", "LVM correctly instantiated");
