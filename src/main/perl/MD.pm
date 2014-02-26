@@ -59,8 +59,8 @@ sub _initialize
     $self->{raid_level} = $1;
     $self->{stripe_size} = $st->{stripe_size};
     foreach my $devpath (@{$st->{device_list}}) {
-	my $dev = NCM::BlockdevFactory::build ($config, $devpath);
-	push (@{$self->{device_list}}, $dev);
+        my $dev = NCM::BlockdevFactory::build ($config, $devpath);
+        push (@{$self->{device_list}}, $dev);
     }
     # TODO: compute the alignment from the properties of the component devices
     # and the RAID parameters
@@ -99,17 +99,17 @@ sub create
     my @devnames;
 
     if ($self->devexists) {
-	$this_app->debug (5, "Device ", $self->devpath, " already exists.",
-			  " Leaving.");
-	return 0;
+        $this_app->debug (5, "Device ", $self->devpath, " already exists.",
+			              " Leaving.");
+        return 0;
     }
     foreach my $dev (@{$self->{device_list}}) {
-	$dev->create==0 or return $?;
-	push (@devnames, $dev->devpath);
+        $dev->create==0 or return $?;
+        push (@devnames, $dev->devpath);
     }
     execute ([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
-	      MDSTRIPE.$self->{stripe_size},
-	      MDDEVS.scalar(@{$self->{device_list}}), @devnames]);
+              MDSTRIPE.$self->{stripe_size},
+              MDDEVS.scalar(@{$self->{device_list}}), @devnames]);
     $? && $this_app->error ("Couldn't create ", $self->devpath);
     return $?;
 }
@@ -128,8 +128,8 @@ sub remove
 
     execute ([MDSTOP, $self->devpath]);
     foreach my $dev (@{$self->{device_list}}) {
-	execute ([MDZERO, $dev->devpath]);
-	$dev->remove==0 or return $?;
+        execute ([MDZERO, $dev->devpath]);
+        $dev->remove==0 or return $?;
     }
     delete $mds{$self->{_cache_key}} if exists $self->{_cache_key};
     $? && $this_app->error ("Couldn't destroy ", $self->devpath);
@@ -184,11 +184,11 @@ sub new_from_system
     $lines =~ m{Raid Level : (\w+)$}omg;
     my $level = uc ($1);
     while ($lines =~ m{\w\s+(/dev.*)$}omg) {
-	push (@devlist, NCM::BlockdevFactory::build_from_dev ($1, $cfg));
+        push (@devlist, NCM::BlockdevFactory::build_from_dev ($1, $cfg));
     }
-    my $self = { raid_level	=> $level,
-		 device_list=> \@devlist,
-		 devname	=> $devname};
+    my $self = {raid_level	=> $level,
+                device_list=> \@devlist,
+                devname	=> $devname};
     return bless ($self, $class);
 }
 
@@ -204,7 +204,7 @@ sub should_print_ks
 {
     my $self = shift;
     foreach (@{$self->{device_list}}) {
-	return 0 unless $_->should_print_ks;
+        return 0 unless $_->should_print_ks;
     }
     return 1;
 }
@@ -213,7 +213,7 @@ sub should_create_ks
 {
     my $self = shift;
     foreach (@{$self->{device_list}}) {
-	return 0 unless $_->should_create_ks;
+        return 0 unless $_->should_create_ks;
     }
     return 1;
 }
@@ -225,8 +225,8 @@ sub print_ks
     return unless $self->should_print_ks;
 
     if (scalar (@_) == 2) {
-	$_->print_ks foreach (@{$self->{device_list}});
-	print "raid $fs->{mountpoint} --device=$self->{devname} --noformat\n";
+        $_->print_ks foreach (@{$self->{device_list}});
+        print "raid $fs->{mountpoint} --device=$self->{devname} --noformat\n";
     }
 }
 
@@ -236,8 +236,8 @@ sub del_pre_ks
 
     print join (" ", MDSTOP, $self->devpath), "\n";
     foreach my $dev (@{$self->{device_list}}) {
-	print join (" ", MDZERO, $dev->devpath), "\n";
-	$dev->del_pre_ks;
+        print join (" ", MDZERO, $dev->devpath), "\n";
+        $dev->del_pre_ks;
     }
 }
 
@@ -255,14 +255,14 @@ if  ! grep -q $self->{devname} /proc/mdstat
 then
 EOC
     foreach my $dev (@{$self->{device_list}}) {
-	$dev->create_ks;
-	# Well, fdisk sucks and Anaconda is plain crap. Let's
-	# guess how we can set the partition hex code
-	if (ref ($dev) eq 'NCM::Partition') {
-	    my $hdpath = $dev->{holding_dev}->devpath;
-	    my $hdname = $dev->{holding_dev}->{devname};
-	    my $n = $dev->partition_number;
-	    print <<EOF;
+        $dev->create_ks;
+        # Well, fdisk sucks and Anaconda is plain crap. Let's
+        # guess how we can set the partition hex code
+        if (ref ($dev) eq 'NCM::Partition') {
+            my $hdpath = $dev->{holding_dev}->devpath;
+            my $hdname = $dev->{holding_dev}->{devname};
+            my $n = $dev->partition_number;
+            print <<EOF;
     fdisk $hdpath <<end_of_fdisk
 t
 \$(if [ \$(grep -c $hdname /proc/partitions) -gt 2 ]
@@ -276,9 +276,9 @@ w
 end_of_fdisk
 EOF
 
-	}
-	push (@devnames, $dev->devpath);
-	print "sed -i '\\:@{[$dev->devpath]}\$:d' @{[PART_FILE]}\n";
+        }
+        push (@devnames, $dev->devpath);
+        print "sed -i '\\:@{[$dev->devpath]}\$:d' @{[PART_FILE]}\n";
     }
     my $ndev = scalar(@devnames);
     print <<EOC;
