@@ -128,7 +128,7 @@ sub remove
 {
     my $self = shift;
 
-    CAF::Process->new([MDSTOP, $self->devpath])->execute();
+    CAF::Process->new([MDSTOP, $self->devpath], log => $this_app)->execute();
     foreach my $dev (@{$self->{device_list}}) {
         CAF::Process->new([MDZERO, $dev->devpath],
                           log => $this_app)->execute();
