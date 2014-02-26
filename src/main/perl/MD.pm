@@ -20,7 +20,7 @@ use warnings;
 
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
-use LC::Process qw (execute output);
+use CAF::Process;
 use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 our @ISA = qw (NCM::Blockdevices);
@@ -107,9 +107,11 @@ sub create
         $dev->create==0 or return $?;
         push (@devnames, $dev->devpath);
     }
-    execute ([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
-              MDSTRIPE.$self->{stripe_size},
-              MDDEVS.scalar(@{$self->{device_list}}), @devnames]);
+    CAF::Process->new([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
+                       MDSTRIPE.$self->{stripe_size},
+                       MDDEVS.scalar(@{$self->{device_list}}), @devnames],
+                       log => $this_app
+                       )->execute();
     $? && $this_app->error ("Couldn't create ", $self->devpath);
     return $?;
 }
@@ -126,9 +128,10 @@ sub remove
 {
     my $self = shift;
 
-    execute ([MDSTOP, $self->devpath]);
+    CAF::Process->new([MDSTOP, $self->devpath])->execute();
     foreach my $dev (@{$self->{device_list}}) {
-        execute ([MDZERO, $dev->devpath]);
+        CAF::Process->new([MDZERO, $dev->devpath],
+                          log => $this_app)->execute();
         $dev->remove==0 or return $?;
     }
     delete $mds{$self->{_cache_key}} if exists $self->{_cache_key};
@@ -147,7 +150,8 @@ Returns true if the device exists on the system.
 sub devexists
 {
     my $self = shift;
-    execute ([GREPCALL, $self->{devname}, "/proc/mdstat"]);
+    CAF::Process->new([GREPCALL, $self->{devname}, "/proc/mdstat"],
+                       log => $this_app)->execute();
     return !$?;
 }
 
@@ -179,7 +183,8 @@ sub new_from_system
 
     my $devname = $1;
 
-    my $lines = output (MDQUERY, $dev);
+    my $lines =  CAF::Process->new([MDQUERY, $dev],
+                                    log => $this_app)->output();
     my @devlist;
     $lines =~ m{Raid Level : (\w+)$}omg;
     my $level = uc ($1);
