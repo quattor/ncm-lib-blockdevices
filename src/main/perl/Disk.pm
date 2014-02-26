@@ -35,7 +35,7 @@ package NCM::Disk;
 use strict;
 use warnings;
 use NCM::Blockdevices qw ($this_app);
-use LC::Process qw (execute output);
+use CAF::Process;
 use EDG::WP4::CCM::Element qw (unescape);
 use LC::Exception;
 #use NCM::HWRaid;
@@ -169,7 +169,7 @@ sub partitions_in_disk
 
     local $ENV{LANG} = 'C';
 
-    my $line = output (PARTED, $self->devpath, PARTEDP);
+    my $line =  CAF::Process->new([PARTED, $self->devpath, PARTEDP], log => $this_app)->output();
 
     my @n = $line=~m/^\s*\d\s/mg;
     unless ($line =~ m/^(?:Disk label type|Partition Table): (\w+)/m) {
@@ -239,16 +239,14 @@ sub create
 
         if ($self->{label} ne NOPART) {
             $this_app->debug (5, "Initialising block device ",$self->devpath);
-            my @partedcmdlist=(PARTED, $self->devpath,
-                               CREATE, $self->{label});
-            $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
-            execute (\@partedcmdlist);
+            CAF::Process->new([PARTED, $self->devpath,
+                               CREATE, $self->{label}], 
+                              log => $this_app)->execute();
             sleep (SLEEPTIME);
         }
         else {
-            my $buffout;
             $this_app->debug (5, "Disk ", $self->devpath,": create (zeroing partition table)");
-            execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
+            my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();
             $this_app->debug (5, "dd output:\n", $buffout);
         }
         return $?;
@@ -269,10 +267,9 @@ sub remove
 {
     my $self = shift;
     unless ($self->partitions_in_disk) {
-        my $buffout;
         $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
-        execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
-        $this_app->debug (5, "dd output:\n ", $buffout);
+        my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();
+        $this_app->debug (5, "dd output:\n", $buffout);
 
         delete $disks{$self->{_cache_key}};
     }
