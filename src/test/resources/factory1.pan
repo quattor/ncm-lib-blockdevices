@@ -16,11 +16,23 @@ object template factory1;
 		"sdb1", nlist (
 			"holding_dev", "sdb",
 			"size", 100,
+			"type", "primary", # no defaults !
 			),
         "sdb2", nlist (
             "holding_dev", "sdb",
             "size", 100,
-            )
+            "type", "primary", # no defaults !
+            ),
+        "sdb3", nlist (
+            "holding_dev", "sdb",
+            "size", 3500,
+            "type", "extended",
+            ),
+        "sdb5", nlist (
+            "holding_dev", "sdb",
+            "type", "logical",
+            "size", 1024,
+            ),
         ),
 	"volume_groups", nlist (
 		"vg0", nlist (
