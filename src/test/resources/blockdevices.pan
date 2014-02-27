@@ -1,4 +1,4 @@
-object template factory1;
+unique template blockdevices;
 
 # keep BlockDevices happy
 "/system/network/hostname" = 'x';
@@ -25,10 +25,10 @@ object template factory1;
             ),
         "sdb3", nlist (
             "holding_dev", "sdb",
-            "size", 3500,
+            "size", 2500,
             "type", "extended",
             ),
-        "sdb5", nlist (
+        "sdb4", nlist (
             "holding_dev", "sdb",
             "type", "logical",
             "size", 1024,
