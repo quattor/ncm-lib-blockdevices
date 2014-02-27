@@ -184,6 +184,15 @@ sub create
     return $err if $err;
     $this_app->debug (5, "Partition $self->{devname}: ",
                          "creating" );
+    # TODO: deal with type/name/nothing
+    #   type is only type on msdos, becomes name on gpt
+    # from the parted guide http://www.gnu.org/software/parted/manual/html_node/mkpart.html
+    #   mkpart [part-type fs-type name] start end
+    #   ... 
+    #   part-type is one of ‘primary’, ‘extended’ or ‘logical’, and may be specified only with ‘msdos’ or ‘dvh’ partition tables. 
+    #   A name must be specified for a ‘gpt’ partition table. 
+    #   Neither part-type nor name may be used with a ‘sun’ partition table. 
+    #
     my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE,
                        $self->{type}, $self->begin, $self->end);
     if ( $self->{holding_dev}->{label} eq "msdos" &&
@@ -298,7 +307,10 @@ sub begin
     @lines = grep (m{^\s*\d+\s}, @lines);
     my $st = 0;
     my $re = BEGIN_RE;
-    $re .= BEGIN_TAIL_RE if $self->{holding_dev}->{label} eq MSDOS;
+    
+    my $label = $self->{holding_dev}->{label};
+    
+    $re .= BEGIN_TAIL_RE if $label eq MSDOS;
     # The new partition starts where the previous one ends, except
     # if the previous one is an extended and the new one a logical
     # partition. Then, the new logical partition starts where the
@@ -307,11 +319,17 @@ sub begin
         last unless $line =~ m!$re!;
         my ($n, $begin, $end, $type) = ($1, $2, $3, $4);
         if ($npart > $n) {
-            if ($self->{type} ne 'logical' || $type eq 'logical') {
+            if ($label eq MSDOS) {
+                # msdos (and dvh too) 
+                if ($self->{type} ne 'logical' || $type eq 'logical') {
+                    $st = $end;
+                }
+                else {
+                    $st = $begin if $type eq 'extended';
+                }
+            } else {
+                # type-field is used as name field in mkpart
                 $st = $end;
-            }
-            else {
-                $st = $begin if $type eq 'extended';
             }
         }
         else {
