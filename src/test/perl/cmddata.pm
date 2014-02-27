@@ -12,14 +12,14 @@ use warnings;
 our %cmds;
 our %files;
 
-$cmds{dd_init}{cmd}="dd if=/dev/zero of=/dev/sdb bs=1M count=1"; 
+$cmds{dd_init}{cmd}="/bin/dd if=/dev/zero of=/dev/sdb bs=1M count=1"; 
 $cmds{dd_init}{out} = <<'EOF';
 1+0 records in
 1+0 records out
 1048576 bytes (1.0 MB) copied, 0.0111167 s, 94.3 MB/s
 EOF
 
-$cmds{dd_init_1000}{cmd}="dd if=/dev/zero count=1000 of=/dev/sdb";
+$cmds{dd_init_1000}{cmd}="/bin/dd if=/dev/zero count=1000 of=/dev/sdb";
 $cmds{dd_init_1000}{out} = <<'EOF';
 1000+0 records in
 1000+0 records out
@@ -60,8 +60,8 @@ $cmds{file_s_sdb_nodata}{ec}=1;
 $cmds{file_s_sdb_data}{cmd}="file -s /dev/sdb";
 $cmds{file_s_sdb_data}{out}="/dev/sdb: data";
 
-$cmds{file_s_sdb_partitioned}{cmd}="file -s /dev/sdb";
-$cmds{file_s_sdb_partitioned}{out}="/dev/sdb: x86 boot sector; partition 1: ID=0xee, starthead 0, startsector 1, 8388607 sectors, extended partition table (last)\011, code offset 0x0";
+$cmds{file_s_sdb_labeled}{cmd}="file -s /dev/sdb";
+$cmds{file_s_sdb_labeled}{out}="/dev/sdb: x86 boot sector; partition 1: ID=0xee, starthead 0, startsector 1, 8388607 sectors, extended partition table (last)\011, code offset 0x0";
 
 $cmds{parted_print_sdb_nopart}{cmd}="/sbin/parted -s -- /dev/sdb print";
 $cmds{parted_print_sdb_nopart}{err}="Error: /dev/sdb: unrecognised disk label";
@@ -81,9 +81,16 @@ Written by <http://parted.alioth.debian.org/cgi-bin/trac.cgi/browser/AUTHORS>.
 EOF
 
 $cmds{parted_init_sdb_gpt}{cmd}="/sbin/parted -s /dev/sdb mklabel gpt";
+$cmds{parted_init_sdb_msdos}{cmd}="/sbin/parted -s -- /dev/sdb mklabel msdos";
 
-$cmds{parted_print_sdb_gptlabel}{cmd}="/sbin/parted -s -- /dev/sdb print";
-$cmds{parted_print_sdb_gptlabel}{out}= <<'EOF';
+$cmds{parted_mkpart_sdb_prim1}{cmd}="/sbin/parted -s -- /dev/sdb mkpart primary 0 100";
+$cmds{parted_mkpart_sdb_prim2}{cmd}="/sbin/parted -s -- /dev/sdb mkpart primary 100 200";
+$cmds{parted_mkpart_sdb_ext1}{cmd}="/sbin/parted -s -- /dev/sdb mkpart extended 200 2700";
+$cmds{parted_mkpart_sdb_log1_msdos}{cmd}="/sbin/parted -s -- /dev/sdb mkpart logical 200 1224";
+$cmds{parted_mkpart_sdb_log1_gpt}{cmd}="/sbin/parted -s -- /dev/sdb mkpart logical 2700 3724";
+
+$cmds{parted_print_sdb_label_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_label_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
 Sector size (logical/physical): 512B/512B
@@ -93,8 +100,19 @@ Number  Start  End  Size  File system  Name  Flags
 
 EOF
 
-$cmds{parted_print_sdb_2prim}{cmd}="/sbin/parted -s -- /dev/sdb print";
-$cmds{parted_print_sdb_2prim}{out}= <<'EOF';
+$cmds{parted_print_sdb_1prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_1prim_gpt}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start   End    Size   File system  Name     Flags
+ 1      17.4kB  100MB  100MB               primary
+EOF
+
+$cmds{parted_print_sdb_2prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
 Sector size (logical/physical): 512B/512B
@@ -102,7 +120,102 @@ Partition Table: gpt
 
 Number  Start   End    Size    File system  Name     Flags
  1      17.4kB  100MB  100MB                primary
- 2      101MB   200MB  99.6MB               primary
+ 2      100MB   200MB  100MB                primary
+
+EOF
+
+$cmds{parted_print_sdb_2prim_1ext_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_1ext_gpt}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start   End     Size    File system  Name      Flags
+ 1      17.4kB  100MB   100MB                primary
+ 2      100MB   200MB   100MB                primary
+ 3      200MB   2700MB  2500MB               extended
+
+EOF
+
+$cmds{parted_print_sdb_2prim_1ext_1log_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_1ext_1log_gpt}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start   End     Size    File system  Name      Flags
+ 1      17.4kB  100MB   100MB                primary
+ 2      100MB   200MB   100MB                primary
+ 3      200MB   2700MB  2500MB               extended
+ 4      2700MB  3724MB  1024MB               logical
+
+EOF
+
+$cmds{parted_print_sdb_label_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_label_msdos}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+
+Number  Start  End  Size  Type  File system  Flags
+
+EOF
+
+$cmds{parted_print_sdb_1prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_1prim_msdos}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+
+Number  Start  End    Size   Type     File system  Flags
+ 1      512B   100MB  100MB  primary
+
+EOF
+
+$cmds{parted_print_sdb_2prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_msdos}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+
+Number  Start  End    Size   Type     File system  Flags
+ 1      512B   100MB  100MB  primary
+ 2      100MB  200MB  100MB  primary
+
+EOF
+
+$cmds{parted_print_sdb_2prim_1ext_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_1ext_msdos}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+
+Number  Start  End     Size    Type      File system  Flags
+ 1      512B   100MB   100MB   primary
+ 2      100MB  200MB   100MB   primary
+ 3      200MB  2700MB  2500MB  extended               lba
+
+EOF
+
+
+$cmds{parted_print_sdb_2prim_1ext_1log_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_1ext_1log_msdos}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: msdos
+
+Number  Start  End     Size    Type      File system  Flags
+ 1      512B   100MB   100MB   primary
+ 2      100MB  200MB   100MB   primary
+ 3      200MB  3700MB  3500MB  extended               lba
+ 5      200MB  1224MB  1024MB  logical
 
 EOF
 

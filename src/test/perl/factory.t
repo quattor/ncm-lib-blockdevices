@@ -10,11 +10,11 @@ use warnings;
 use Test::More;
 use NCM::BlockdevFactory qw (build);
 use CAF::Object;
-use Test::Quattor qw(factory1);
+use Test::Quattor qw(blockdevices_gpt);
 
 $CAF::Object::NoAction = 1;
 
-my $cfg = get_config_for_profile('factory1');
+my $cfg = get_config_for_profile('blockdevices_gpt');
 
 my $o = build ($cfg, "physical_devs/sdb");
 is (ref ($o), "NCM::Disk", "Disk correctly instantiated");

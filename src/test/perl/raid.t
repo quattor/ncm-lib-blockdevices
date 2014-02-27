@@ -9,19 +9,19 @@ use strict;
 use warnings;
 use Test::More;
 
-use Test::Quattor qw(factory1);
+use Test::Quattor qw(blockdevices_gpt);
 
 use helper qw(set_output);
 
 use NCM::MD;
 
-my $cfg = get_config_for_profile('factory1');
+my $cfg = get_config_for_profile('blockdevices_gpt');
 my $md = NCM::MD->new ("/system/blockdevices/md/md0", $cfg);
 is (ref ($md), "NCM::MD", "MD correctly instantiated");
 
 # doesn't exist yet
 set_output("file_s_sdb_data"); # sdb exists (test via file -s)
-set_output("parted_print_sdb_2prim"); # sdb has 2 partitions
+set_output("parted_print_sdb_2prim_gpt"); # sdb has 2 partitions
 set_output("grepq_no_md0");
 set_output("mdadm_create_2");
 my $err = $md->create;
