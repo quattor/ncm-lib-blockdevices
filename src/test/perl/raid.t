@@ -1,5 +1,10 @@
 #!/usr/bin/perl 
 # -*- mode: cperl -*-
+# ${license-info}
+# ${developer-info}
+# ${author-info}
+# ${build-info}
+
 use strict;
 use warnings;
 use Test::More;

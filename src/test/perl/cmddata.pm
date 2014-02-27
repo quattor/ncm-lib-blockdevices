@@ -1,3 +1,8 @@
+# ${license-info}
+# ${developer-info}
+# ${author-info}
+# ${build-info}
+
 package cmddata;
 
 use strict;
