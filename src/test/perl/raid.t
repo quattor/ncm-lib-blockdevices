@@ -23,10 +23,11 @@ sub set_output {
 # can't run this early enough
 # triggers a: Use of uninitialized value $out in pattern match (m//) at 
 # .../target/lib/perl/NCM/Partition.pm line 88.
-# retest it here
+# retest it here, also check the constant (that's the one being used)
 set_output("parted_version_2");  # force this version
 use NCM::Partition;
-is(NCM::Partition->extra_args(),(),"No extra args for parted, version OK");
+is(NCM::Partition->extra_args(),(), "No extra args for parted, version OK");
+is(NCM::Partition::PARTEDEXTRA, (), "No extra args for parted");
 
 # mock devexists, it has a -b test, which can't be mocked
 # e.g. http://stackoverflow.com/questions/1954529/perl-mocking-d-f-and-friends-how-to-put-them-into-coreglobal
