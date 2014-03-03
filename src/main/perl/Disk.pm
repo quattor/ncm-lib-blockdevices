@@ -152,7 +152,7 @@ sub new_from_system
 
     my ($devname) = $dev =~ m{/dev/(.*)};
 
-    my $cache_key = $class->get_cache_key($cfg, "/system/blockdevices/physical_devs/" . $devname);
+    my $cache_key = $class->get_cache_key("/system/blockdevices/physical_devs/" . $devname, $cfg);
     return $disks{$cache_key} if exists $disks{$cache_key};
 
     my $self = {devname    => $devname,
