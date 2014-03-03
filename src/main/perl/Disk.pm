@@ -94,8 +94,11 @@ sub new
      # Only one instance per disk is allowed, but disks of different hosts
      # should be separate objects
      my $cache_key = $class->get_cache_key($path, $config);
-     return $disks{$cache_key} if exists $disks{$cache_key};
-     return $class->SUPER::new ($path, $config);
+     if (!exists $disks{$cache_key}) {
+         my $disk = $class->SUPER::new ($path, $config);
+         $disks{$cache_key} = $disk;
+     }
+     return $disks{$cache_key};
 }
 
 =pod
