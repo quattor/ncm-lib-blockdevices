@@ -96,6 +96,13 @@ $cmds{parted_mkpart_sdb_ext1}{cmd}="/sbin/parted -s -- /dev/sdb mkpart extended 
 $cmds{parted_mkpart_sdb_log1_msdos}{cmd}="/sbin/parted -s -- /dev/sdb mkpart logical 200 1224";
 $cmds{parted_mkpart_sdb_log1_gpt}{cmd}="/sbin/parted -s -- /dev/sdb mkpart logical 2700 3724";
 
+$cmds{parted_rm_1}{cmd}="/sbin/parted -s -- /dev/sdb rm 1";
+$cmds{parted_rm_2}{cmd}="/sbin/parted -s -- /dev/sdb rm 2";
+$cmds{parted_rm_3}{cmd}="/sbin/parted -s -- /dev/sdb rm 3";
+$cmds{parted_rm_4}{cmd}="/sbin/parted -s -- /dev/sdb rm 4";
+$cmds{parted_rm_5}{cmd}="/sbin/parted -s -- /dev/sdb rm 5";
+
+
 $cmds{parted_print_sdb_label_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
 $cmds{parted_print_sdb_label_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
