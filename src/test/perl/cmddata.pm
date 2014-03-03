@@ -3,6 +3,13 @@
 # ${author-info}
 # ${build-info}
 
+=pod
+
+=head1 cmddata module
+
+This module provides raw command data (output and exit code) and file content. 
+
+=cut
 package cmddata;
 
 use strict;

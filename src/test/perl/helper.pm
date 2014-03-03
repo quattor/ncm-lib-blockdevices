@@ -3,6 +3,16 @@
 # ${author-info}
 # ${build-info}
 
+=pod
+
+=head1 helper module
+
+A helper module that gives runs common checks, overwrites NCM::Disk devexists 
+and provides set_output, a wrapper around the data in the cmddata module and the 
+set_desired_output, set_desired_err and set_command_status functions.
+
+=cut
+
 package helper;
 
 use strict;
@@ -30,8 +40,6 @@ sub set_output {
 };
 
 # can't run this early enough
-# triggers a: Use of uninitialized value $out in pattern match (m//) at 
-# .../target/lib/perl/NCM/Partition.pm line 88.
 # retest it here, also check the constant (that's the one being used)
 set_output("parted_version_2");  # force this version
 use NCM::Partition;
