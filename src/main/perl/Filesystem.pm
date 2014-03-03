@@ -74,16 +74,15 @@ Arguments: $_[1] the line on /etc/fstab specifying the filesystem.
 sub new_from_fstab
 {
     my ($class, $line, $config) = @_;
-
     $line =~ m{^(\S+)\s+(\S+)\s};
     my ($dev, $mountp) = ($1, $2);
     my $p = CAF::Process->new ([MOUNT, $mountp],
                                log => $this_app)->run();
 
     if ($dev =~ m/^LABEL=/) {
-        open (FH, MTAB);
-        my @mtd = <FH>;
-        close (FH);
+        my $fh = CAF::FileEditor->new(MTAB, log => $this_app);
+        my @mtd = split("\n", "$fh");
+        $fh->close();
         @mtd = grep (m{^\S+\s+$mountp/?\s}, @mtd);
         $dev = $mtd[0];
         $dev =~ s{^(\S+)\s.*}{$1};
