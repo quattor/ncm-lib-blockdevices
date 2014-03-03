@@ -13,6 +13,8 @@ use NCM::Disk;
 use CAF::Object;
 use Test::Quattor qw(blockdevices_readahead);
 
+use helper; # at least to set the this_app log 
+
 $CAF::Object::NoAction = 1;
 
 my $cfg = get_config_for_profile('blockdevices_readahead');

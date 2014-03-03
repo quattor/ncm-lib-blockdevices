@@ -27,6 +27,13 @@ use Test::Quattor;
 $Test::Quattor::log_cmd=$ENV{QUATTOR_TEST_LOG_CMD} || 0;
 $Test::Quattor::log_cmd_missing=$ENV{QUATTOR_TEST_LOG_CMD_MISSING}  || 0;
 
+# force this_app, so most log => $this_app works
+# in particular, this is not mocked in FileWriter/FileEditor
+use NCM::Component;
+my $cmp=NCM::Component->new("dummy");
+use NCM::Blockdevices;
+$NCM::Blockdevices::this_app = $cmp;
+
 use CAF::Object;
 $CAF::Object::NoAction = 1;
 
