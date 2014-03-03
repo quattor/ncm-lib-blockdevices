@@ -189,9 +189,7 @@ sub set_readahead
     my $re = join (" ", SETRA) . ".*", $self->devpath;
     my $okcmd = join (" ", SETRA, $self->{readahead}, $self->devpath);
     
-    # can't use log => $this_app here 
-    #   (the unittests would fail, because they lack a proper logger)
-    my $fh = CAF::FileEditor->open (RCLOCAL);
+    my $fh = CAF::FileEditor->open (RCLOCAL, log => $this_app);
                                             
     $fh->add_or_replace_lines ($re,
                                $okcmd,
