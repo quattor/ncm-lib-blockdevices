@@ -70,6 +70,12 @@ $cmds{file_s_sdb_data}{out}="/dev/sdb: data";
 $cmds{file_s_sdb_labeled}{cmd}="file -s /dev/sdb";
 $cmds{file_s_sdb_labeled}{out}="/dev/sdb: x86 boot sector; partition 1: ID=0xee, starthead 0, startsector 1, 8388607 sectors, extended partition table (last)\011, code offset 0x0";
 
+$cmds{file_s_sdb1_data}{cmd}="file -s /dev/sdb1";
+$cmds{file_s_sdb1_data}{out}="/dev/sdb1: data";
+
+$cmds{file_s_sdb1_ext3}{cmd}="file -s /dev/sdb1";
+$cmds{file_s_sdb1_ext3}{out}="/dev/sdb1: Linux rev 1.0 ext3 filesystem data";
+
 $cmds{parted_print_sdb_nopart}{cmd}="/sbin/parted -s -- /dev/sdb print";
 $cmds{parted_print_sdb_nopart}{err}="Error: /dev/sdb: unrecognised disk label";
 $cmds{parted_print_sdb_nopart}{ec}=1;
@@ -257,3 +263,31 @@ Personalities : [raid0]
 unused devices: <none>
 EOF
 
+$cmds{fs_lagoon_missing}{cmd}="/bin/grep -q [^#]*/Lagoon[[:space:]] /etc/fstab";
+$cmds{fs_lagoon_missing}{ec}=1;
+
+$cmds{fs_sdb1_mkfs_ext3}{cmd}="/sbin/mkfs.ext3 /dev/sdb1";
+$cmds{fs_sdb1_mkfs_ext3}{out}= <<'EOF';
+mke2fs 1.41.12 (17-May-2010)
+Filesystem label=
+OS type: Linux
+Block size=1024 (log=0)
+Fragment size=1024 (log=0)
+Stride=0 blocks, Stripe width=0 blocks
+24480 inodes, 97656 blocks
+4882 blocks (5.00%) reserved for the super user
+First data block=1
+Maximum filesystem blocks=67371008
+12 block groups
+8192 blocks per group, 8192 fragments per group
+2040 inodes per group
+Superblock backups stored on blocks: 
+    8193, 24577, 40961, 57345, 73729
+
+Writing inode tables: done                            
+Creating journal (4096 blocks): done
+Writing superblocks and filesystem accounting information: done
+
+This filesystem will be automatically checked every 34 mounts or
+180 days, whichever comes first.  Use tune2fs -c or -i to override.
+EOF
