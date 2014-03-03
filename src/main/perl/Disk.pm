@@ -36,6 +36,7 @@ use strict;
 use warnings;
 use NCM::Blockdevices qw ($this_app);
 use CAF::Process;
+use CAF::FileEditor;
 use EDG::WP4::CCM::Element qw (unescape);
 use LC::Exception;
 #use NCM::HWRaid;
@@ -178,33 +179,25 @@ sub partitions_in_disk
     return $1 eq 'loop'? 0:scalar (@n);
 }
 
-# Sets the readahead for the device.
+# Sets the readahead for the device by modifying /etc/rc.local.
+#   It does NOT actually set the readahead (SETRA and RCLOCAL are not run/executed.). 
 sub set_readahead
 {
     my $self = shift;
 
-    open (FH, RCLOCAL);
-    my @lines = <FH>;
-    close (FH);
-    chomp (@lines);
+    my $comment = " # Readahead set by Disk.pm";
     my $re = join (" ", SETRA) . ".*", $self->devpath;
-    my $f = 0;
-    @lines = map {
-        if (m/$re/) {
-            $f = 1;
-            join (" ", SETRA, $self->{readahead}, $self->devpath);
-        }
-        else {
-             $_;
-        }
-    } @lines;
-    push (@lines,
-          "# Readahead set by Disk.pm\n",
-          join (" ", SETRA, $self->{readahead}, $self->devpath))
-          unless $f;
-    open (FH, ">".RCLOCAL);
-    print FH join ("\n", @lines), "\n";
-    close (FH);
+    my $okcmd = join (" ", SETRA, $self->{readahead}, $self->devpath);
+    
+    # can't use log => $this_app here 
+    #   (the unittests would fail, because they lack a proper logger)
+    my $fh = CAF::FileEditor->open (RCLOCAL);
+                                            
+    $fh->add_or_replace_lines ($re,
+                               $okcmd,
+                               $okcmd.$comment, # append comment
+                               ENDING_OF_FILE);
+    $fh->close();
 }
 
 
