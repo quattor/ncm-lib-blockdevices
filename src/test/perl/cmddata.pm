@@ -291,3 +291,15 @@ Writing superblocks and filesystem accounting information: done
 This filesystem will be automatically checked every 34 mounts or
 180 days, whichever comes first.  Use tune2fs -c or -i to override.
 EOF
+
+$cmds{fs_sdb1_parted_print_ext3}{cmd}="/sbin/parted -s -- /dev/sdb1 print";
+$cmds{fs_sdb1_parted_print_ext3}{out}= <<'EOF';
+Model: Unknown (unknown)
+Disk /dev/sdb1: 100MB
+Sector size (logical/physical): 512B/512B
+Partition Table: loop
+
+Number  Start  End    Size   File system  Flags
+ 1      0.00B  100MB  100MB  ext3
+
+EOF
