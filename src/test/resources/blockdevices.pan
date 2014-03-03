@@ -41,7 +41,7 @@ unique template blockdevices;
 		),
 	"md", nlist (
 		"md0", nlist (
-			"device_list", list ("partitions/sdb1"),
+			"device_list", list ("partitions/sdb1", "partitions/sdb2"),
 			"raid_level", "RAID0",
 			"stripe_size", 64,
 			)
