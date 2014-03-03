@@ -11,9 +11,6 @@ use Test::More;
 
 use Test::Quattor qw(blockdevices_gpt);
 
-#$Test::Quattor::log_cmd=1;
-#$Test::Quattor::log_cmd_missing=1;
-
 use helper qw(set_output);
 
 use NCM::Partition;
