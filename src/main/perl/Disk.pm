@@ -73,7 +73,7 @@ and Pan path (i.e: host1:/system/blockdevices/disks/sda).
 
 =cut
 
-our %disks = ();
+our %disks;
 
 =pod
 
@@ -94,10 +94,7 @@ sub new
     # Only one instance per disk is allowed, but disks of different hosts
     # should be separate objects
     my $cache_key = $class->get_cache_key($path, $config);
-    if (!exists $disks{$cache_key}) {
-        my $disk = $class->SUPER::new ($path, $config);
-        $disks{$cache_key} = $disk;
-    }
+    $disks{$cache_key} ||= $class->SUPER::new ($path, $config);
     return $disks{$cache_key};
 }
 
@@ -243,7 +240,7 @@ sub create
         if ($self->{label} ne NOPART) {
             $this_app->debug (5, "Initialising block device ",$self->devpath);
             CAF::Process->new([PARTED, $self->devpath,
-                               CREATE, $self->{label}], 
+                               CREATE, $self->{label}],
                               log => $this_app)->execute();
             sleep (SLEEPTIME);
         }
@@ -273,8 +270,7 @@ sub remove
         $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
         my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();
         $this_app->debug (5, "dd output:\n", $buffout);
-
-        delete $disks{$self->{_cache_key}};
+        #delete $disks{$self->{_cache_key}};
     }
     return 0;
 }

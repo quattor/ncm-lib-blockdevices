@@ -7,8 +7,8 @@
 
 =head1 helper module
 
-A helper module that gives runs common checks, overwrites NCM::Disk devexists 
-and provides set_output, a wrapper around the data in the cmddata module and the 
+A helper module that gives runs common checks, overwrites NCM::Disk devexists
+and provides set_output, a wrapper around the data in the cmddata module and the
 set_desired_output, set_desired_err and set_command_status functions.
 
 =cut
@@ -17,8 +17,8 @@ package helper;
 
 use strict;
 use warnings;
-
 use base 'Exporter';
+use Test::MockModule;
 our @EXPORT = qw(set_output);
 
 use Test::More;
@@ -50,8 +50,5 @@ is(NCM::Partition->extra_args(),(), "No extra args for parted, version OK");
 is(NCM::Partition::PARTEDEXTRA, (), "No extra args for parted");
 
 # mock devexists, it has a -b test, which can't be mocked
-# e.g. http://stackoverflow.com/questions/1954529/perl-mocking-d-f-and-friends-how-to-put-them-into-coreglobal
-use NCM::Disk;
-*NCM::Disk::devexists   = \&main::mock_devexists;
-sub mock_devexists { return 1; }
-
+our $mockdisk = Test::MockModule->new('NCM::Disk');
+$mockdisk->mock('devexists', 1);

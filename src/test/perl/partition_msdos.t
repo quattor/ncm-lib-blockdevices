@@ -1,4 +1,4 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl
 # -*- mode: cperl -*-
 # ${license-info}
 # ${developer-info}
@@ -13,7 +13,6 @@ use Test::Quattor qw(blockdevices_msdos);
 
 use helper qw(set_output);
 
-use Data::Dumper;
 use NCM::Disk;
 use NCM::Partition;
 
@@ -31,7 +30,6 @@ is ($sdb1->create, 0, "Partition $sdb1->{devname} on logical partitions test cre
 set_output("parted_print_sdb_1prim_msdos"); # needed to update for begin/end calculations
 is($sdb1->{holding_dev}->partitions_in_disk, 1, "partition created correctly");
 is(scalar(keys %NCM::Disk::disks), 1, "One known disk in NCM::Disk");
-diag("NCM::Disk known disks ".Dumper(\%NCM::Disk::disks));
 
 set_output("parted_mkpart_sdb_prim2");
 my $sdb2 = NCM::Partition->new ("/system/blockdevices/partitions/sdb2", $cfg);
@@ -40,7 +38,6 @@ set_output("parted_print_sdb_2prim_msdos"); # needed to update for begin/end cal
 is($sdb1->{holding_dev}, $sdb2->{holding_dev}, "Using the same disk instance sdb1 sdb2");
 is($sdb2->{holding_dev}->partitions_in_disk, 2, "partition created correctly");
 is(scalar(keys %NCM::Disk::disks), 1, "One known disk in NCM::Disk");
-diag("NCM::Disk known disks ".Dumper(\%NCM::Disk::disks));
 
 set_output("parted_mkpart_sdb_ext1");
 my $sdb3 = NCM::Partition->new ("/system/blockdevices/partitions/sdb3", $cfg);
@@ -67,7 +64,7 @@ ok($sdb5->devexists, 'Partition sdb5 exists (on msdos label)');
 
 
 set_output('parted_rm_5');
-ok($sdb5->remove, 'Partition sdb5 removed (on msdos label)');
+is($sdb5->remove, 0, 'Partition sdb5 removed (on msdos label)');
 set_output("parted_print_sdb_2prim_1ext_msdos");
 
 
