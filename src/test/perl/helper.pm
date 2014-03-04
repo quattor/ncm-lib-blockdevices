@@ -52,3 +52,5 @@ is(NCM::Partition::PARTEDEXTRA, (), "No extra args for parted");
 # mock devexists, it has a -b test, which can't be mocked
 our $mockdisk = Test::MockModule->new('NCM::Disk');
 $mockdisk->mock('devexists', 1);
+
+1;

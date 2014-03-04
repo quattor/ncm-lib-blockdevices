@@ -9,13 +9,13 @@ use strict;
 use warnings;
 use Test::More;
 
-use Test::Quattor qw(blockdevices_gpt);
+use Test::Quattor qw(raid);
 
 use helper qw(set_output);
 
 use NCM::MD;
 
-my $cfg = get_config_for_profile('blockdevices_gpt');
+my $cfg = get_config_for_profile('raid');
 my $md = NCM::MD->new ("/system/blockdevices/md/md0", $cfg);
 is (ref ($md), "NCM::MD", "MD correctly instantiated");
 
