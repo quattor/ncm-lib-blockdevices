@@ -24,13 +24,11 @@ use Cwd qw(abs_path);
 use constant MOUNTPOINTPERMS => 0755;
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant DISK	=> "physical_devs/";
-use constant SED	=> qw (/bin/sed -i);
 use constant UMOUNT	=> "/bin/umount";
 use constant MOUNT	=> "/bin/mount";
 use constant REMOUNT	=> qw (/bin/mount -o remount);
 use constant FSTAB	=> "/etc/fstab";
 use constant MTAB	=> "/etc/mtab";
-use constant GREP	=> qw (/bin/grep -q);
 use constant MKFSLABEL	=> '-L';
 use constant MKFSFORCE	=> '-f';
 use constant SWAPON	=> '/sbin/swapon';
@@ -79,11 +77,10 @@ sub new_from_fstab
     my $p = CAF::Process->new ([MOUNT, $mountp],
                                log => $this_app)->run();
 
-    if ($dev =~ m/^LABEL=/) {
+    if ($dev =~ m/^(LABEL|UUID)=/) {
         my $fh = CAF::FileEditor->new(MTAB, log => $this_app);
-        my @mtd = split("\n", "$fh");
+        my @mtd = grep (m{^\S+\s+$mountp/?\s}, split("\n", "$fh"));
         $fh->close();
-        @mtd = grep (m{^\S+\s+$mountp/?\s}, @mtd);
         $dev = $mtd[0];
         $dev =~ s{^(\S+)\s.*}{$1};
     }
@@ -120,9 +117,10 @@ Returns whether the filesystem is mounted
 sub mounted
 {
     my $self = shift;
-    CAF::Process->new ([GREP, $self->{mountpoint}, MTAB],
-                       log => $this_app)->run();
-    return !$?;
+    my $fh = CAF::FileEditor->new(MTAB, log => $this_app);
+    @mtd = grep (m{^\S+\s+$self->{mountpoint}/?\s}, split("\n", "$fh"));
+    $fh->close();
+    return scalar @mtd;
 }
 
 =pod
@@ -150,8 +148,10 @@ sub remove_if_needed
         return $? if $?;
     }
     $self->{block_device}->remove==0 or return $?;
-    CAF::Process->new ([SED, "\\:$self->{mountpoint}\\s:d", FSTAB],
-              log => $this_app)->run();
+    my $fh = CAF::FileEditor->new (FSTAB, log => $this_app);
+    my $reg="\s$self->{mountpoint}\s";
+    $fh->remove_lines(qr/$reg/, qr/^$/); # goodre ^$ (empty string) should never match  
+    $fh->close();
     rmdir ($self->{mountpoint});
     return $?;
 }
@@ -162,7 +162,7 @@ sub remove_if_needed
 sub update_fstab
 {
     my ($self, $fh) = @_;
-    $fh = CAF::FileEditor->new ("/etc/fstab", log => $this_app) unless $fh;
+    $fh = CAF::FileEditor->new (FSTAB, log => $this_app) unless $fh;
     my $s = $fh->string_ref();
     $$s =~ s{.*\s+$self->{mountpoint}\s+.*\n}{};
     $fh->set_contents($$s);
@@ -251,9 +251,10 @@ sub create_if_needed
 {
     my $self = shift;
 
-    CAF::Process->new ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB],
-                       log => $this_app)->run();
-    if (!$?) {
+    my $fh = CAF::FileEditor->new(FSTAB, log => $this_app);
+    my @mtd = grep (m{^\s*[^#]\S+\s+$self->{mountpoint}/?\s}, split("\n", "$fh"));
+    $fh->close();
+    if (scalar @mtd) {
         $this_app->debug (5, "Filesystem $self->{mountpoint} already exists: ",
                   "leaving.");
         return 0;
