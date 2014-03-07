@@ -78,14 +78,22 @@ is($fs->mountpoint_in_fstab, 1, 'Mountpoint in fstab');
 
 
 command_history_reset;
-diag('removing filesystems');
-my $nofs_cfg = get_config_for_profile('filesystem');
+my $nofs_cfg = get_config_for_profile('filesystem_removed');
 my $nofs = NCM::Filesystem->new ("/system/filesystems/0", $nofs_cfg);
+# this test is actually a test of the profile
+ok(!($nofs->{preserve} || !$nofs->{format}), 'Allow removal');
 command_history_reset;
+set_file("fstab_sdb1_ext3");
 $nofs->remove_if_needed;
 # TODO 
-#   should call parted delete
 #   fstab should not have that line anymore
+ok(command_history_ok([
+    "/bin/umount /Lagoon",
+    "/sbin/parted -s -- /dev/sdb rm 1",
+    ],
+    "Removal commands called")
+);
+unlike(get_file('/etc/fstab'), qr#\s+/Lagoon\s+#, 'Mountpoint removed to fstab');
 
 done_testing();
 
