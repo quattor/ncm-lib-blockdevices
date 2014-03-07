@@ -122,8 +122,9 @@ sub create_ks
 
 Returns true if the block device has been formatted with a supported filesystem.                                                                                                         
 If a second argument is set, returns true if the block device has been formatted                                                                                                         
-with that filesystem (if it is supported). If the filesystem is not supported,                                                                                                           
-returns false.                                                                                                                                                                           
+with that filesystem (if it is supported). 
+If the filesystem is not supported, print warning and check with all supported 
+filesystems (default behaviour, returning false might lead to removal of data).                                                                                                                                                                           
                                                                                                                                                                                          
 Current supported filesystems are ext2-4, reiser, jfs, xfs, btrfs and swap.                                                                                                              
                                                                                                                                                                                          
