@@ -20,12 +20,14 @@ use warnings;
 
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
+use CAF::FileEditor;
 use CAF::Process;
 use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 our @ISA = qw (NCM::Blockdevices);
 
 use constant BASEPATH	=> "/system/blockdevices/";
+use constant MDSTAT => "/proc/mdstat";
 use constant MDPATH	=> "md/";
 use constant MDCREATE	=> qw (/sbin/mdadm --create --run);
 use constant MDZERO	=> qw (/sbin/mdadm --zero-superblock);
@@ -36,7 +38,6 @@ use constant MDSTOP	=> qw (/sbin/mdadm --stop);
 use constant MDFAIL	=> qw (/sbin/mdadm --fail);
 use constant MDREMOVE	=> qw (/sbin/mdadm --remove);
 use constant MDQUERY	=> qw (/sbin/mdadm --detail);
-use constant GREPCALL	=> qw (/bin/grep -q);
 
 our %mds = ();
 
@@ -150,9 +151,10 @@ Returns true if the device exists on the system.
 sub devexists
 {
     my $self = shift;
-    CAF::Process->new([GREPCALL, $self->{devname}, "/proc/mdstat"],
-                       log => $this_app)->execute();
-    return !$?;
+    my $fh = CAF::FileEditor->new(MDSTAT, log => $this_app);
+    @mtd = grep (m{^\s*$self->{devname}\s}, split("\n", "$fh"));
+    $fh->close();
+    return scalar @mtd;
 }
 
 =pod
