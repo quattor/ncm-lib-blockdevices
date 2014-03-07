@@ -47,8 +47,6 @@ our @ISA = qw (NCM::Blockdevices);
 
 use constant DD		=> "/bin/dd";
 use constant CREATE	=> "mklabel";
-use constant GREP	=> "/bin/grep";
-use constant GREPARGS	=> "-c";
 use constant NOPART	=> "none";
 use constant RCLOCAL	=> "/etc/rc.local";
 
