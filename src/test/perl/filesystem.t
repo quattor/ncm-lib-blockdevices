@@ -10,7 +10,7 @@ use warnings;
 use Test::More;
 use NCM::Filesystem;
 use CAF::Object;
-use Test::Quattor qw(filesystem filesystem_removed);
+use Test::Quattor qw(filesystem);
 
 use helper; 
 
@@ -83,8 +83,7 @@ is($fs->mountpoint_in_fstab, 1, 'Mountpoint in fstab');
 
 
 command_history_reset;
-my $nofs_cfg = get_config_for_profile('filesystem_removed');
-my $nofs = NCM::Filesystem->new ("/system/filesystems/0", $nofs_cfg);
+my $nofs = NCM::Filesystem->new ("/system/filesystems/1", $cfg);
 # this test is actually a test of the profile
 ok(!($nofs->{preserve} || !$nofs->{format}), 'Allow removal');
 command_history_reset;
@@ -126,6 +125,72 @@ is($sdb1->has_filesystem('ext4'), 1, 'Partition sdb1 has ext4 filesystem');
 is($sdb1->has_filesystem('xfs'), 1, 'Partition sdb1 has ext4 filesystem');
 is($sdb1->has_filesystem('btrfs'), 1, 'Partition sdb1 has ext4 filesystem');
 
+# formatfs
+# force_filesystem is set to true
+#   mkfs is called
+
+set_output("file_s_sdb1_data");
+command_history_reset;
+$fs->formatfs;
+ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'mkfs.ext3 called');
+
+# regular filesystem type, filesystem present 
+#   no mkfs is called
+set_output("file_s_sdb1_ext3");
+command_history_reset;
+$fs->formatfs;
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
+
+# type none
+#   no mkfs called
+my $nonefs = NCM::Filesystem->new ("/system/filesystems/2", $cfg);
+set_output("file_s_sdb1_data");
+command_history_reset;
+$nonefs->formatfs;
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
+
+set_output("file_s_sdb1_ext3");
+command_history_reset;
+$nonefs->formatfs;
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
+
+
+# force_filesystem is set to false
+my $forcefalsefs = NCM::Filesystem->new ("/system/filesystems/3", $cfg);
+#   regular filesystem type, no filesystem present
+#     mkfs is called
+set_output("file_s_sdb1_data");
+command_history_reset;
+$forcefalsefs->formatfs;
+ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'mkfs.ext3 called');
+#   regular filesystem type, filesystem present 
+#     no mkfs is called
+set_output("file_s_sdb1_ext3");
+command_history_reset;
+$forcefalsefs->formatfs;
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
+
+# regular filesystem type, no filesystem present
+#  mkfs is called
+my $forcetruefs = NCM::Filesystem->new ("/system/filesystems/4", $cfg);
+set_output("file_s_sdb1_data");
+command_history_reset;
+$forcetruefs->formatfs;
+ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'mkfs.ext3 called');
+
+# filesystem is present and it's the correct one
+#   mkfs not called
+set_output("file_s_sdb1_ext3");
+command_history_reset;
+$forcetruefs->formatfs;
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
+
+# filesystem is present and it's the wrong one
+#   mkfs called
+set_output("file_s_sdb1_btrfs");
+command_history_reset;
+$forcetruefs->formatfs;
+ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'mkfs.ext3 called');
 
 done_testing();
 

@@ -76,6 +76,9 @@ $cmds{file_s_sdb1_data}{out}="/dev/sdb1: data";
 $cmds{file_s_sdb1_ext3}{cmd}="file -s /dev/sdb1";
 $cmds{file_s_sdb1_ext3}{out}="/dev/sdb1: Linux rev 1.0 ext3 filesystem data";
 
+$cmds{file_s_sdb1_btrfs}{cmd}="file -s /dev/sdb1";
+$cmds{file_s_sdb1_btrfs}{out}="/dev/sdb1: BTRFS Filesystem sectorsize 4096, nodesize 4096, leafsize 4096";
+
 # all but jfs and reiser
 $cmds{file_s_sdb1_all_supported}{cmd}="file -s /dev/sdb1";
 $cmds{file_s_sdb1_all_supported}{out}=<<'EOF';
