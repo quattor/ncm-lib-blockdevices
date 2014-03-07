@@ -133,7 +133,7 @@ sub has_filesystem
 {
     my ($self, $fs) = @_;
 
-    my $all_fs_regex = qr/(ext[2-4]|reiser|jfs|xfs|btrfs|swap)/;
+    my $all_fs_regex = '(ext[2-4]|reiser|jfs|xfs|btrfs|swap)';
     my $fsregex = $all_fs_regex;
 
     if ($fs) {

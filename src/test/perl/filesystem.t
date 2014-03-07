@@ -99,8 +99,9 @@ ok(command_history_ok([
 );
 unlike(get_file('/etc/fstab'), qr#\s+/Lagoon\s+#, 'Mountpoint removed to fstab');
 
-
+#
 # test has_filesystem
+#
 my $sdb1=$fs->{block_device};
 is($sdb1->{devname}, 'sdb1', 'Correct partition found');
 
@@ -110,6 +111,12 @@ set_output("file_s_sdb1_ext3");
 is($sdb1->has_filesystem, 1, 'Partition sdb1 has filesystem');
 is($sdb1->has_filesystem('ext3'), 1, 'Partition sdb1 has ext3 filesystem');
 is($sdb1->has_filesystem('ext4'), '', 'Partition sdb1 does not have ext4 filesystem');
+is($sdb1->has_filesystem('superfilesystem'), 1, 'fs superfilesystem is not supported, but sdb1 has a supported filesystem');
+
+set_output("file_s_sdb1_btrfs");
+is($sdb1->has_filesystem, 1, 'Partition sdb1 has filesystem');
+is($sdb1->has_filesystem('btrfs'), 1, 'Partition sdb1 has btrfs filesystem');
+is($sdb1->has_filesystem('ext3'), '', 'Partition sdb1 does not have ext3 filesystem');
 is($sdb1->has_filesystem('superfilesystem'), 1, 'fs superfilesystem is not supported, but sdb1 has a supported filesystem');
 
 # supported filesystems
@@ -122,13 +129,15 @@ is($sdb1->has_filesystem('superfilesystem'), 1, 'fs superfilesystem is not suppo
 is($sdb1->has_filesystem('ext2'), 1, 'Partition sdb1 has ext3 filesystem');
 is($sdb1->has_filesystem('ext3'), 1, 'Partition sdb1 has ext3 filesystem');
 is($sdb1->has_filesystem('ext4'), 1, 'Partition sdb1 has ext4 filesystem');
-is($sdb1->has_filesystem('xfs'), 1, 'Partition sdb1 has ext4 filesystem');
-is($sdb1->has_filesystem('btrfs'), 1, 'Partition sdb1 has ext4 filesystem');
+is($sdb1->has_filesystem('xfs'), 1, 'Partition sdb1 has xfs filesystem');
+is($sdb1->has_filesystem('btrfs'), 1, 'Partition sdb1 has btrfs filesystem');
 
+#
 # formatfs
+#
+
 # force_filesystem is set to true
 #   mkfs is called
-
 set_output("file_s_sdb1_data");
 command_history_reset;
 $fs->formatfs;
@@ -147,50 +156,79 @@ my $nonefs = NCM::Filesystem->new ("/system/filesystems/2", $cfg);
 set_output("file_s_sdb1_data");
 command_history_reset;
 $nonefs->formatfs;
-ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'none type No mkfs.ext3 called');
 
 set_output("file_s_sdb1_ext3");
 command_history_reset;
 $nonefs->formatfs;
-ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'none type No mkfs.ext3 called');
 
-
-# force_filesystem is set to false
+# force_filesystemtype is set to false
 my $forcefalsefs = NCM::Filesystem->new ("/system/filesystems/3", $cfg);
 #   regular filesystem type, no filesystem present
 #     mkfs is called
 set_output("file_s_sdb1_data");
 command_history_reset;
 $forcefalsefs->formatfs;
-ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'mkfs.ext3 called');
+ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'force false mkfs.ext3 called');
 #   regular filesystem type, filesystem present 
 #     no mkfs is called
 set_output("file_s_sdb1_ext3");
 command_history_reset;
 $forcefalsefs->formatfs;
-ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'force false ext3 No mkfs.ext3 called');
 
+# filesystem is present and it's the wrong one
+#   mkfs not called
+set_output("file_s_sdb1_btrfs");
+command_history_reset;
+$forcefalsefs->formatfs;
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'force false btrfs No mkfs.ext3 called');
+
+# force_filesystemtype is set to true
+my $forcetruefs = NCM::Filesystem->new ("/system/filesystems/4", $cfg);
 # regular filesystem type, no filesystem present
 #  mkfs is called
-my $forcetruefs = NCM::Filesystem->new ("/system/filesystems/4", $cfg);
 set_output("file_s_sdb1_data");
 command_history_reset;
 $forcetruefs->formatfs;
-ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'mkfs.ext3 called');
+ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'force true mkfs.ext3 called');
 
 # filesystem is present and it's the correct one
 #   mkfs not called
 set_output("file_s_sdb1_ext3");
 command_history_reset;
 $forcetruefs->formatfs;
-ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
+ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'force true ext3 No mkfs.ext3 called');
 
 # filesystem is present and it's the wrong one
 #   mkfs called
 set_output("file_s_sdb1_btrfs");
 command_history_reset;
 $forcetruefs->formatfs;
-ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'mkfs.ext3 called');
+ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'force true btrfs mkfs.ext3 called');
+
+#
+# create if needed
+#
+# is mounted, not needed, ever
+set_file("mtab_sdb1_ext3_mounted");
+is($fs->is_create_needed, 0, 'Mountpoint mounted');
+is($forcefalsefs->is_create_needed, 0, 'Mountpoint mounted');
+is($forcetruefs->is_create_needed, 0, 'Mountpoint mounted');
+
+# not mounted, mountpoint exists in fstab 
+set_file("mtab_sdb1_default");
+set_file("fstab_sdb1_ext3");
+is($fs->is_create_needed, 0, 'create not needed, mountpoint in fstab');
+is($forcefalsefs->is_create_needed, 0, 'create not needed, mountpoint in fstab');
+is($forcetruefs->is_create_needed, 1, 'create needed, mountpoint in fstab but ignored');
+
+# not mounted, not in fstab
+set_file("fstab_sdb1_default");
+is($fs->is_create_needed, 1, 'create needed, mountpoint not in fstab');
+is($forcefalsefs->is_create_needed, 1, 'create needed, mountpoint not in fstab');
+is($forcetruefs->is_create_needed, 1, 'create needed, mountpoint not in fstab but ignored anyway');
+
 
 done_testing();
-

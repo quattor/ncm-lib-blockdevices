@@ -268,6 +268,39 @@ sub mountpoint_in_fstab
 
 =pod
 
+=head2 is_create_needed
+
+Test if fs->blockdev->create is needed 
+
+=cut
+
+sub is_create_needed
+{
+    my $self = shift;
+
+    my $ret=1; # default: create is needed
+    my $msg = 'Default create is needed.';
+    
+    if($self->mounted()) {
+        $msg="Filesystem MOUNTED";
+        $ret=0;
+    } elsif(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
+        # fstab might contain previous and possibly different filesystem type
+        $msg="force_filesystemtype: ingore if mountpoint exists in ".FSTAB;
+    } elsif ($self->mountpoint_in_fstab) {
+        # this only checks presence of mountpoint in fstab file, not filesystemtype
+        $msg="Mountpoint $self->{mountpoint} already exists in ".FSTAB;
+        $ret=0;
+    }
+
+    $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
+                      " is_create_needed $ret: $msg");
+    
+    return $ret;
+}
+
+=pod
+
 =head2 create_if_needed
 
 Creates the filesystem, if it doesn't exist yet.
@@ -283,27 +316,11 @@ sub create_if_needed
     $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
                       " blockdev ", $self->{block_device}->devpath);
 
-    if($self->mounted()) {
-        $this_app->debug (5, "Filesystem MOUNTED: leaving.");
-        return 0;
-    }
-
-    if(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
-        # fstab might contain previous and possibly different filesystem type
-        $this_app->debug (5, "force_filesystemtype: not checking if filesystem",
-                             " mountpoint already exists in ",FSTAB,": leaving.");
-    } else {
-        # this only checks presence of mountpoint, not filesystemtype
-        if ($self->mountpoint_in_fstab) {
-            $this_app->debug (5, "Filesystem $self->{mountpoint} already exists in ", 
-                      FSTAB, " : leaving.");
-            return 0;
-        }
-    }
-
-    $self->{block_device}->create && return $?;
-    $self->formatfs && return $?;
-    $this_app->info("Filesystem on $self->{mountpoint} successfully created");
+    if($self->is_create_needed) {
+        $self->{block_device}->create && return $?;
+        $self->formatfs && return $?;
+        $this_app->info("Filesystem on $self->{mountpoint} successfully created");
+    };
     return 0;
 }
 
