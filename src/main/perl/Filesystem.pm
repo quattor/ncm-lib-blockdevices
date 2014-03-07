@@ -239,6 +239,24 @@ sub mkmountpoint
 
 =pod
 
+=head2 mountpoint_in_fstab
+
+Returns the number of valid (i.e. mountable) entries in /etc/fstab 
+
+=cut
+
+sub mountpoint_in_fstab
+{
+    my $self = shift;
+
+    my $fh = CAF::FileEditor->new(FSTAB, log => $this_app);
+    my @mtd = grep (m{^\s*[^#]\S+\s+$self->{mountpoint}/?\s}, split("\n", "$fh"));
+    $fh->close();
+    return scalar @mtd;
+}
+
+=pod
+
 =head2 create_if_needed
 
 Creates the filesystem, if it doesn't exist yet.
@@ -251,12 +269,9 @@ sub create_if_needed
 {
     my $self = shift;
 
-    my $fh = CAF::FileEditor->new(FSTAB, log => $this_app);
-    my @mtd = grep (m{^\s*[^#]\S+\s+$self->{mountpoint}/?\s}, split("\n", "$fh"));
-    $fh->close();
-    if (scalar @mtd) {
-        $this_app->debug (5, "Filesystem $self->{mountpoint} already exists: ",
-                  "leaving.");
+    if ($self->mountpoint_in_fstab) {
+        $this_app->debug (5, "Filesystem $self->{mountpoint} already exists in ", 
+                  FSTAB, " : leaving.");
         return 0;
     }
 
