@@ -100,5 +100,32 @@ ok(command_history_ok([
 );
 unlike(get_file('/etc/fstab'), qr#\s+/Lagoon\s+#, 'Mountpoint removed to fstab');
 
+
+# test has_filesystem
+my $sdb1=$fs->{block_device};
+is($sdb1->{devname}, 'sdb1', 'Correct partition found');
+
+set_output("file_s_sdb1_data");
+is($sdb1->has_filesystem, '', 'Partition sdb1 has no filesystem');
+set_output("file_s_sdb1_ext3");
+is($sdb1->has_filesystem, 1, 'Partition sdb1 has filesystem');
+is($sdb1->has_filesystem('ext3'), 1, 'Partition sdb1 has ext3 filesystem');
+is($sdb1->has_filesystem('ext4'), '', 'Partition sdb1 does not have ext4 filesystem');
+is($sdb1->has_filesystem('superfilesystem'), 1, 'fs superfilesystem is not supported, but sdb1 has a supported filesystem');
+
+# supported filesystems
+# impossible file -s  output (it's joined from multiple file -s runs)
+# no output for jfs and reiser
+set_output("file_s_sdb1_all_supported");
+is($sdb1->has_filesystem, 1, 'Partition sdb1 has filesystem');
+is($sdb1->has_filesystem('superfilesystem'), 1, 'fs superfilesystem is not supported, but sdb1 has a supported filesystem');
+
+is($sdb1->has_filesystem('ext2'), 1, 'Partition sdb1 has ext3 filesystem');
+is($sdb1->has_filesystem('ext3'), 1, 'Partition sdb1 has ext3 filesystem');
+is($sdb1->has_filesystem('ext4'), 1, 'Partition sdb1 has ext4 filesystem');
+is($sdb1->has_filesystem('xfs'), 1, 'Partition sdb1 has ext4 filesystem');
+is($sdb1->has_filesystem('btrfs'), 1, 'Partition sdb1 has ext4 filesystem');
+
+
 done_testing();
 
