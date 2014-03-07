@@ -19,6 +19,7 @@ use NCM::Partition;
 # make no sense when using gpt (they are treated as names)
 # should still work though
 my $cfg = get_config_for_profile('blockdevices_gpt');
+command_history_reset;
 
 set_output("parted_print_sdb_label_gpt"); # no partitions, has gpt label
 set_output("file_s_sdb_labeled"); # file -s works too
@@ -60,5 +61,17 @@ ok($sdb1->devexists, 'Partition sdb1 exists (on gpt label)');
 ok($sdb2->devexists, 'Partition sdb2 exists (on gpt label)');
 ok($sdb3->devexists, 'Partition sdb3 exists (on gpt label)');
 ok($sdb4->devexists, 'Partition sdb4 exists (on gpt label)');
+
+# these should all have run
+ok(command_history_ok([
+    '/bin/dd if=/dev/zero count=1000 of=/dev/sdb',
+    '/sbin/parted -s -- /dev/sdb mklabel gpt',
+    '/sbin/parted -s -- /dev/sdb mkpart primary 0 100',
+    '/sbin/parted -s -- /dev/sdb mkpart primary 100 200',
+    '/sbin/parted -s -- /dev/sdb mkpart extended 200 2700',
+    '/sbin/parted -s -- /dev/sdb mkpart logical 2700 3724',
+    ]), 
+);
+
 
 done_testing();
