@@ -218,14 +218,14 @@ is($forcefalsefs->is_create_needed, 0, 'Mountpoint mounted');
 is($forcetruefs->is_create_needed, 0, 'Mountpoint mounted');
 
 # not mounted, mountpoint exists in fstab 
-set_file("mtab_sdb1_default");
+set_file("mtab_default");
 set_file("fstab_sdb1_ext3");
 is($fs->is_create_needed, 0, 'create not needed, mountpoint in fstab');
 is($forcefalsefs->is_create_needed, 0, 'create not needed, mountpoint in fstab');
 is($forcetruefs->is_create_needed, 1, 'create needed, mountpoint in fstab but ignored');
 
 # not mounted, not in fstab
-set_file("fstab_sdb1_default");
+set_file("fstab_default");
 is($fs->is_create_needed, 1, 'create needed, mountpoint not in fstab');
 is($forcefalsefs->is_create_needed, 1, 'create needed, mountpoint not in fstab');
 is($forcetruefs->is_create_needed, 1, 'create needed, mountpoint not in fstab but ignored anyway');
