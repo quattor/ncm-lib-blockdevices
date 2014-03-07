@@ -152,7 +152,7 @@ sub devexists
 {
     my $self = shift;
     my $fh = CAF::FileEditor->new(MDSTAT, log => $this_app);
-    @mtd = grep (m{^\s*$self->{devname}\s}, split("\n", "$fh"));
+    my @mtd = grep (m{^\s*$self->{devname}\s}, split("\n", "$fh"));
     $fh->close();
     return scalar @mtd;
 }

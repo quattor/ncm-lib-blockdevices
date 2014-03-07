@@ -118,7 +118,7 @@ sub mounted
 {
     my $self = shift;
     my $fh = CAF::FileEditor->new(MTAB, log => $this_app);
-    @mtd = grep (m{^\S+\s+$self->{mountpoint}/?\s}, split("\n", "$fh"));
+    my @mtd = grep (m{^\S+\s+$self->{mountpoint}/?\s}, split("\n", "$fh"));
     $fh->close();
     return scalar @mtd;
 }
@@ -149,9 +149,9 @@ sub remove_if_needed
     }
     $self->{block_device}->remove==0 or return $?;
     my $fh = CAF::FileEditor->new (FSTAB, log => $this_app);
-    my $reg="\s$self->{mountpoint}\s";
-    $fh->remove_lines(qr/$reg/, qr/^$/); # goodre ^$ (empty string) should never match  
+    $fh->remove_lines(qr/\s$self->{mountpoint}\s/, qr/^$/); # goodre ^$ (empty string) should never match  
     $fh->close();
+    $this_app->debug (5, "Removing filesystem mountpoint", $self->{mountpoint});
     rmdir ($self->{mountpoint});
     return $?;
 }
