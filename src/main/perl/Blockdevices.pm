@@ -133,13 +133,13 @@ sub has_filesystem
 {
     my ($self, $fs) = @_;
 
-    my $all_fs_regex = "ext[2-4]|reiser|jfs|xfs|btrfs|swap";
+    my $all_fs_regex = qr/(ext[2-4]|reiser|jfs|xfs|btrfs|swap)/;
     my $fsregex = $all_fs_regex;
 
-    if (defined($fs)) {
+    if ($fs) {
         # a supported fs?                                                                                                                                                                
         # case sensitive, should be enforced via schema
-        if ($fs !~ m{$all_fs_regex}) {
+        if ($fs !~ m{^$all_fs_regex$}) {
             $this_app->warn("Requested filesystem $fs is not supported.",
                             " Fallback to default supported filesystems.");
         } else {
@@ -155,8 +155,8 @@ sub has_filesystem
                         " with regexp '$fsregex' in output $f.");
     
     # case insensitive match 
-    # e.g. file -s returns uppercase filesystem for xfs adn btrfs 
-    return $f =~ m{$fsregex}i;
+    # e.g. file -s returns uppercase filesystem for xfs adn btrfs
+    return $f =~ m{\s$fsregex\s+file}i;
 }
 
 1;
