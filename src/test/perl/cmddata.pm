@@ -314,6 +314,45 @@ proc                    /proc                   proc    defaults        0 0
 /dev/sdb1       /Lagoon         ext3 rw         0 0
 EOF
 
+$files{fstab_sdb1_ext3_commented}{path}="/etc/fstab";
+$files{fstab_sdb1_ext3_commented}{txt} = <<'EOF';
+#
+# /etc/fstab
+# Created by anaconda on Wed Feb 26 09:20:11 2014
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk'
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+#
+/dev/mapper/vg_sl65-lv_root /                       ext4    defaults        1 1
+UUID=f6452f58-99b1-41fe-9840-f688157171f8 /boot                   ext4    defaults        1 2
+/dev/mapper/vg_sl65-lv_swap swap                    swap    defaults        0 0
+tmpfs                   /dev/shm                tmpfs   defaults        0 0
+devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
+sysfs                   /sys                    sysfs   defaults        0 0
+proc                    /proc                   proc    defaults        0 0
+#/dev/sdb1       /Lagoon         ext3 rw         0 0
+EOF
+
+$files{fstab_sdb1_ext3_with_comment}{path}="/etc/fstab";
+$files{fstab_sdb1_ext3_with_comment}{txt} = <<'EOF';
+#
+# /etc/fstab
+# Created by anaconda on Wed Feb 26 09:20:11 2014
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk'
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+#
+/dev/mapper/vg_sl65-lv_root /                       ext4    defaults        1 1
+UUID=f6452f58-99b1-41fe-9840-f688157171f8 /boot                   ext4    defaults        1 2
+/dev/mapper/vg_sl65-lv_swap swap                    swap    defaults        0 0
+tmpfs                   /dev/shm                tmpfs   defaults        0 0
+devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
+sysfs                   /sys                    sysfs   defaults        0 0
+proc                    /proc                   proc    defaults        0 0
+#/dev/sdb1       /Lagoon         ext3 rw         0 0
+/dev/sdb1       /Lagoon         ext3 xxx         0 0
+EOF
+
 
 $cmds{md0_stop}{cmd}="/sbin/mdadm --stop /dev/md0";
 $cmds{md0_stop}{out}="mdadm: stopped /dev/md0";

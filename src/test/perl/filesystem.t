@@ -66,12 +66,16 @@ ok(!command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'No mkfs.ext3 called');
 ok(!command_history_ok(["gparted"]), 'No gparted called');
 ok(!command_history_ok(["dd"]), 'No dd called');
 
-# TODO
 # test create if needed with fstab
-# with mountpoint
-# with mountpoint in comment
-# without mountpoint
-# returns 0 without calling create
+set_file("fstab_default");
+is($fs->mountpoint_in_fstab, 0, 'No mountpoint in fstab');
+set_file("fstab_sdb1_ext3_commented");
+is($fs->mountpoint_in_fstab, 0, 'Mountpoint commented in fstab');
+set_file("fstab_sdb1_ext3_with_comment");
+is($fs->mountpoint_in_fstab, 1, 'Mountpoint in fstab and also commented in fstab');
+set_file("fstab_sdb1_ext3");
+is($fs->mountpoint_in_fstab, 1, 'Mountpoint in fstab');
+
 
 command_history_reset;
 diag('removing filesystems');
