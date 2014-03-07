@@ -239,18 +239,81 @@ Number  Start  End     Size    Type      File system  Flags
 
 EOF
 
-$files{proc_mdstat_no_md0} = <<'EOF';
+$files{proc_mdstat_no_md0}{path} = '/proc/mdstat';
+$files{proc_mdstat_no_md0}{txt} = <<'EOF';
 Personalities : 
 unused devices: <none>
 EOF
 
-$files{proc_mdstat_md0} = <<'EOF';
+$files{proc_mdstat_md0}{path} = '/proc/mdstat';
+$files{proc_mdstat_md0}{txt} = <<'EOF';
 Personalities : [raid0] 
 md0 : active raid0 sdb2[1] sdb1[0]
       194816 blocks super 1.2 64k chunks
       
 unused devices: <none>
 EOF
+
+$files{mtab_default}{path}="/etc/mtab";
+$files{mtab_default}{txt} = <<'EOF';
+/dev/mapper/vg_sl65-lv_root / ext4 rw 0 0
+proc /proc proc rw 0 0
+sysfs /sys sysfs rw 0 0
+devpts /dev/pts devpts rw,gid=5,mode=620 0 0
+tmpfs /dev/shm tmpfs rw 0 0
+/dev/vda1 /boot ext4 rw 0 0
+none /proc/sys/fs/binfmt_misc binfmt_misc rw 0 0
+EOF
+
+$files{mtab_sdb1_ext3_mounted}{path}="/etc/mtab";
+$files{mtab_sdb1_ext3_mounted}{txt} = <<'EOF';
+/dev/mapper/vg_sl65-lv_root / ext4 rw 0 0
+proc /proc proc rw 0 0
+sysfs /sys sysfs rw 0 0
+devpts /dev/pts devpts rw,gid=5,mode=620 0 0
+tmpfs /dev/shm tmpfs rw 0 0
+/dev/vda1 /boot ext4 rw 0 0
+none /proc/sys/fs/binfmt_misc binfmt_misc rw 0 0
+/dev/sdb1 /Lagoon ext3 rw 0 0
+EOF
+
+$files{fstab_default}{path}="/etc/fstab";
+$files{fstab_default}{txt} = <<'EOF';
+#
+# /etc/fstab
+# Created by anaconda on Wed Feb 26 09:20:11 2014
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk'
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+#
+/dev/mapper/vg_sl65-lv_root /                       ext4    defaults        1 1
+UUID=f6452f58-99b1-41fe-9840-f688157171f8 /boot                   ext4    defaults        1 2
+/dev/mapper/vg_sl65-lv_swap swap                    swap    defaults        0 0
+tmpfs                   /dev/shm                tmpfs   defaults        0 0
+devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
+sysfs                   /sys                    sysfs   defaults        0 0
+proc                    /proc                   proc    defaults        0 0
+EOF
+
+$files{fstab_sdb1_ext3}{path}="/etc/fstab";
+$files{fstab_sdb1_ext3}{txt} = <<'EOF';
+#
+# /etc/fstab
+# Created by anaconda on Wed Feb 26 09:20:11 2014
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk'
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+#
+/dev/mapper/vg_sl65-lv_root /                       ext4    defaults        1 1
+UUID=f6452f58-99b1-41fe-9840-f688157171f8 /boot                   ext4    defaults        1 2
+/dev/mapper/vg_sl65-lv_swap swap                    swap    defaults        0 0
+tmpfs                   /dev/shm                tmpfs   defaults        0 0
+devpts                  /dev/pts                devpts  gid=5,mode=620  0 0
+sysfs                   /sys                    sysfs   defaults        0 0
+proc                    /proc                   proc    defaults        0 0
+/dev/sdb1       /Lagoon         ext3 rw         0 0
+EOF
+
 
 $cmds{md0_stop}{cmd}="/sbin/mdadm --stop /dev/md0";
 $cmds{md0_stop}{out}="mdadm: stopped /dev/md0";
