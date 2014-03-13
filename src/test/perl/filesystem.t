@@ -53,7 +53,7 @@ like(get_file('/etc/fstab'), qr#/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#, '
 
 # test mounted call; 
 set_file("mtab_default");
-is($fs->mounted,0, 'Mountpoint not mounted');
+is($fs->mounted, '', 'Mountpoint not mounted');
 set_file("mtab_sdb1_ext3_mounted");
 is($fs->mounted,1, 'Mountpoint mounted');
 # sdb1 is now mounted
@@ -68,9 +68,9 @@ ok(!command_history_ok(["dd"]), 'No dd called');
 
 # test create if needed with fstab
 set_file("fstab_default");
-is($fs->mountpoint_in_fstab, 0, 'No mountpoint in fstab');
+is($fs->mountpoint_in_fstab, '', 'No mountpoint in fstab');
 set_file("fstab_sdb1_ext3_commented");
-is($fs->mountpoint_in_fstab, 0, 'Mountpoint commented in fstab');
+is($fs->mountpoint_in_fstab, '', 'Mountpoint commented in fstab');
 set_file("fstab_sdb1_ext3_with_comment");
 is($fs->mountpoint_in_fstab, 1, 'Mountpoint in fstab and also commented in fstab');
 set_file("fstab_sdb1_ext3");
