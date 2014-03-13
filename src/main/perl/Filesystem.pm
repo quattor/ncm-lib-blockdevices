@@ -118,9 +118,7 @@ sub mounted
 {
     my $self = shift;
     my $fh = CAF::FileEditor->new(MTAB, log => $this_app);
-    my @mtd = grep (m{^\S+\s+$self->{mountpoint}/?\s}, split("\n", "$fh"));
-    $fh->close();
-    return scalar @mtd;
+    return $fh =~ m!^\S+\s+$self->{mountpoint}/?\s!m;
 }
 
 =pod
@@ -163,21 +161,21 @@ sub update_fstab
 {
     my ($self, $fh) = @_;
     $fh = CAF::FileEditor->new (FSTAB, log => $this_app) unless $fh;
-    my $s = $fh->string_ref();
-    $$s =~ s{.*\s+$self->{mountpoint}\s+.*\n}{};
-    $fh->set_contents($$s);
-    seek($fh, 0, SEEK_END);
-    print $fh join ("\t",
-                    (exists $self->{label}?
-                        "LABEL=$self->{label}":
-                        $self->{block_device}->devpath),
-                    $self->{mountpoint},
-                    $self->{type},
-                    $self->{mountopts} .
-                        (!$self->{mount} ? ",noauto":""),
-                        $self->{freq},
-                    $self->{pass}), 
-               "\n";
+    my $re = qr!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
+    my $entry = join ("\t",
+                        (exists $self->{label}?
+                            "LABEL=$self->{label}":
+                            $self->{block_device}->devpath),
+                        $self->{mountpoint},
+                        $self->{type},
+                        $self->{mountopts} .
+                            (!$self->{mount} ? ",noauto":""),
+                            $self->{freq},
+                        $self->{pass});
+    $fh->add_or_replace_lines ($re,
+                               $entry,
+                               $entry,
+                               ENDING_OF_FILE);
 }
 
 =pod
@@ -250,9 +248,7 @@ sub mountpoint_in_fstab
     my $self = shift;
 
     my $fh = CAF::FileEditor->new(FSTAB, log => $this_app);
-    my @mtd = grep (m{^\s*[^#]\S+\s+$self->{mountpoint}/?\s}, split("\n", "$fh"));
-    $fh->close();
-    return scalar @mtd;
+    return $fh =~ m!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
 }
 
 =pod

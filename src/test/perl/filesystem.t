@@ -49,7 +49,12 @@ ok(command_history_ok([
 # set empty fstab
 set_file("fstab_default");
 $fs->update_fstab;
-like(get_file('/etc/fstab'), qr#/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#, 'Mount entry added to fstab');
+like(get_file('/etc/fstab'), qr#^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#m, 'Mount entry added to fstab');
+# do it again! should still work
+my $newtxt = get_file('/etc/fstab'); #otherwise Can't coerce GLOB to string in substr 
+set_file("fstab_default","$newtxt");
+$fs->update_fstab;
+like(get_file('/etc/fstab'), qr#^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#m, 'Mount entry added to fstab');
 
 # test mounted call; 
 set_file("mtab_default");
