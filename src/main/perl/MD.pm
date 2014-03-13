@@ -20,7 +20,7 @@ use warnings;
 
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
-use LC::Process qw (execute output);
+use CAF::Process;
 use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 our @ISA = qw (NCM::Blockdevices);
@@ -59,8 +59,8 @@ sub _initialize
     $self->{raid_level} = $1;
     $self->{stripe_size} = $st->{stripe_size};
     foreach my $devpath (@{$st->{device_list}}) {
-	my $dev = NCM::BlockdevFactory::build ($config, $devpath);
-	push (@{$self->{device_list}}, $dev);
+        my $dev = NCM::BlockdevFactory::build ($config, $devpath);
+        push (@{$self->{device_list}}, $dev);
     }
     # TODO: compute the alignment from the properties of the component devices
     # and the RAID parameters
@@ -99,17 +99,19 @@ sub create
     my @devnames;
 
     if ($self->devexists) {
-	$this_app->debug (5, "Device ", $self->devpath, " already exists.",
-			  " Leaving.");
-	return 0;
+        $this_app->debug (5, "Device ", $self->devpath, " already exists.",
+			              " Leaving.");
+        return 0;
     }
     foreach my $dev (@{$self->{device_list}}) {
-	$dev->create==0 or return $?;
-	push (@devnames, $dev->devpath);
+        $dev->create==0 or return $?;
+        push (@devnames, $dev->devpath);
     }
-    execute ([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
-	      MDSTRIPE.$self->{stripe_size},
-	      MDDEVS.scalar(@{$self->{device_list}}), @devnames]);
+    CAF::Process->new([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
+                       MDSTRIPE.$self->{stripe_size},
+                       MDDEVS.scalar(@{$self->{device_list}}), @devnames],
+                       log => $this_app
+                       )->execute();
     $? && $this_app->error ("Couldn't create ", $self->devpath);
     return $?;
 }
@@ -126,10 +128,11 @@ sub remove
 {
     my $self = shift;
 
-    execute ([MDSTOP, $self->devpath]);
+    CAF::Process->new([MDSTOP, $self->devpath], log => $this_app)->execute();
     foreach my $dev (@{$self->{device_list}}) {
-	execute ([MDZERO, $dev->devpath]);
-	$dev->remove==0 or return $?;
+        CAF::Process->new([MDZERO, $dev->devpath],
+                          log => $this_app)->execute();
+        $dev->remove==0 or return $?;
     }
     delete $mds{$self->{_cache_key}} if exists $self->{_cache_key};
     $? && $this_app->error ("Couldn't destroy ", $self->devpath);
@@ -147,7 +150,8 @@ Returns true if the device exists on the system.
 sub devexists
 {
     my $self = shift;
-    execute ([GREPCALL, $self->{devname}, "/proc/mdstat"]);
+    CAF::Process->new([GREPCALL, $self->{devname}, "/proc/mdstat"],
+                       log => $this_app)->execute();
     return !$?;
 }
 
@@ -179,16 +183,17 @@ sub new_from_system
 
     my $devname = $1;
 
-    my $lines = output (MDQUERY, $dev);
+    my $lines =  CAF::Process->new([MDQUERY, $dev],
+                                    log => $this_app)->output();
     my @devlist;
     $lines =~ m{Raid Level : (\w+)$}omg;
     my $level = uc ($1);
     while ($lines =~ m{\w\s+(/dev.*)$}omg) {
-	push (@devlist, NCM::BlockdevFactory::build_from_dev ($1, $cfg));
+        push (@devlist, NCM::BlockdevFactory::build_from_dev ($1, $cfg));
     }
-    my $self = { raid_level	=> $level,
-		 device_list=> \@devlist,
-		 devname	=> $devname};
+    my $self = {raid_level	=> $level,
+                device_list=> \@devlist,
+                devname	=> $devname};
     return bless ($self, $class);
 }
 
@@ -204,7 +209,7 @@ sub should_print_ks
 {
     my $self = shift;
     foreach (@{$self->{device_list}}) {
-	return 0 unless $_->should_print_ks;
+        return 0 unless $_->should_print_ks;
     }
     return 1;
 }
@@ -213,7 +218,7 @@ sub should_create_ks
 {
     my $self = shift;
     foreach (@{$self->{device_list}}) {
-	return 0 unless $_->should_create_ks;
+        return 0 unless $_->should_create_ks;
     }
     return 1;
 }
@@ -225,8 +230,8 @@ sub print_ks
     return unless $self->should_print_ks;
 
     if (scalar (@_) == 2) {
-	$_->print_ks foreach (@{$self->{device_list}});
-	print "raid $fs->{mountpoint} --device=$self->{devname} --noformat\n";
+        $_->print_ks foreach (@{$self->{device_list}});
+        print "raid $fs->{mountpoint} --device=$self->{devname} --noformat\n";
     }
 }
 
@@ -236,8 +241,8 @@ sub del_pre_ks
 
     print join (" ", MDSTOP, $self->devpath), "\n";
     foreach my $dev (@{$self->{device_list}}) {
-	print join (" ", MDZERO, $dev->devpath), "\n";
-	$dev->del_pre_ks;
+        print join (" ", MDZERO, $dev->devpath), "\n";
+        $dev->del_pre_ks;
     }
 }
 
@@ -255,14 +260,14 @@ if  ! grep -q $self->{devname} /proc/mdstat
 then
 EOC
     foreach my $dev (@{$self->{device_list}}) {
-	$dev->create_ks;
-	# Well, fdisk sucks and Anaconda is plain crap. Let's
-	# guess how we can set the partition hex code
-	if (ref ($dev) eq 'NCM::Partition') {
-	    my $hdpath = $dev->{holding_dev}->devpath;
-	    my $hdname = $dev->{holding_dev}->{devname};
-	    my $n = $dev->partition_number;
-	    print <<EOF;
+        $dev->create_ks;
+        # Well, fdisk sucks and Anaconda is plain crap. Let's
+        # guess how we can set the partition hex code
+        if (ref ($dev) eq 'NCM::Partition') {
+            my $hdpath = $dev->{holding_dev}->devpath;
+            my $hdname = $dev->{holding_dev}->{devname};
+            my $n = $dev->partition_number;
+            print <<EOF;
     fdisk $hdpath <<end_of_fdisk
 t
 \$(if [ \$(grep -c $hdname /proc/partitions) -gt 2 ]
@@ -276,9 +281,9 @@ w
 end_of_fdisk
 EOF
 
-	}
-	push (@devnames, $dev->devpath);
-	print "sed -i '\\:@{[$dev->devpath]}\$:d' @{[PART_FILE]}\n";
+        }
+        push (@devnames, $dev->devpath);
+        print "sed -i '\\:@{[$dev->devpath]}\$:d' @{[PART_FILE]}\n";
     }
     my $ndev = scalar(@devnames);
     print <<EOC;

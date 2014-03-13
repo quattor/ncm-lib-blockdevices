@@ -35,7 +35,7 @@ package NCM::Disk;
 use strict;
 use warnings;
 use NCM::Blockdevices qw ($this_app);
-use LC::Process qw (execute output);
+use CAF::Process;
 use EDG::WP4::CCM::Element qw (unescape);
 use LC::Exception;
 #use NCM::HWRaid;
@@ -73,7 +73,7 @@ and Pan path (i.e: host1:/system/blockdevices/disks/sda).
 
 =cut
 
-our %disks = ();
+our %disks;
 
 =pod
 
@@ -90,12 +90,12 @@ returned.
 
 sub new
 {
-     my ($class, $path, $config) = @_;
-     # Only one instance per disk is allowed, but disks of different hosts
-     # should be separate objects
-     my $cache_key = $class->get_cache_key($path, $config);
-     return $disks{$cache_key} if exists $disks{$cache_key};
-     return $class->SUPER::new ($path, $config);
+    my ($class, $path, $config) = @_;
+    # Only one instance per disk is allowed, but disks of different hosts
+    # should be separate objects
+    my $cache_key = $class->get_cache_key($path, $config);
+    $disks{$cache_key} ||= $class->SUPER::new ($path, $config);
+    return $disks{$cache_key};
 }
 
 =pod
@@ -108,103 +108,103 @@ Where the object creation is actually done.
 
 sub _initialize
 {
-     my ($self, $path, $config) = @_;
-     my $st = $config->getElement($path)->getTree;
-     $path =~ m(.*/([^/]+));
-     $self->{devname} = unescape ($1);
-     $self->{num_spares} = $st->{num_spares};
-     $self->{label} = $st->{label};
-     $self->{readahead} = $st->{readahead};
+    my ($self, $path, $config) = @_;
+    my $st = $config->getElement($path)->getTree;
+    $path =~ m(.*/([^/]+));
+    $self->{devname} = unescape ($1);
+    $self->{num_spares} = $st->{num_spares};
+    $self->{label} = $st->{label};
+    $self->{readahead} = $st->{readahead};
 
-     my $hw;
-     $hw = $config->getElement(HWPATH . $1)->getTree if $config->elementExists(HWPATH . $1);
-     my $host = $config->getElement (HOSTNAME)->getValue;
-     my $domain = $config->getElement (DOMAINNAME)->getValue;
+    my $hw;
+    $hw = $config->getElement(HWPATH . $1)->getTree if $config->elementExists(HWPATH . $1);
+    my $host = $config->getElement (HOSTNAME)->getValue;
+    my $domain = $config->getElement (DOMAINNAME)->getValue;
 
-     # If the disk is mentioned by the "ignoredisk --drives=..." statement,
-     # then partitions/logical volumes/etc. on this disk should also be ignored
-     # in the Anaconda configuration (but not in the %pre script)
-     if ($config->elementExists(IGNOREDISK)) {
-         my $ignore = $config->getElement(IGNOREDISK)->getTree();
-         foreach my $dev (@{$ignore}) {
-             $self->{_ignore_print_ks} = 1 if $dev eq $self->{devname};
-         }
-     }
+    # If the disk is mentioned by the "ignoredisk --drives=..." statement,
+    # then partitions/logical volumes/etc. on this disk should also be ignored
+    # in the Anaconda configuration (but not in the %pre script)
+    if ($config->elementExists(IGNOREDISK)) {
+        my $ignore = $config->getElement(IGNOREDISK)->getTree();
+        foreach my $dev (@{$ignore}) {
+            $self->{_ignore_print_ks} = 1 if $dev eq $self->{devname};
+        }
+    }
 
-     # It is a bug in the templates if this happens
-     $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
+    # It is a bug in the templates if this happens
+    $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
 
-     # Inherit the topology from the physical device unless it is explicitely
-     # overridden
-     $self->_set_alignment($st,
-	     ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
-	     ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
+    # Inherit the topology from the physical device unless it is explicitely
+    # overridden
+    $self->_set_alignment($st,
+                          ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
+                          ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
 
-     $self->{_cache_key} = $self->get_cache_key($path, $config);
-     $disks{$self->{_cache_key}} = $self;
-     return $self;
+    $self->{_cache_key} = $self->get_cache_key($path, $config);
+    $disks{$self->{_cache_key}} = $self;
+    return $self;
 }
 
 sub new_from_system
 {
-     my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg) = @_;
 
-     my ($devname) = $dev =~ m{/dev/(.*)};
+    my ($devname) = $dev =~ m{/dev/(.*)};
 
-     my $cache_key = $class->get_cache_key($cfg, "/system/blockdevices/physical_devs/" . $devname);
-     return $disks{$cache_key} if exists $disks{$cache_key};
+    my $cache_key = $class->get_cache_key($cfg, "/system/blockdevices/physical_devs/" . $devname);
+    return $disks{$cache_key} if exists $disks{$cache_key};
 
-     my $self = { devname	=> $devname,
-		  label	        => 'none',
-		  _cache_key    => $cache_key
-		};
-     return bless ($self, $class);
+    my $self = {devname    => $devname,
+                label            => 'none',
+                _cache_key    => $cache_key
+                };
+    return bless ($self, $class);
 }
 
 
 # Returns the number of partitions $self holds.
 sub partitions_in_disk
 {
-     my $self = shift;
+    my $self = shift;
 
-     local $ENV{LANG} = 'C';
+    local $ENV{LANG} = 'C';
 
-     my $line = output (PARTED, $self->devpath, PARTEDP);
+    my $line =  CAF::Process->new([PARTED, $self->devpath, PARTEDP], log => $this_app)->output();
 
-     my @n = $line=~m/^\s*\d\s/mg;
-     unless ($line =~ m/^(?:Disk label type|Partition Table): (\w+)/m) {
-	  return 0;
-     }
-     return $1 eq 'loop'? 0:scalar (@n);
+    my @n = $line=~m/^\s*\d\s/mg;
+    unless ($line =~ m/^(?:Disk label type|Partition Table): (\w+)/m) {
+        return 0;
+    }
+    return $1 eq 'loop'? 0:scalar (@n);
 }
 
 # Sets the readahead for the device.
 sub set_readahead
 {
-     my $self = shift;
+    my $self = shift;
 
-     open (FH, RCLOCAL);
-     my @lines = <FH>;
-     close (FH);
-     chomp (@lines);
-     my $re = join (" ", SETRA) . ".*", $self->devpath;
-     my $f = 0;
-     @lines = map {
-	  if (m/$re/) {
-	       $f = 1;
-	       join (" ", SETRA, $self->{readahead}, $self->devpath);
-	  }
-	  else {
-	       $_;
-	  }
-     } @lines;
-     push (@lines,
-	   "# Readahead set by Disk.pm\n",
-	   join (" ", SETRA, $self->{readahead}, $self->devpath))
-	  unless $f;
-     open (FH, ">".RCLOCAL);
-     print FH join ("\n", @lines), "\n";
-     close (FH);
+    open (FH, RCLOCAL);
+    my @lines = <FH>;
+    close (FH);
+    chomp (@lines);
+    my $re = join (" ", SETRA) . ".*", $self->devpath;
+    my $f = 0;
+    @lines = map {
+        if (m/$re/) {
+            $f = 1;
+            join (" ", SETRA, $self->{readahead}, $self->devpath);
+        }
+        else {
+             $_;
+        }
+    } @lines;
+    push (@lines,
+          "# Readahead set by Disk.pm\n",
+          join (" ", SETRA, $self->{readahead}, $self->devpath))
+          unless $f;
+    open (FH, ">".RCLOCAL);
+    print FH join ("\n", @lines), "\n";
+    close (FH);
 }
 
 
@@ -225,35 +225,33 @@ Returns true if the disk has no partitions or filesystems in it.
 
 sub disk_empty
 {
-     my $self = shift;
+    my $self = shift;
 
-     return !($self->partitions_in_disk || $self->has_filesystem);
+    return !($self->partitions_in_disk || $self->has_filesystem);
 }
 
 sub create
 {
-     my $self = shift;
-     if ($self->disk_empty) {
-	  $self->set_readahead if $self->{readahead};
-	  $self->remove;
+    my $self = shift;
+    if ($self->disk_empty) {
+        $self->set_readahead if $self->{readahead};
+        $self->remove;
 
-	  if ($self->{label} ne NOPART) {
-	       $this_app->debug (5, "Initialising block device ",$self->devpath);
-	       my @partedcmdlist=(PARTED, $self->devpath,
-				  CREATE, $self->{label});
-	       $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
-	       execute (\@partedcmdlist);
-	       sleep (SLEEPTIME);
-	  }
-	  else {
-	       my $buffout;
-	       $this_app->debug (5, "Disk ", $self->devpath,": create (zeroing partition table)");
-	       execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
-	       $this_app->debug (5, "dd output:\n", $buffout);
-	  }
-	  return $?;
-     }
-     return 0;
+        if ($self->{label} ne NOPART) {
+            $this_app->debug (5, "Initialising block device ",$self->devpath);
+            CAF::Process->new([PARTED, $self->devpath,
+                               CREATE, $self->{label}],
+                              log => $this_app)->execute();
+            sleep (SLEEPTIME);
+        }
+        else {
+            $this_app->debug (5, "Disk ", $self->devpath,": create (zeroing partition table)");
+            my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();
+            $this_app->debug (5, "dd output:\n", $buffout);
+        }
+        return $?;
+    }
+    return 0;
 }
 
 =pod
@@ -267,22 +265,20 @@ allows the disk to be re-defined.
 
 sub remove
 {
-     my $self = shift;
-     unless ($self->partitions_in_disk) {
-         my $buffout;
-         $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
-         execute ([DD, DDARGS, "of=".$self->devpath],"stdout" => \$buffout, "stderr" => "stdout");
-         $this_app->debug (5, "dd output:\n ", $buffout);
-
-         delete $disks{$self->{_cache_key}};
-     }
-     return 0;
+    my $self = shift;
+    unless ($self->partitions_in_disk) {
+        $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
+        my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();
+        $this_app->debug (5, "dd output:\n", $buffout);
+        #delete $disks{$self->{_cache_key}};
+    }
+    return 0;
 }
 
 sub devpath
 {
-     my $self = shift;
-     return "/dev/" . $self->{devname};
+    my $self = shift;
+    return "/dev/" . $self->{devname};
 }
 
 =pod
@@ -295,8 +291,8 @@ Returns true if the disk exists in the system.
 
 sub devexists
 {
-     my $self = shift;
-     return (-b $self->devpath);
+    my $self = shift;
+    return (-b $self->devpath);
 }
 
 =pod
@@ -315,9 +311,9 @@ Kickstart file. This is true if the disk has an 'msdos' label.
 
 sub should_print_ks
 {
-     my $self = shift;
-     return 0 if (exists $self->{_ignore_print_ks} && $self->{_ignore_print_ks});
-     return ($self->{label} eq 'msdos' || $self->{label} eq 'gpt');
+    my $self = shift;
+    return 0 if (exists $self->{_ignore_print_ks} && $self->{_ignore_print_ks});
+    return ($self->{label} eq 'msdos' || $self->{label} eq 'gpt');
 }
 
 =head2 should_create_ks
@@ -329,8 +325,8 @@ Returns whether block devices on this disk should appear on the
 
 sub should_create_ks
 {
-     my $self = shift;
-     return ($self->{label} eq 'msdos' || $self->{label} eq 'gpt');
+    my $self = shift;
+    return ($self->{label} eq 'msdos' || $self->{label} eq 'gpt');
 }
 
 =pod
@@ -355,11 +351,11 @@ Prints the Bash code to create a new msdos label on the disk
 
 sub clearpart_ks
 {
-     my $self = shift;
+    my $self = shift;
 
-     my $path = $self->devpath;
+    my $path = $self->devpath;
 
-     print <<EOF;
+    print <<EOF;
 wipe_metadata $path 1
 
 parted $path -s -- mklabel $self->{label}

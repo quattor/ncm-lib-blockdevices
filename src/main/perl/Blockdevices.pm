@@ -12,7 +12,7 @@ use warnings;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use CAF::Object;
-use LC::Process qw (output);
+use CAF::Process;
 use Exporter;
 use constant FILES => qw (file -s);
 
@@ -129,7 +129,7 @@ sub has_filesystem
 
     my $p = $self->devpath;
     $p = readlink ($p) if -l $p;
-    my $f = output (FILES, $p);
+    my $f =  CAF::Process->new([FILES, $p], log => $this_app)->output();
     return $f =~ m{ext[2-4]|reiser|jfs|xfs}i;
 }
 
