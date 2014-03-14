@@ -61,4 +61,18 @@ unique template blockdevices;
 			),
 		)
 	);
+
+"/system/filesystems" = list (
+    nlist (
+        "mount", true,
+        "mountpoint", "/Lagoon",
+        "preserve", true,
+        "format", false,
+        "mountopts", "auto",
+        "block_device", "partitions/sdb1",
+        "type", "ext3",
+        "freq", 0,
+        "pass", 1
+        )
+    );
 		

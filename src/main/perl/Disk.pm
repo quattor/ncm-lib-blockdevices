@@ -36,6 +36,7 @@ use strict;
 use warnings;
 use NCM::Blockdevices qw ($this_app);
 use CAF::Process;
+use CAF::FileEditor;
 use EDG::WP4::CCM::Element qw (unescape);
 use LC::Exception;
 #use NCM::HWRaid;
@@ -46,8 +47,6 @@ our @ISA = qw (NCM::Blockdevices);
 
 use constant DD		=> "/bin/dd";
 use constant CREATE	=> "mklabel";
-use constant GREP	=> "/bin/grep";
-use constant GREPARGS	=> "-c";
 use constant NOPART	=> "none";
 use constant RCLOCAL	=> "/etc/rc.local";
 
@@ -151,7 +150,7 @@ sub new_from_system
 
     my ($devname) = $dev =~ m{/dev/(.*)};
 
-    my $cache_key = $class->get_cache_key($cfg, "/system/blockdevices/physical_devs/" . $devname);
+    my $cache_key = $class->get_cache_key("/system/blockdevices/physical_devs/" . $devname, $cfg);
     return $disks{$cache_key} if exists $disks{$cache_key};
 
     my $self = {devname    => $devname,
@@ -178,33 +177,23 @@ sub partitions_in_disk
     return $1 eq 'loop'? 0:scalar (@n);
 }
 
-# Sets the readahead for the device.
+# Sets the readahead for the device by modifying /etc/rc.local.
+#   It does NOT actually set the readahead (SETRA and RCLOCAL are not run/executed.). 
 sub set_readahead
 {
     my $self = shift;
 
-    open (FH, RCLOCAL);
-    my @lines = <FH>;
-    close (FH);
-    chomp (@lines);
+    my $comment = " # Readahead set by Disk.pm";
     my $re = join (" ", SETRA) . ".*", $self->devpath;
-    my $f = 0;
-    @lines = map {
-        if (m/$re/) {
-            $f = 1;
-            join (" ", SETRA, $self->{readahead}, $self->devpath);
-        }
-        else {
-             $_;
-        }
-    } @lines;
-    push (@lines,
-          "# Readahead set by Disk.pm\n",
-          join (" ", SETRA, $self->{readahead}, $self->devpath))
-          unless $f;
-    open (FH, ">".RCLOCAL);
-    print FH join ("\n", @lines), "\n";
-    close (FH);
+    my $okcmd = join (" ", SETRA, $self->{readahead}, $self->devpath);
+    
+    my $fh = CAF::FileEditor->open (RCLOCAL, log => $this_app);
+                                            
+    $fh->add_or_replace_lines ($re,
+                               $okcmd,
+                               $okcmd.$comment, # append comment
+                               ENDING_OF_FILE);
+    $fh->close();
 }
 
 

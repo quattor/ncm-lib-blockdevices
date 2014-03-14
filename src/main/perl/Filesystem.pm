@@ -24,13 +24,11 @@ use Cwd qw(abs_path);
 use constant MOUNTPOINTPERMS => 0755;
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant DISK	=> "physical_devs/";
-use constant SED	=> qw (/bin/sed -i);
 use constant UMOUNT	=> "/bin/umount";
 use constant MOUNT	=> "/bin/mount";
 use constant REMOUNT	=> qw (/bin/mount -o remount);
 use constant FSTAB	=> "/etc/fstab";
 use constant MTAB	=> "/etc/mtab";
-use constant GREP	=> qw (/bin/grep -q);
 use constant MKFSLABEL	=> '-L';
 use constant MKFSFORCE	=> '-f';
 use constant SWAPON	=> '/sbin/swapon';
@@ -38,20 +36,20 @@ use constant TUNE2FS	=> '/sbin/tune2fs';
 use constant TUNEXFS	=> '/usr/sbin/xfs_admin';
 use constant REISERTUNE	=> '/usr/sbin/reiserfstune';
 use constant TUNECMDS	=> { xfs	=> TUNEXFS,
-			     ext2	=> TUNE2FS,
-			     ext3	=> TUNE2FS,
-			     reiserfs	=> REISERTUNE
-			   };
+                 ext2	=> TUNE2FS,
+                 ext3	=> TUNE2FS,
+                 reiserfs	=> REISERTUNE
+               };
 use constant MKFSCMDS	=> { xfs	=> '/sbin/mkfs.xfs',
-			     ext2	=> '/sbin/mkfs.ext2',
-			     ext3	=> '/sbin/mkfs.ext3',
-			     ext4	=> '/sbin/mkfs.ext4',
-			     reiserfs	=> '/sbin/mkfs.reiserfs',
-			     reiser4	=> '/sbin/mkfs.reiser4',
-			     jfs	=> '/sbin/mkfs.jfs',
-			     swap	=> '/sbin/mkswap',
-			     tmpfs	=> '/bin/true',
-			   };
+                 ext2	=> '/sbin/mkfs.ext2',
+                 ext3	=> '/sbin/mkfs.ext3',
+                 ext4	=> '/sbin/mkfs.ext4',
+                 reiserfs	=> '/sbin/mkfs.reiserfs',
+                 reiser4	=> '/sbin/mkfs.reiser4',
+                 jfs	=> '/sbin/mkfs.jfs',
+                 swap	=> '/sbin/mkswap',
+                 tmpfs	=> '/bin/true',
+               };
 # Use this instead of Perl's built-in mkdir to create everything in
 # one go.
 #use constant MKDIR	=> qw (/bin/mkdir -p);
@@ -74,26 +72,24 @@ Arguments: $_[1] the line on /etc/fstab specifying the filesystem.
 sub new_from_fstab
 {
     my ($class, $line, $config) = @_;
-
     $line =~ m{^(\S+)\s+(\S+)\s};
     my ($dev, $mountp) = ($1, $2);
     my $p = CAF::Process->new ([MOUNT, $mountp],
-			      log => $this_app)->run();
+                               log => $this_app)->run();
 
-    if ($dev =~ m/^LABEL=/) {
-	open (FH, MTAB);
-	my @mtd = <FH>;
-	close (FH);
-	@mtd = grep (m{^\S+\s+$mountp/?\s}, @mtd);
-	$dev = $mtd[0];
-	$dev =~ s{^(\S+)\s.*}{$1};
+    if ($dev =~ m/^(LABEL|UUID)=/) {
+        my $fh = CAF::FileEditor->new(MTAB, log => $this_app);
+        my @mtd = grep (m{^\S+\s+$mountp/?\s}, split("\n", "$fh"));
+        $fh->close();
+        $dev = $mtd[0];
+        $dev =~ s{^(\S+)\s.*}{$1};
     }
     my $bd = build_from_dev ($dev, $config);
-    my $self = { preserve	=> 0,
-		 format		=> 1,
-		 block_device	=> $bd,
-		 mountpoint	=> $mountp
-	       };
+    my $self = {preserve    => 0,
+                format        => 1,
+                block_device    => $bd,
+                mountpoint    => $mountp
+                };
     return bless ($self, $class);
 }
 
@@ -103,7 +99,7 @@ sub _initialize
     my $st = $config->getElement($path)->getTree;
 
     while (my ($key, $val) = each (%$st)) {
-	$self->{$key} = $val;
+        $self->{$key} = $val;
     }
 
     $self->{block_device} = build ($config, $self->{block_device});
@@ -121,9 +117,8 @@ Returns whether the filesystem is mounted
 sub mounted
 {
     my $self = shift;
-    CAF::Process->new ([GREP, $self->{mountpoint}, MTAB],
-		      log => $this_app)->run();
-    return !$?;
+    my $fh = CAF::FileEditor->new(MTAB, log => $this_app);
+    return $fh =~ m!^\S+\s+$self->{mountpoint}/?\s!m;
 }
 
 =pod
@@ -140,19 +135,21 @@ sub remove_if_needed
     my $self = shift;
 
     if ($self->{preserve} || !$self->{format}) {
-	$this_app->debug (5, "Filesystem ", $self->{mountpoint},
-			  " shouldn't be destroyed according to profile.");
-	return 0;
+        $this_app->debug (5, "Filesystem ", $self->{mountpoint},
+              " shouldn't be destroyed according to profile.");
+        return 0;
     }
     $this_app->info ("Destroying filesystem on $self->{mountpoint}");
     if ($self->mounted) {
-	CAF::Process->new ([UMOUNT, $self->{mountpoint}],
-			  log => $this_app)->run();
-	return $? if $?;
+        CAF::Process->new ([UMOUNT, $self->{mountpoint}],
+                  log => $this_app)->run();
+        return $? if $?;
     }
     $self->{block_device}->remove==0 or return $?;
-    CAF::Process->new ([SED, "\\:$self->{mountpoint}\\s:d", FSTAB],
-		      log => $this_app)->run();
+    my $fh = CAF::FileEditor->new (FSTAB, log => $this_app);
+    $fh->remove_lines(qr/\s$self->{mountpoint}\s/, qr/^$/); # goodre ^$ (empty string) should never match  
+    $fh->close();
+    $this_app->debug (5, "Removing filesystem mountpoint", $self->{mountpoint});
     rmdir ($self->{mountpoint});
     return $?;
 }
@@ -163,21 +160,22 @@ sub remove_if_needed
 sub update_fstab
 {
     my ($self, $fh) = @_;
-    $fh = CAF::FileEditor->new ("/etc/fstab", log => $this_app) unless $fh;
-    my $s = $fh->string_ref();
-    $$s =~ s{.*\s+$self->{mountpoint}\s+.*\n}{};
-    $fh->set_contents($$s);
-    seek($fh, 0, SEEK_END);
-    print $fh join ("\t",
-		    (exists $self->{label}?
-		     "LABEL=$self->{label}":
-			  $self->{block_device}->devpath),
-		    $self->{mountpoint},
-		    $self->{type},
-		    $self->{mountopts} .
-			 (!$self->{mount} ? ",noauto":""),
-		    $self->{freq},
-		    $self->{pass}), "\n";
+    $fh = CAF::FileEditor->new (FSTAB, log => $this_app) unless $fh;
+    my $re = qr!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
+    my $entry = join ("\t",
+                        (exists $self->{label}?
+                            "LABEL=$self->{label}":
+                            $self->{block_device}->devpath),
+                        $self->{mountpoint},
+                        $self->{type},
+                        $self->{mountopts} .
+                            (!$self->{mount} ? ",noauto":""),
+                            $self->{freq},
+                        $self->{pass});
+    $fh->add_or_replace_lines ($re,
+                               $entry,
+                               $entry,
+                               ENDING_OF_FILE);
 }
 
 =pod
@@ -204,15 +202,15 @@ sub formatfs
     # re-install, it can happen that $self->{format} is false and
     # the block device has a filesystem. Dont' destroy the data.
     if ($self->{type} ne 'none' && !$self->{block_device}->has_filesystem) {
-	$this_app->debug (5, "Formatting to get $self->{mountpoint}");
-	CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
-			    $self->{block_device}->devpath],
-			   log => $this_app)->run();
-	return $? if $?;
-	CAF::Process->new ([$tunecmd, split ('\s+', $self->{tuneopts}),
-			   $self->{block_device}->devpath],
-			  log => $this_app)->run()
-	  if exists $self->{tuneopts} && defined $tunecmd;
+        $this_app->debug (5, "Formatting to get $self->{mountpoint}");
+        CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
+                           $self->{block_device}->devpath],
+                           log => $this_app)->run();
+        return $? if $?;
+        CAF::Process->new ([$tunecmd, split ('\s+', $self->{tuneopts}),
+                           $self->{block_device}->devpath],
+                           log => $this_app)->run()
+            if exists $self->{tuneopts} && defined $tunecmd;
     }
     return $?;
 }
@@ -231,10 +229,26 @@ sub mkmountpoint
     my $mp = shift;
     eval { mkpath ([$mp], 0, MOUNTPOINTPERMS) };
     if ($@) {
-	$this_app->error ("Failed to create mount point $mp: $@");
-	return -1;
+        $this_app->error ("Failed to create mount point $mp: $@");
+        return -1;
     }
     return 0;
+}
+
+=pod
+
+=head2 mountpoint_in_fstab
+
+Returns the number of valid (i.e. mountable) entries in /etc/fstab 
+
+=cut
+
+sub mountpoint_in_fstab
+{
+    my $self = shift;
+
+    my $fh = CAF::FileEditor->new(FSTAB, log => $this_app);
+    return $fh =~ m!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
 }
 
 =pod
@@ -251,12 +265,10 @@ sub create_if_needed
 {
     my $self = shift;
 
-    CAF::Process->new ([GREP, "[^#]*$self->{mountpoint}"."[[:space:]]", FSTAB],
-		      log => $this_app)->run();
-    if (!$?) {
-	$this_app->debug (5, "Filesystem $self->{mountpoint} already exists: ",
-			  "leaving.");
-	return 0;
+    if ($self->mountpoint_in_fstab) {
+        $this_app->debug (5, "Filesystem $self->{mountpoint} already exists in ", 
+                  FSTAB, " : leaving.");
+        return 0;
     }
 
     $self->{block_device}->create && return $?;
@@ -303,7 +315,7 @@ sub format_if_needed
     CAF::Process->new ([UMOUNT, $self->{mountpoint}], log => $this_app)->run();
     $r = $self->formatfs;
     CAF::Process->new ([MOUNT, $self->{mountpoint}], log => $this_app)->run()
-	if $self->{mount};
+        if $self->{mount};
     return $r;
 }
 
@@ -320,7 +332,7 @@ sub should_print_ks
     my $self = shift;
 
     $self->{should_print_ks} = $self->{block_device}->should_print_ks ? 1 : 0
-	unless exists ($self->{should_print_ks});
+    unless exists ($self->{should_print_ks});
 
     return $self->{should_print_ks};
 }
@@ -338,7 +350,7 @@ sub should_create_ks
     my $self = shift;
 
     $self->{should_create_ks} = $self->{block_device}->should_create_ks ? 1 : 0
-	unless exists ($self->{should_create_ks});
+    unless exists ($self->{should_create_ks});
 
     return $self->{should_create_ks};
 }
@@ -357,7 +369,7 @@ sub print_ks
     my $self = shift;
 
     $self->{block_device}->print_ks ($self)
-      if $self->{mount} && $self->should_print_ks;
+        if $self->{mount} && $self->should_print_ks;
 }
 
 =pod
@@ -375,7 +387,7 @@ sub del_pre_ks
     my $self = shift;
 
     $self->{block_device}->del_pre_ks
-	unless $self->{preserve} || !$self->{format};
+        unless $self->{preserve} || !$self->{format};
 }
 
 =pod
@@ -412,13 +424,13 @@ sub format_ks
 
     return unless $self->should_create_ks;
     print join (" ", "grep", "-q", "'" . $self->{block_device}->devpath . "\$'",
-		PART_FILE, "&&", "")
-	unless $self->{format};
+            PART_FILE, "&&", "")
+        unless $self->{format};
     $self->do_format_ks;
 
     if (exists $self->{tuneopts}) {
-	my $h = TUNECMDS;
-	print "$h->{$self->{type}} $self->{tuneopts}\n";
+        my $h = TUNECMDS;
+        print "$h->{$self->{type}} $self->{tuneopts}\n";
     }
 }
 
@@ -438,12 +450,12 @@ sub do_format_ks
 
     # Extract the absolute path to make it work on different SL versions.
     if (exists (MKFSCMDS->{$self->{type}})) {
-	my $mkfs = basename (MKFSCMDS->{$self->{type}});
-	print join (' ', $mkfs,
-		    $self->{block_device}->devpath,
-		    exists ($self->{label}) ? (MKFSLABEL, $self->{label}) : (),
-		    exists ($self->{mkfsopts})? $self->{mkfsopts}:())
-	    , "\n";
+    my $mkfs = basename (MKFSCMDS->{$self->{type}});
+    print join (' ', $mkfs,
+                $self->{block_device}->devpath,
+                exists ($self->{label}) ? (MKFSLABEL, $self->{label}) : (),
+                exists ($self->{mkfsopts})? $self->{mkfsopts}:())
+          , "\n";
     }
 }
 

@@ -82,7 +82,6 @@ sub extra_args()
 
 use constant PARTEDEXTRA => extra_args;
 use constant PARTEDARGS	=> qw (-s --);
-use constant GREPCALL	=> qw (/bin/grep -q /proc/partitions -e);
 
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant DISK	=> "physical_devs/";
