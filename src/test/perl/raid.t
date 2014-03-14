@@ -21,7 +21,7 @@ is (ref ($md), "NCM::MD", "MD correctly instantiated");
 
 # test mdstat parsing
 set_file('proc_mdstat_no_md0');
-is($md->devexists, 0, 'No md0 entry in mdstat');
+is($md->devexists, '', 'No md0 entry in mdstat');
 set_file('proc_mdstat_md0');
 is($md->devexists, 1, 'Found md0 entry in mdstat');
 
