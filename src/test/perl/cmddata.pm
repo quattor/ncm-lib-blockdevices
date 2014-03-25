@@ -76,7 +76,7 @@ $cmds{file_s_sdb1_data}{out}="/dev/sdb1: data";
 $cmds{file_s_sdb1_ext3}{cmd}="file -s /dev/sdb1";
 $cmds{file_s_sdb1_ext3}{out}="/dev/sdb1: Linux rev 1.0 ext3 filesystem data";
 
-$cmds{parted_print_sdb_nopart}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_nopart}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_nopart}{err}="Error: /dev/sdb: unrecognised disk label";
 $cmds{parted_print_sdb_nopart}{ec}=1;
 
@@ -96,20 +96,20 @@ EOF
 $cmds{parted_init_sdb_gpt}{cmd}="/sbin/parted -s /dev/sdb mklabel gpt";
 $cmds{parted_init_sdb_msdos}{cmd}="/sbin/parted -s -- /dev/sdb mklabel msdos";
 
-$cmds{parted_mkpart_sdb_prim1}{cmd}="/sbin/parted -s -- /dev/sdb mkpart primary 0 100";
-$cmds{parted_mkpart_sdb_prim2}{cmd}="/sbin/parted -s -- /dev/sdb mkpart primary 100 200";
-$cmds{parted_mkpart_sdb_ext1}{cmd}="/sbin/parted -s -- /dev/sdb mkpart extended 200 2700";
-$cmds{parted_mkpart_sdb_log1_msdos}{cmd}="/sbin/parted -s -- /dev/sdb mkpart logical 200 1224";
-$cmds{parted_mkpart_sdb_log1_gpt}{cmd}="/sbin/parted -s -- /dev/sdb mkpart logical 2700 3724";
+$cmds{parted_mkpart_sdb_prim1}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart primary 0 100";
+$cmds{parted_mkpart_sdb_prim2}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart primary 100 200";
+$cmds{parted_mkpart_sdb_ext1}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart extended 200 2700";
+$cmds{parted_mkpart_sdb_log1_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart logical 200 1224";
+$cmds{parted_mkpart_sdb_log1_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart logical 2700 3724";
 
-$cmds{parted_rm_1}{cmd}="/sbin/parted -s -- /dev/sdb rm 1";
-$cmds{parted_rm_2}{cmd}="/sbin/parted -s -- /dev/sdb rm 2";
-$cmds{parted_rm_3}{cmd}="/sbin/parted -s -- /dev/sdb rm 3";
-$cmds{parted_rm_4}{cmd}="/sbin/parted -s -- /dev/sdb rm 4";
-$cmds{parted_rm_5}{cmd}="/sbin/parted -s -- /dev/sdb rm 5";
+$cmds{parted_rm_1}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 1";
+$cmds{parted_rm_2}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 2";
+$cmds{parted_rm_3}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 3";
+$cmds{parted_rm_4}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 4";
+$cmds{parted_rm_5}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 5";
 
 
-$cmds{parted_print_sdb_label_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_label_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_label_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -120,7 +120,7 @@ Number  Start  End  Size  File system  Name  Flags
 
 EOF
 
-$cmds{parted_print_sdb_1prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_1prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_1prim_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -131,7 +131,7 @@ Number  Start   End    Size   File system  Name     Flags
  1      17.4kB  100MB  100MB               primary
 EOF
 
-$cmds{parted_print_sdb_2prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_2prim_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -144,7 +144,7 @@ Number  Start   End    Size    File system  Name     Flags
 
 EOF
 
-$cmds{parted_print_sdb_2prim_1ext_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_1ext_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_2prim_1ext_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -158,7 +158,7 @@ Number  Start   End     Size    File system  Name      Flags
 
 EOF
 
-$cmds{parted_print_sdb_2prim_1ext_1log_gpt}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_1ext_1log_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_2prim_1ext_1log_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -173,7 +173,7 @@ Number  Start   End     Size    File system  Name      Flags
 
 EOF
 
-$cmds{parted_print_sdb_label_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_label_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_label_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -184,7 +184,7 @@ Number  Start  End  Size  Type  File system  Flags
 
 EOF
 
-$cmds{parted_print_sdb_1prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_1prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_1prim_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -196,7 +196,7 @@ Number  Start  End    Size   Type     File system  Flags
 
 EOF
 
-$cmds{parted_print_sdb_2prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_2prim_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -209,7 +209,7 @@ Number  Start  End    Size   Type     File system  Flags
 
 EOF
 
-$cmds{parted_print_sdb_2prim_1ext_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_1ext_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_2prim_1ext_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -224,7 +224,7 @@ Number  Start  End     Size    Type      File system  Flags
 EOF
 
 
-$cmds{parted_print_sdb_2prim_1ext_1log_msdos}{cmd}="/sbin/parted -s -- /dev/sdb print";
+$cmds{parted_print_sdb_2prim_1ext_1log_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_2prim_1ext_1log_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
 Disk /dev/sdb: 4295MB
@@ -394,7 +394,7 @@ This filesystem will be automatically checked every 34 mounts or
 180 days, whichever comes first.  Use tune2fs -c or -i to override.
 EOF
 
-$cmds{fs_sdb1_parted_print_ext3}{cmd}="/sbin/parted -s -- /dev/sdb1 print";
+$cmds{fs_sdb1_parted_print_ext3}{cmd}="/sbin/parted -s -- /dev/sdb1 u MB print";
 $cmds{fs_sdb1_parted_print_ext3}{out}= <<'EOF';
 Model: Unknown (unknown)
 Disk /dev/sdb1: 100MB
