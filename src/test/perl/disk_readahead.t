@@ -13,6 +13,8 @@ use NCM::Disk;
 use CAF::Object;
 use Test::Quattor qw(blockdevices_readahead);
 
+is(join(' ',NCM::Disk::PARTEDEXTRA), 'u MB', "Always extra args 'u MB' for parted");
+
 use helper; # at least to set the this_app log 
 
 my $cfg = get_config_for_profile('blockdevices_readahead');
