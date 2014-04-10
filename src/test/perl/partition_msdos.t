@@ -16,6 +16,8 @@ use helper qw(set_output);
 use NCM::Disk;
 use NCM::Partition;
 
+is(join(' ',NCM::Partition::PARTEDEXTRA), 'u MB', "Always extra args 'u MB' for parted");
+
 my $cfg = get_config_for_profile('blockdevices_msdos');
 command_history_reset;
 set_output("parted_print_sdb_label_msdos"); # no partitions, has msdos label
@@ -66,10 +68,10 @@ ok($sdb5->devexists, 'Partition sdb5 exists (on msdos label)');
 ok(command_history_ok([
     '/bin/dd if=/dev/zero count=1000 of=/dev/sdb',
     '/sbin/parted -s -- /dev/sdb mklabel msdos',
-    '/sbin/parted -s -- /dev/sdb mkpart primary 0 100',
-    '/sbin/parted -s -- /dev/sdb mkpart primary 100 200',
-    '/sbin/parted -s -- /dev/sdb mkpart extended 200 2700',
-    '/sbin/parted -s -- /dev/sdb mkpart logical 200 1224',
+    '/sbin/parted -s -- /dev/sdb u MB mkpart primary 0 100',
+    '/sbin/parted -s -- /dev/sdb u MB mkpart primary 100 200',
+    '/sbin/parted -s -- /dev/sdb u MB mkpart extended 200 2700',
+    '/sbin/parted -s -- /dev/sdb u MB mkpart logical 200 1224',
     ]), 
 );
 
@@ -79,7 +81,7 @@ set_output('parted_rm_5');
 is($sdb5->remove, 0, 'Partition sdb5 removed (on msdos label)');
 set_output("parted_print_sdb_2prim_1ext_msdos");
 ok(command_history_ok([
-        "/sbin/parted -s -- /dev/sdb rm 5"
+        "/sbin/parted -s -- /dev/sdb u MB rm 5"
     ]), 
 );
 

@@ -57,13 +57,6 @@ sub set_file {
     set_file_contents($path, $txt);
 };
 
-# can't run this early enough
-# retest it here, also check the constant (that's the one being used)
-set_output("parted_version_2");  # force this version
-use NCM::Partition;
-is(NCM::Partition->extra_args(),(), "No extra args for parted, version OK");
-is(NCM::Partition::PARTEDEXTRA, (), "No extra args for parted");
-
 # mock devexists, it has a -b test, which can't be mocked
 our $mockdisk = Test::MockModule->new('NCM::Disk');
 $mockdisk->mock('devexists', 1);

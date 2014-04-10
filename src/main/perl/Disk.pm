@@ -59,6 +59,7 @@ use constant FILES	=> qw (file -s);
 use constant SLEEPTIME	=> 2;
 use constant RAIDSLEEP	=> 10;
 use constant PARTED	=> qw (/sbin/parted -s --);
+use constant PARTEDEXTRA => qw (u MB);
 use constant PARTEDP	=> 'print';
 use constant SETRA	=> qw (/sbin/blockdev --setra);
 use constant DDARGS	=> qw (if=/dev/zero count=1000);
@@ -168,7 +169,8 @@ sub partitions_in_disk
 
     local $ENV{LANG} = 'C';
 
-    my $line =  CAF::Process->new([PARTED, $self->devpath, PARTEDP], log => $this_app)->output();
+    my $line =  CAF::Process->new([PARTED, $self->devpath, PARTEDEXTRA, PARTEDP], 
+                                  log => $this_app)->output();
 
     my @n = $line=~m/^\s*\d\s/mg;
     unless ($line =~ m/^(?:Disk label type|Partition Table): (\w+)/m) {

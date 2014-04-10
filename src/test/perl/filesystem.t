@@ -41,7 +41,7 @@ set_output("file_s_sdb1_data");
 set_output("fs_lagoon_missing");
 $fs->create_if_needed;
 ok(command_history_ok([
-        "/sbin/parted -s -- /dev/sdb print", 
+        "/sbin/parted -s -- /dev/sdb u MB print", 
         "file -s /dev/sdb1", 
         "mkfs.ext3 /dev/sdb1"]), 
     "mkfs.ext3 called on /dev/sdb1");
@@ -94,7 +94,7 @@ $nofs->remove_if_needed;
 #   fstab should not have that line anymore
 ok(command_history_ok([
     "/bin/umount /Lagoon",
-    "/sbin/parted -s -- /dev/sdb rm 1",
+    "/sbin/parted -s -- /dev/sdb u MB rm 1",
     ],
     "Removal commands called")
 );

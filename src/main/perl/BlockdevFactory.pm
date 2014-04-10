@@ -22,6 +22,7 @@ use NCM::File;
 use NCM::Tmpfs;
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant PARTED	=> qw (/sbin/parted -s --);
+use constant PARTEDEXTRA => qw (u MB);
 use constant PARTEDP	=> 'print';
 
 our @ISA = qw (Exporter);
@@ -83,7 +84,7 @@ sub build_from_dev
         # whether a path refers to a full disk or to a
         # partition.
         # TODO why output and not execute?
-        CAF::Process->new([PARTED, $dev, PARTEDP], log => $this_app)->output();
+        CAF::Process->new([PARTED, $dev, PARTEDEXTRA, PARTEDP], log => $this_app)->output();
         if ($?) {
             return NCM::Disk->new_from_system ($dev, $config);
         }

@@ -70,17 +70,7 @@ use constant MSDOS	=> 'msdos';
 # work.
 use constant SLEEPTIME => 4;
 
-# If we are using SL5 (parted 1.8) we need to specify we'll work with MB.
-sub extra_args()
-{
-    my $out = CAF::Process->new([PARTED, "-v"], log => $this_app)->output();
-    if ($out =~ m/1.8/) {
-        return qw (u MB);
-    }
-    return ();
-}
-
-use constant PARTEDEXTRA => extra_args;
+use constant PARTEDEXTRA => qw (u MB);
 use constant PARTEDARGS	=> qw (-s --);
 
 use constant BASEPATH	=> "/system/blockdevices/";
