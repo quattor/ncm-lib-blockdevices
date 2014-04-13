@@ -16,8 +16,8 @@ use CAF::FileEditor;
 use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
-use File::Path;
 use File::Basename;
+use File::Path;
 use Fcntl qw(SEEK_END);
 use Cwd qw(abs_path);
 
@@ -182,7 +182,8 @@ sub update_fstab
 
 =head2 format
 
-Formats the filesystem, unconditionatlly.
+Formats the filesystem, if the blockdevice has no supported filesystem or 
+if force_filesystem is true.
 
 =cut
 
@@ -200,17 +201,31 @@ sub formatfs
 
     # Format only if there must be a filesystem. After a
     # re-install, it can happen that $self->{format} is false and
-    # the block device has a filesystem. Dont' destroy the data.
-    if ($self->{type} ne 'none' && !$self->{block_device}->has_filesystem) {
+    # the block device has a filesystem. Don't destroy the data.
+    my $has_filesystem = 1;
+    if ($self->{type} eq 'none') {
+        $this_app->debug(3, "type 'none', no format.");
+        $has_filesystem = 1;
+    } elsif(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
+        $has_filesystem = $self->{block_device}->has_filesystem($self->{type});
+        $this_app->debug(3, "force_filesystemtype with type $self->{type}",
+                            " has_filesystem $has_filesystem");
+    } else {
+        $has_filesystem = $self->{block_device}->has_filesystem;
+        $this_app->debug(3, "any supported filesystem",
+                            " has_filesystem $has_filesystem");
+    };
+    
+    if (!$has_filesystem) {
         $this_app->debug (5, "Formatting to get $self->{mountpoint}");
         CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
-                           $self->{block_device}->devpath],
-                           log => $this_app)->run();
+                            $self->{block_device}->devpath],
+                            log => $this_app)->run();
         return $? if $?;
         CAF::Process->new ([$tunecmd, split ('\s+', $self->{tuneopts}),
-                           $self->{block_device}->devpath],
-                           log => $this_app)->run()
-            if exists $self->{tuneopts} && defined $tunecmd;
+                            $self->{block_device}->devpath],
+                            log => $this_app)->run()
+                if exists $self->{tuneopts} && defined $tunecmd;
     }
     return $?;
 }
@@ -253,6 +268,39 @@ sub mountpoint_in_fstab
 
 =pod
 
+=head2 is_create_needed
+
+Test if fs->blockdev->create is needed 
+
+=cut
+
+sub is_create_needed
+{
+    my $self = shift;
+
+    my $ret=1; # default: create is needed
+    my $msg = 'Default create is needed.';
+    
+    if($self->mounted()) {
+        $msg="Filesystem MOUNTED";
+        $ret=0;
+    } elsif(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
+        # fstab might contain previous and possibly different filesystem type
+        $msg="force_filesystemtype: ingore if mountpoint exists in ".FSTAB;
+    } elsif ($self->mountpoint_in_fstab) {
+        # this only checks presence of mountpoint in fstab file, not filesystemtype
+        $msg="Mountpoint $self->{mountpoint} already exists in ".FSTAB;
+        $ret=0;
+    }
+
+    $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
+                      " is_create_needed $ret: $msg");
+    
+    return $ret;
+}
+
+=pod
+
 =head2 create_if_needed
 
 Creates the filesystem, if it doesn't exist yet.
@@ -265,15 +313,14 @@ sub create_if_needed
 {
     my $self = shift;
 
-    if ($self->mountpoint_in_fstab) {
-        $this_app->debug (5, "Filesystem $self->{mountpoint} already exists in ", 
-                  FSTAB, " : leaving.");
-        return 0;
-    }
+    $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
+                      " blockdev ", $self->{block_device}->devpath);
 
-    $self->{block_device}->create && return $?;
-    $self->formatfs && return $?;
-    $this_app->info("Filesystem on $self->{mountpoint} successfully created");
+    if($self->is_create_needed) {
+        $self->{block_device}->create && return $?;
+        $self->formatfs && return $?;
+        $this_app->info("Filesystem on $self->{mountpoint} successfully created");
+    };
     return 0;
 }
 
