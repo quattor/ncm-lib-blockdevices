@@ -59,7 +59,7 @@ use constant FILES	=> qw (file -s);
 use constant SLEEPTIME	=> 2;
 use constant RAIDSLEEP	=> 10;
 use constant PARTED	=> qw (/sbin/parted -s --);
-use constant PARTEDEXTRA => qw (u MB);
+use constant PARTEDEXTRA => qw (u MiB);
 use constant PARTEDP	=> 'print';
 use constant SETRA	=> qw (/sbin/blockdev --setra);
 use constant DDARGS	=> qw (if=/dev/zero count=1000);
