@@ -75,7 +75,7 @@ use constant MSDOS	=> 'msdos';
 # work.
 use constant SLEEPTIME => 4;
 
-use constant PARTEDEXTRA => qw (u MB);
+use constant PARTEDEXTRA => qw (u MiB);
 use constant PARTEDARGS	=> qw (-s --);
 
 use constant BASEPATH	=> "/system/blockdevices/";

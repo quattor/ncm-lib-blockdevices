@@ -22,7 +22,7 @@ use NCM::File;
 use NCM::Tmpfs;
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant PARTED	=> qw (/sbin/parted -s --);
-use constant PARTEDEXTRA => qw (u MB);
+use constant PARTEDEXTRA => qw (u MiB);
 use constant PARTEDP	=> 'print';
 
 our @ISA = qw (Exporter);
