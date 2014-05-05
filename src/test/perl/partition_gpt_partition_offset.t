@@ -14,7 +14,7 @@ use helper qw(set_output);
 
 use NCM::Partition;
 
-is(join(' ',NCM::Partition::PARTEDEXTRA), 'u MB', "Always extra args 'u MB' for parted");
+is(join(' ',NCM::Partition::PARTEDEXTRA), 'u MiB', "Always extra args 'u MiB' for parted");
 
 # the config has a "bug" in the sense that logical/extended partitions 
 # make no sense when using gpt (they are treated as names)
@@ -73,10 +73,10 @@ ok($sdb4->devexists, 'Partition sdb4 exists (on gpt label)');
 ok(command_history_ok([
     '/bin/dd if=/dev/zero count=1000 of=/dev/sdb',
     '/sbin/parted -s -- /dev/sdb mklabel gpt',
-    '/sbin/parted -s -- /dev/sdb u MB mkpart primary 1 101',
-    '/sbin/parted -s -- /dev/sdb u MB mkpart primary 101 201',
-    '/sbin/parted -s -- /dev/sdb u MB mkpart extended 202 2702',
-    '/sbin/parted -s -- /dev/sdb u MB mkpart logical 2702 3726',
+    '/sbin/parted -s -- /dev/sdb u MiB mkpart primary 1 101',
+    '/sbin/parted -s -- /dev/sdb u MiB mkpart primary 101 201',
+    '/sbin/parted -s -- /dev/sdb u MiB mkpart extended 202 2702',
+    '/sbin/parted -s -- /dev/sdb u MiB mkpart logical 2702 3726',
     ]), 'Command history gpt partition with offset'
 );
 
