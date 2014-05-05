@@ -128,7 +128,7 @@ sub ksfsformat
         (exists($fs->{ksfsformat}) && $fs->{ksfsformat})) {
             push(@format, "--fstype=$fs->{type}");
             if (exists($fs->{mountopts})) {
-                push(@format, "--fstype='$fs->{mountopts}'");
+                push(@format, "--fsoptions='$fs->{mountopts}'");
             }
             if (exists($fs->{mkfsopts})) {
                 $this_app->warn("mkfsopts $fs->{mkfsopts} set for mountpoint $fs->{mountpoint}",
