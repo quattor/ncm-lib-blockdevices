@@ -103,9 +103,9 @@ sub should_create_ks
 
 =pod
 
-=head2 ks_fsformat 
+=head2 ksfsformat 
 
-Givena filesystem instance C<fs>, return the kickstart formatting command 
+Given a filesystem instance C<fs>, return the kickstart formatting command 
 to be used in the kickstart commands section.
 It defaults to C<--noformat> unless the C<ksfsformat> boolean is true, or it 
 is a labeled swap filesystem. If C<ksfsformat> is true and C<mkfsopts> are used, 
