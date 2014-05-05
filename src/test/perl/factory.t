@@ -7,6 +7,7 @@
 
 use strict;
 use warnings;
+use helper;
 use Test::More;
 use NCM::BlockdevFactory qw (build);
 use CAF::Object;

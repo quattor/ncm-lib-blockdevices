@@ -7,11 +7,12 @@
 
 use strict;
 use warnings;
+use helper;
+
 use Test::More;
 
 use Test::Quattor qw(raid);
 
-use helper;
 
 use NCM::MD;
 
