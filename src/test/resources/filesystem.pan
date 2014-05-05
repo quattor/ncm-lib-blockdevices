@@ -26,5 +26,13 @@ include 'blockdevices';
     fs=value("/system/filesystems/0");
     fs["force_filesystemtype"]=true;    
     append(fs);
+
+    # append force_filesystem true
+    fs=value("/system/filesystems/0");
+    fs["ksfsformat"]=true;    
+    fs["mountopts"]="oneoption anotheroption";    
+
+    append(fs);
+
 };
 

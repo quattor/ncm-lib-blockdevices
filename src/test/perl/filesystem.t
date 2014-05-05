@@ -7,12 +7,14 @@
 
 use strict;
 use warnings;
+use helper; 
+
 use Test::More;
 use NCM::Filesystem;
+use CAF::FileWriter;
 use CAF::Object;
 use Test::Quattor qw(filesystem);
 
-use helper; 
 
 my $cfg = get_config_for_profile('filesystem');
 
@@ -229,6 +231,25 @@ set_file("fstab_default");
 is($fs->is_create_needed, 1, 'create needed, mountpoint not in fstab');
 is($forcefalsefs->is_create_needed, 1, 'create needed, mountpoint not in fstab');
 is($forcetruefs->is_create_needed, 1, 'create needed, mountpoint not in fstab but ignored anyway');
+
+# test some ks functions, those just print to default FH
+my $fhfs = CAF::FileWriter->new("target/test/ksfs");
+my $fhfs_ksfsformat = CAF::FileWriter->new("target/test/ksfs_ksformat");
+
+select($fhfs);
+ok(!exists($fs->{ksfsformat}), 'ksfsformat not defined');
+$fs->print_ks;
+like($fhfs, qr{^part\s/Lagoon\s--onpart\ssdb1}m, 'Default print_ks');
+like($fhfs, qr{\s--noformat(\s|$)?}m, 'Default print_ks --noformat');
+unlike($fhfs, qr{\s--fstype?}m, 'Default print_ks noformat has no fstype');
+
+my $fs_ksfsformat = NCM::Filesystem->new ("/system/filesystems/5", $cfg);
+select($fhfs_ksfsformat);
+ok($fs_ksfsformat->{ksfsformat}, 'ksfsformat set');
+$fs_ksfsformat->print_ks;
+like($fhfs_ksfsformat, qr{^part\s/Lagoon\s--onpart\ssdb1}m, 'Default print_ks');
+unlike($fhfs_ksfsformat, qr{\s--noformat(\s|$)?}m, 'ksfsformat has no --noformat');
+like($fhfs_ksfsformat, qr{--fstype=ext3\s--fstype='oneoption anotheroption'}m, 'ksfsformat print_ks has fsttype and fsopts/mountopts');
 
 
 done_testing();
