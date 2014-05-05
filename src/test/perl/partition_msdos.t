@@ -7,10 +7,10 @@
 
 use strict;
 use warnings;
-use Test::More;
-use helper qw(set_output);
 
+use Test::More;
 use Test::Quattor qw(blockdevices_msdos);
+use helper qw(set_output);
 
 use NCM::Disk;
 use NCM::Partition;

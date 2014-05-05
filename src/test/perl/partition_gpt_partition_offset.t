@@ -7,9 +7,10 @@
 
 use strict;
 use warnings;
-use helper qw(set_output);
+
 use Test::More;
 use Test::Quattor qw(blockdevices_gpt_partition_offset);
+use helper qw(set_output);
 
 use NCM::Partition;
 

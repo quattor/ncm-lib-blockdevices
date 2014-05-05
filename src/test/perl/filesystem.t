@@ -7,13 +7,14 @@
 
 use strict;
 use warnings;
-use helper; 
 
 use Test::More;
+use Test::Quattor qw(filesystem);
+use helper; 
+
 use NCM::Filesystem;
 use CAF::FileWriter;
 use CAF::Object;
-use Test::Quattor qw(filesystem);
 
 
 my $cfg = get_config_for_profile('filesystem');
