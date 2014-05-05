@@ -234,8 +234,6 @@ is($forcetruefs->is_create_needed, 1, 'create needed, mountpoint not in fstab bu
 
 # test some ks functions, those just print to default FH
 my $fhfs = CAF::FileWriter->new("target/test/ksfs");
-my $fhfs_ksfsformat = CAF::FileWriter->new("target/test/ksfs_ksformat");
-
 select($fhfs);
 ok(!exists($fs->{ksfsformat}), 'ksfsformat not defined');
 $fs->print_ks;
@@ -243,6 +241,7 @@ like($fhfs, qr{^part\s/Lagoon\s--onpart\ssdb1}m, 'Default print_ks');
 like($fhfs, qr{\s--noformat(\s|$)?}m, 'Default print_ks --noformat');
 unlike($fhfs, qr{\s--fstype?}m, 'Default print_ks noformat has no fstype');
 
+my $fhfs_ksfsformat = CAF::FileWriter->new("target/test/ksfs_ksformat");
 my $fs_ksfsformat = NCM::Filesystem->new ("/system/filesystems/5", $cfg);
 select($fhfs_ksfsformat);
 ok($fs_ksfsformat->{ksfsformat}, 'ksfsformat set');
@@ -251,5 +250,24 @@ like($fhfs_ksfsformat, qr{^part\s/Lagoon\s--onpart\ssdb1}m, 'Default print_ks');
 unlike($fhfs_ksfsformat, qr{\s--noformat(\s|$)?}m, 'ksfsformat has no --noformat');
 like($fhfs_ksfsformat, qr{--fstype=ext3\s--fstype='oneoption anotheroption'}m, 'ksfsformat print_ks has fsttype and fsopts/mountopts');
 
+# softraid test
+my $fhfs_md = CAF::FileWriter->new("target/test/ksfs_md");
+my $fs_md = NCM::Filesystem->new ("/system/filesystems/6", $cfg);
+select($fhfs_md);
+ok(!exists($fs_md->{ksfsformat}), 'ksfsformat not defined');
+$fs_md->print_ks;
+like($fhfs_md, qr{^raid\s/Lagoon\s--device=md0}m, 'Default print_ks for md');
+like($fhfs_md, qr{\s--noformat(\s|$)?}m, 'Default print_ks --noformat for md');
+unlike($fhfs_md, qr{\s--fstype?}m, 'Default print_ks noformat has no fstype for md');
+
+# logical volume test
+my $fhfs_vol = CAF::FileWriter->new("target/test/ksfs_vol");
+my $fs_vol = NCM::Filesystem->new ("/system/filesystems/7", $cfg);
+select($fhfs_vol);
+ok(!exists($fs_vol->{ksfsformat}), 'ksfsformat not defined');
+$fs_vol->print_ks;
+like($fhfs_vol, qr{^logvol\s/Lagoons\s--vgname=vg0\s--name=lv0}m, 'Default print_ks for logvol');
+like($fhfs_vol, qr{\s--noformat(\s|$)?}m, 'Default print_ks --noformat for logvol');
+unlike($fhfs_vol, qr{\s--fstype?}m, 'Default print_ks noformat has no fstype for logvol');
 
 done_testing();
