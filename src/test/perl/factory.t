@@ -17,7 +17,7 @@ use CAF::Object;
 
 $CAF::Object::NoAction = 1;
 
-is(join(' ',NCM::BlockdevFactory::PARTEDEXTRA), 'u MB', "Always extra args 'u MB' for parted");
+is(join(' ',NCM::BlockdevFactory::PARTEDEXTRA), 'u MiB', "Always extra args 'u MiB' for parted");
 
 my $cfg = get_config_for_profile('factory');
 

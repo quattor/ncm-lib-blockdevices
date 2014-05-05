@@ -16,7 +16,7 @@ use NCM::BlockdevFactory qw (build);
 use NCM::Disk;
 use CAF::Object;
 
-is(join(' ',NCM::Disk::PARTEDEXTRA), 'u MB', "Always extra args 'u MB' for parted");
+is(join(' ',NCM::Disk::PARTEDEXTRA), 'u MiB', "Always extra args 'u MiB' for parted");
 
 my $cfg = get_config_for_profile('blockdevices_readahead');
 
