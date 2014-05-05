@@ -7,11 +7,13 @@
 
 use strict;
 use warnings;
-use helper;
+
 use Test::More;
+use Test::Quattor qw(factory);
+use helper;
+
 use NCM::BlockdevFactory qw (build);
 use CAF::Object;
-use Test::Quattor qw(factory);
 
 $CAF::Object::NoAction = 1;
 
