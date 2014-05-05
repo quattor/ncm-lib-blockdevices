@@ -222,7 +222,7 @@ kickstart commands.
 
 sub print_ks
 {
-	my ($self, $fs, $format, $fstype) = @_;
+	my ($self, $fs) = @_;
 
 	return unless $self->should_print_ks;
 
@@ -231,7 +231,7 @@ sub print_ks
 	print join (" ", "\nlogvol", $fs->{mountpoint},
 		    "--vgname=$self->{volume_group}->{devname}",
 		    "--name=$self->{devname}",
-		    "--noformat",
+		    $self->ksfsformat($fs),
 		    "\n");
 }
 
