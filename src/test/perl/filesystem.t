@@ -248,7 +248,7 @@ ok($fs_ksfsformat->{ksfsformat}, 'ksfsformat set');
 $fs_ksfsformat->print_ks;
 like($fhfs_ksfsformat, qr{^part\s/Lagoon\s--onpart\ssdb1}m, 'Default print_ks');
 unlike($fhfs_ksfsformat, qr{\s--noformat(\s|$)?}m, 'ksfsformat has no --noformat');
-like($fhfs_ksfsformat, qr{--fstype=ext3\s--fstype='oneoption anotheroption'}m, 'ksfsformat print_ks has fsttype and fsopts/mountopts');
+like($fhfs_ksfsformat, qr{--fstype=ext3\s--fsoptions='oneoption anotheroption'}m, 'ksfsformat print_ks has fsttype and fsopts/mountopts');
 
 # softraid test
 my $fhfs_md = CAF::FileWriter->new("target/test/ksfs_md");
