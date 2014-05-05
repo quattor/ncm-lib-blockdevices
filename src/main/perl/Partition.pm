@@ -426,16 +426,12 @@ section.
 
 sub print_ks
 {
-    my ($self, $fs, $fstype) = @_;
+    my ($self, $fs) = @_;
 
     print join (" ",
                 "part", $fs->{mountpoint}, "--onpart",
                 $self->{devname},
-                # Anaconda doesn't recognize existing SWAP labels, if
-                # we want a label on swap, we'll have to re-format the
-                # partition and let it set its own label.
-                ($fs->{type} eq "swap" && exists $fs->{label}) ?
-                "--fstype swap":"--noformat",
+                $self->ksfsformat($fs),
                 "\n") if $fs;
 }
 
