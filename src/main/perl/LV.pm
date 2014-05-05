@@ -227,8 +227,10 @@ sub print_ks
 	return unless $self->should_print_ks;
 
 	$self->{volume_group}->print_ks;
+    print "\n";
 
-	print join (" ", "\nlogvol", $fs->{mountpoint},
+	print join (" ", 
+	        "logvol", $fs->{mountpoint},
 		    "--vgname=$self->{volume_group}->{devname}",
 		    "--name=$self->{devname}",
 		    $self->ksfsformat($fs),
