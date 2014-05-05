@@ -335,8 +335,8 @@ sub begin
     $self->{begin} = $st;
     if (exists $self->{offset}) {
         $self->{begin} += $self->{offset};
-        $this_app->debug (5, "Partition ",$self->{devname}," offset ", $self->{offset},
-                             " shifts start from $st to ", $self->{begin});
+        $this_app->debug (5, "Partition $self->{devname} offset $self->{offset}",
+                             " shifts start from $st to $self->{begin}");
     }
     $this_app->debug (5, "Partition ",$self->{devname}," begins at ", $self->{begin});
     return $self->{begin};
