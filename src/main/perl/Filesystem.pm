@@ -172,6 +172,9 @@ sub update_fstab
                             (!$self->{mount} ? ",noauto":""),
                             $self->{freq},
                         $self->{pass});
+    
+    $entry .= "\n"; # add trailing newline
+
     $fh->add_or_replace_lines ($re,
                                $entry,
                                $entry,
