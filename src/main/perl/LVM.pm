@@ -183,7 +183,7 @@ sub _initialize
     my ($self,  $path, $config) = @_;
     my $st = $config->getElement($path)->getTree;
     if ( $config->elementExists(VOLGROUP_REQUIRED_PATH) ) {
-        $self->{_volgroup_required} = $config->getElement(VOLGROUP_REQUIRED_PATH)->getValue();
+        $self->{_volgroup_required} = $config->getElement(VOLGROUP_REQUIRED_PATH)->getTree();
     } else {
         $self->{_volgroup_required} = 0;
     };
