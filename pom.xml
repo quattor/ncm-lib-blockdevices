@@ -2,20 +2,6 @@
 
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>org.quattor.maven</groupId>
-  <artifactId>blockdevices</artifactId>
-
-  <packaging>pom</packaging>
-  <version>14.5.0-rc4-SNAPSHOT</version>
-  <name>build-profile</name>
-  <url>http://quattor.org/cfg-modules/</url>
-
-  <parent>
-    <groupId>org.quattor.maven</groupId>
-    <artifactId>build-profile</artifactId>
-    <version>1.34</version>
-  </parent>
-
   <licenses>
     <license>
       <name>Apache 2 License</name>
