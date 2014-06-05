@@ -40,6 +40,12 @@ An object modelling the disk that holds the partition.
 
 The exact point where the partition should start.
 
+=item * flags : hash
+
+A hash with the flag name as key and a boolean as value
+(and the value to be converted to C<on> or C<off>). 
+The flags are set with the parted C<set> command.
+
 =back
 
 =cut
@@ -143,12 +149,50 @@ sub _initialize
     $self->{size} = $st->{size} if exists $st->{size};
     $self->{type} = $st->{type};
     $self->{offset} = $st->{offset} if exists $st->{offset};
+    $self->{flags} = $st->{flags} if exists $st->{flags};
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
                                            $st->{holding_dev},
                                            $config);
     $self->_set_alignment($st, 0, 0);
     return $self;
 }
+
+
+=pod
+
+=head2 set_flags
+
+Set the partition flags (if any).
+
+=cut
+
+sub set_flags
+{
+    my $self = shift;
+
+    if(! $self->{flags}) {
+        $this_app->debug (5, "No flags for $self->{devname}");
+        return 0;
+    }
+
+    my $hdname =  "/dev/" . $self->{holding_dev}->{devname};
+    my $num = $self->partition_number;
+    
+    for my $flag (sort keys %{$self->{flags}})  {
+        my $value = $self->{flags}{$flag} ? "on" : "off";
+        my $msg = "flag $flag to $value for $self->{devname}";
+        $this_app->debug (5, "Set $msg");
+        my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, 'set', $num, $flag, $value);
+
+        $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
+        CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
+        $? && $this_app->error ("Failed to set $msg");
+        
+    }
+    
+    return $?;
+}
+
 
 =pod
 
@@ -197,8 +241,10 @@ sub create
 
     $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
     CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
-
     $? && $this_app->error ("Failed to create $self->{devname}");
+    
+    $? &= $self->set_flags();
+    
     sleep (SLEEPTIME);
     return $?;
 }
@@ -492,6 +538,13 @@ sub create_pre_ks
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
 
+    my @flags;
+    for my $flag (sort keys %{$self->{flags}})  {
+        my $value = $self->{flags}{$flag} ? "on" : "off";
+        push(@flags, "'$flag $value'"); # to used on for loop
+    }    
+    my $flagstxt = join(" ", @flags);
+    
     # Clear two times the alignment, but at least 1M
     my $align_sect = int($self->{holding_dev}->{alignment} / 512);
     my $clear_mb = int($align_sect / 2 / 1024) * 2;
@@ -523,7 +576,12 @@ then
     else
         let end=\${prev/MiB}+$size
     fi
-    parted $disk -s  -- u MiB mkpart $self->{type} \$begin \$end
+    parted $disk -s -- u MiB mkpart $self->{type} \$begin \$end
+    
+    for flagval in $flagstxt
+    do
+        parted $disk -s -- set $n \$flagval
+    done
 
     rereadpt $disk
     if [ $self->{type} != "extended" ]
