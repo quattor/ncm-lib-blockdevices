@@ -19,6 +19,11 @@ The fields available on this class (should be private!) are:
 
 Partition's size.
 
+=item * offset : integer
+
+Offset to determine the start of partition relative to the previous partition 
+or beginning of disk.
+
 =item * devname : string
 
 The name of the blockdevice (sda1).
@@ -137,6 +142,7 @@ sub _initialize
     $self->{devname} = unescape ($1);
     $self->{size} = $st->{size} if exists $st->{size};
     $self->{type} = $st->{type};
+    $self->{offset} = $st->{offset} if exists $st->{offset};
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
                                            $st->{holding_dev},
                                            $config);
@@ -327,8 +333,13 @@ sub begin
     }
 
     $self->{begin} = $st;
-    $this_app->debug (5, "Partition ",$self->{devname}," begins at $st");
-    return $st;
+    if (exists $self->{offset}) {
+        $self->{begin} += $self->{offset};
+        $this_app->debug (5, "Partition $self->{devname} offset $self->{offset}",
+                             " shifts start from $st to $self->{begin}");
+    }
+    $this_app->debug (5, "Partition ",$self->{devname}," begins at ", $self->{begin});
+    return $self->{begin};
 }
 
 # Returns the end point of a partition.
@@ -481,6 +492,7 @@ sub create_pre_ks
     my $n = $self->partition_number;
     #my $type = substr ($self->{type}, 0, 1);
     my $size = exists $self->{size}? "$self->{size}":'100%';
+    my $offset = exists $self->{offset}? $self->{offset} : 0;
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
 
@@ -493,19 +505,29 @@ sub create_pre_ks
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
     echo "Creating partition $self->{devname}"
+   
     prev=\`parted $disk -s u MiB p |awk '\$1 == $n-1 {print \$5=="extended" ? \$2:\$3}'\`
+
     if [ -z \$prev ]
     then
-        # The first partition must be aligned to the first MiB (0%)
-        prev=1
+        if [ $offset = 0 ]
+        then 
+            # The first partition must be aligned to the first MiB (0%)
+            begin=1
+        else
+            begin=$offset
+        fi            
+    else
+        let begin=\${prev/MiB}+$offset
     fi
+
     if [ $size = '100%'  ] || [ $size = -1 ]
     then
         end=$size
     else
         let end=\${prev/MiB}+$size
     fi
-    parted $disk -s  -- u MiB mkpart $self->{type} \$prev \$end
+    parted $disk -s  -- u MiB mkpart $self->{type} \$begin \$end
 
     rereadpt $disk
     if [ $self->{type} != "extended" ]
