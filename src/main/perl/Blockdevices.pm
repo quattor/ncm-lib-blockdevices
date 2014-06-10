@@ -101,6 +101,45 @@ sub should_create_ks
 	$this_app->error ("should_create_ks method not defined for this class");
 }
 
+=pod
+
+=head2 ksfsformat 
+
+Given a filesystem instance C<fs>, return the kickstart formatting command 
+to be used in the kickstart commands section.
+It defaults to C<--noformat> unless the C<ksfsformat> boolean is true, or it 
+is a labeled swap filesystem. If C<ksfsformat> is true and C<mkfsopts> are used, 
+a warning is issued (as the kickstart commands do not support mkfs options).
+                                                                                                                                                                                         
+=cut                                                                                                                                                                                     
+sub ksfsformat 
+{
+    my ($self, $fs) = @_;
+    
+    my @format; 
+    
+    # Anaconda doesn't recognize existing SWAP labels, if
+    # we want a label on swap, we'll have to re-format the
+    # partition and let it set its own label.
+    # (Re)formatting in the kickstart commands section can 
+    # also be forced if needed (e.g. EL7 anaconda does not
+    # allow to use an existing filesystem as /)
+    if (($fs->{type} eq "swap" && exists $fs->{label}) ||
+        (exists($fs->{ksfsformat}) && $fs->{ksfsformat})) {
+            push(@format, "--fstype=$fs->{type}");
+            if (exists($fs->{mountopts})) {
+                push(@format, "--fsoptions='$fs->{mountopts}'");
+            }
+            if (exists($fs->{mkfsopts})) {
+                $this_app->warn("mkfsopts $fs->{mkfsopts} set for mountpoint $fs->{mountpoint}",
+                                "This is not supported in ksfsformat and ignored here");
+            }            
+    } else {
+        push(@format, "--noformat");
+    }
+    
+    return @format;
+}
 
 sub print_ks
 {}

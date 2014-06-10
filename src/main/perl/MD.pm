@@ -231,7 +231,12 @@ sub print_ks
 
     if (scalar (@_) == 2) {
         $_->print_ks foreach (@{$self->{device_list}});
-        print "raid $fs->{mountpoint} --device=$self->{devname} --noformat\n";
+        print join(" ",
+                   "raid",
+                   $fs->{mountpoint},
+                   "--device=$self->{devname}",
+                   $self->ksfsformat($fs),
+                   "\n");
     }
 }
 

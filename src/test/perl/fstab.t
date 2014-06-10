@@ -42,6 +42,5 @@ $fs2->update_fstab;
 like(get_file('/etc/fstab'), qr{^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*[^/]*$}m, 'Mount fs0 entry added to fstab (retest)');
 like(get_file('/etc/fstab'), qr{^/dev/sdb2\s+/Lagoon2\s+ext3\s+auto\s+0\s+1\s*[^/]*$}m, 'Mount fs1 entry added to fstab (retest)');
 like(get_file('/etc/fstab'), qr{^/dev/sdb3\s+/Lagoon3\s+ext3\s+auto\s+0\s+1\s*[^/]*$}m, 'Mount fs2 entry added to fstab (retest)');
-diag(get_file('/etc/fstab'));
 
 done_testing();
