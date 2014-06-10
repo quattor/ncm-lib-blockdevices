@@ -111,10 +111,14 @@ $cmds{parted_init_sdb_gpt}{cmd}="/sbin/parted -s /dev/sdb mklabel gpt";
 $cmds{parted_init_sdb_msdos}{cmd}="/sbin/parted -s -- /dev/sdb mklabel msdos";
 
 $cmds{parted_mkpart_sdb_prim1}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart primary 0 100";
+$cmds{parted_mkpart_sdb_prim1_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart primary 1 101";
 $cmds{parted_mkpart_sdb_prim2}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart primary 100 200";
+$cmds{parted_mkpart_sdb_prim2_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart primary 101 201";
 $cmds{parted_mkpart_sdb_ext1}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart extended 200 2700";
+$cmds{parted_mkpart_sdb_ext1_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart extended 202 2702";
 $cmds{parted_mkpart_sdb_log1_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart logical 200 1224";
 $cmds{parted_mkpart_sdb_log1_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart logical 2700 3724";
+$cmds{parted_mkpart_sdb_log1_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart logical 2702 3726";
 
 $cmds{parted_rm_1}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 1";
 $cmds{parted_rm_2}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 2";
@@ -145,6 +149,18 @@ Number  Start   End    Size   File system  Name     Flags
  1      17.4kB  100MB  100MB               primary
 EOF
 
+$cmds{parted_print_sdb_1prim_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_1prim_gpt_offset}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start   End    Size   File system  Name     Flags
+ 1      1.05MB  101MB  99.6MB               primary
+
+EOF
+
 $cmds{parted_print_sdb_2prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_2prim_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
@@ -155,6 +171,19 @@ Partition Table: gpt
 Number  Start   End    Size    File system  Name     Flags
  1      17.4kB  100MB  100MB                primary
  2      100MB   200MB  100MB                primary
+
+EOF
+
+$cmds{parted_print_sdb_2prim_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_2prim_gpt_offset}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start   End    Size    File system  Name     Flags
+ 1      1.05MB  101MB  99.6MB               primary
+ 2      101MB   201MB  101MB                primary
 
 EOF
 
@@ -172,6 +201,20 @@ Number  Start   End     Size    File system  Name      Flags
 
 EOF
 
+$cmds{parted_print_sdb_2prim_1ext_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_2prim_1ext_gpt_offset}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start   End     Size    File system  Name      Flags
+ 1      1.05MB  101MB   99.6MB               primary
+ 2      101MB   201MB   101MB                primary
+ 3      202MB   2702MB  2500MB               extended
+
+EOF
+
 $cmds{parted_print_sdb_2prim_1ext_1log_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
 $cmds{parted_print_sdb_2prim_1ext_1log_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
@@ -184,6 +227,21 @@ Number  Start   End     Size    File system  Name      Flags
  2      100MB   200MB   100MB                primary
  3      200MB   2700MB  2500MB               extended
  4      2700MB  3724MB  1024MB               logical
+
+EOF
+
+$cmds{parted_print_sdb_2prim_1ext_1log_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_2prim_1ext_1log_gpt_offset}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4295MB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start   End     Size    File system  Name      Flags
+ 1      1.05MB  101MB   99.6MB               primary
+ 2      101MB   201MB   101MB                primary
+ 3      202MB   2702MB  2500MB               extended
+ 4      2702MB  3726MB  1023MB               logical
 
 EOF
 
