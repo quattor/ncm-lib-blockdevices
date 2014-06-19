@@ -175,11 +175,11 @@ sub set_flags
         return 0;
     }
 
-    my $hdname =  "/dev/" . $self->{holding_dev}->{devname};
+    my $hdname =  $self->{holding_dev}->devpath();
     my $num = $self->partition_number;
     
-    for my $flag (sort keys %{$self->{flags}})  {
-        my $value = $self->{flags}{$flag} ? "on" : "off";
+    foreach my $flag (sort keys %{$self->{flags}})  {
+        my $value = $self->{flags}->{$flag} ? "on" : "off";
         my $msg = "flag $flag to $value for $self->{devname}";
         $this_app->debug (5, "Set $msg");
         my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, 'set', $num, $flag, $value);
