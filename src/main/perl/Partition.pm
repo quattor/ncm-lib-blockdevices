@@ -184,7 +184,6 @@ sub set_flags
         $this_app->debug (5, "Set $msg");
         my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, 'set', $num, $flag, $value);
 
-        $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
         CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
         $? && $this_app->error ("Failed to set $msg");
         
@@ -239,7 +238,6 @@ sub create
         $this_app->warn("Partition $self->{devname}: partition larger than 2.2TB defined on msdos partition table");
     }
 
-    $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
     CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
     $? && $this_app->error ("Failed to create $self->{devname}");
     
