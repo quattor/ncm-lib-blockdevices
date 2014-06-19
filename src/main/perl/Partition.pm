@@ -178,6 +178,7 @@ sub set_flags
     my $hdname =  $self->{holding_dev}->devpath();
     my $num = $self->partition_number;
     
+    my $ec = 0;
     foreach my $flag (sort keys %{$self->{flags}})  {
         my $value = $self->{flags}->{$flag} ? "on" : "off";
         my $msg = "flag $flag to $value for $self->{devname}";
@@ -185,11 +186,13 @@ sub set_flags
         my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, 'set', $num, $flag, $value);
 
         CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
-        $? && $this_app->error ("Failed to set $msg");
-        
+        if ($?) { 
+            $this_app->error ("Failed to set $msg (exitcode $?)");
+            $ec = $?; # returning ec is from from last failure  
+        }  
     }
     
-    return $?;
+    return $ec;
 }
 
 
@@ -239,12 +242,16 @@ sub create
     }
 
     CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
-    $? && $this_app->error ("Failed to create $self->{devname}");
     
-    $? &= $self->set_flags();
+    my $ec = $?; 
+    if ($ec) {
+        $this_app->error("Failed to create $self->{devname}");
+    } else {
+        $ec = $self->set_flags();
+    }
     
     sleep (SLEEPTIME);
-    return $?;
+    return $ec;
 }
 
 =pod
