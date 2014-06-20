@@ -19,6 +19,11 @@ The fields available on this class (should be private!) are:
 
 Partition's size.
 
+=item * offset : integer
+
+Offset to determine the start of partition relative to the previous partition 
+or beginning of disk.
+
 =item * devname : string
 
 The name of the blockdevice (sda1).
@@ -34,6 +39,12 @@ An object modelling the disk that holds the partition.
 =item * begin : real
 
 The exact point where the partition should start.
+
+=item * flags : hash
+
+A hash with the flag name as key and a boolean as value
+(and the value to be converted to C<on> or C<off>). 
+The flags are set with the parted C<set> command.
 
 =back
 
@@ -70,7 +81,7 @@ use constant MSDOS	=> 'msdos';
 # work.
 use constant SLEEPTIME => 4;
 
-use constant PARTEDEXTRA => qw (u MB);
+use constant PARTEDEXTRA => qw (u MiB);
 use constant PARTEDARGS	=> qw (-s --);
 
 use constant BASEPATH	=> "/system/blockdevices/";
@@ -137,12 +148,53 @@ sub _initialize
     $self->{devname} = unescape ($1);
     $self->{size} = $st->{size} if exists $st->{size};
     $self->{type} = $st->{type};
+    $self->{offset} = $st->{offset} if exists $st->{offset};
+    $self->{flags} = $st->{flags} if exists $st->{flags};
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
                                            $st->{holding_dev},
                                            $config);
     $self->_set_alignment($st, 0, 0);
     return $self;
 }
+
+
+=pod
+
+=head2 set_flags
+
+Set the partition flags (if any).
+
+=cut
+
+sub set_flags
+{
+    my $self = shift;
+
+    if(! $self->{flags}) {
+        $this_app->debug (5, "No flags for $self->{devname}");
+        return 0;
+    }
+
+    my $hdname =  $self->{holding_dev}->devpath();
+    my $num = $self->partition_number;
+    
+    my $ec = 0;
+    foreach my $flag (sort keys %{$self->{flags}})  {
+        my $value = $self->{flags}->{$flag} ? "on" : "off";
+        my $msg = "flag $flag to $value for $self->{devname}";
+        $this_app->debug (5, "Set $msg");
+        my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, 'set', $num, $flag, $value);
+
+        CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
+        if ($?) { 
+            $this_app->error ("Failed to set $msg (exitcode $?)");
+            $ec = $?; # returning ec is from from last failure  
+        }  
+    }
+    
+    return $ec;
+}
+
 
 =pod
 
@@ -189,12 +241,17 @@ sub create
         $this_app->warn("Partition $self->{devname}: partition larger than 2.2TB defined on msdos partition table");
     }
 
-    $this_app->debug (5, "Calling parted: ", join(" ",@partedcmdlist));
     CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
-
-    $? && $this_app->error ("Failed to create $self->{devname}");
+    
+    my $ec = $?; 
+    if ($ec) {
+        $this_app->error("Failed to create $self->{devname}");
+    } else {
+        $ec = $self->set_flags();
+    }
+    
     sleep (SLEEPTIME);
-    return $?;
+    return $ec;
 }
 
 =pod
@@ -327,8 +384,13 @@ sub begin
     }
 
     $self->{begin} = $st;
-    $this_app->debug (5, "Partition ",$self->{devname}," begins at $st");
-    return $st;
+    if (exists $self->{offset}) {
+        $self->{begin} += $self->{offset};
+        $this_app->debug (5, "Partition $self->{devname} offset $self->{offset}",
+                             " shifts start from $st to $self->{begin}");
+    }
+    $this_app->debug (5, "Partition ",$self->{devname}," begins at ", $self->{begin});
+    return $self->{begin};
 }
 
 # Returns the end point of a partition.
@@ -415,16 +477,12 @@ section.
 
 sub print_ks
 {
-    my ($self, $fs, $fstype) = @_;
+    my ($self, $fs) = @_;
 
     print join (" ",
                 "part", $fs->{mountpoint}, "--onpart",
                 $self->{devname},
-                # Anaconda doesn't recognize existing SWAP labels, if
-                # we want a label on swap, we'll have to re-format the
-                # partition and let it set its own label.
-                ($fs->{type} eq "swap" && exists $fs->{label}) ?
-                "--fstype swap":"--noformat",
+                $self->ksfsformat($fs),
                 "\n") if $fs;
 }
 
@@ -481,9 +539,17 @@ sub create_pre_ks
     my $n = $self->partition_number;
     #my $type = substr ($self->{type}, 0, 1);
     my $size = exists $self->{size}? "$self->{size}":'100%';
+    my $offset = exists $self->{offset}? $self->{offset} : 0;
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
 
+    my @flags;
+    for my $flag (sort keys %{$self->{flags}})  {
+        my $value = $self->{flags}{$flag} ? "on" : "off";
+        push(@flags, "'$flag $value'"); # to used on for loop
+    }    
+    my $flagstxt = join(" ", @flags);
+    
     # Clear two times the alignment, but at least 1M
     my $align_sect = int($self->{holding_dev}->{alignment} / 512);
     my $clear_mb = int($align_sect / 2 / 1024) * 2;
@@ -493,19 +559,34 @@ sub create_pre_ks
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
     echo "Creating partition $self->{devname}"
+   
     prev=\`parted $disk -s u MiB p |awk '\$1 == $n-1 {print \$5=="extended" ? \$2:\$3}'\`
+
     if [ -z \$prev ]
     then
-        # The first partition must be aligned to the first MiB (0%)
-        prev=1
+        if [ $offset = 0 ]
+        then 
+            # The first partition must be aligned to the first MiB (0%)
+            begin=1
+        else
+            begin=$offset
+        fi            
+    else
+        let begin=\${prev/MiB}+$offset
     fi
+
     if [ $size = '100%'  ] || [ $size = -1 ]
     then
         end=$size
     else
         let end=\${prev/MiB}+$size
     fi
-    parted $disk -s  -- u MiB mkpart $self->{type} \$prev \$end
+    parted $disk -s -- u MiB mkpart $self->{type} \$begin \$end
+    
+    for flagval in $flagstxt
+    do
+        parted $disk -s -- set $n \$flagval
+    done
 
     rereadpt $disk
     if [ $self->{type} != "extended" ]

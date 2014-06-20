@@ -7,14 +7,17 @@
 
 use strict;
 use warnings;
+
 use Test::More;
+use Test::Quattor qw(factory);
+use helper;
+
 use NCM::BlockdevFactory qw (build);
 use CAF::Object;
-use Test::Quattor qw(factory);
 
 $CAF::Object::NoAction = 1;
 
-is(join(' ',NCM::BlockdevFactory::PARTEDEXTRA), 'u MB', "Always extra args 'u MB' for parted");
+is(join(' ',NCM::BlockdevFactory::PARTEDEXTRA), 'u MiB', "Always extra args 'u MiB' for parted");
 
 my $cfg = get_config_for_profile('factory');
 

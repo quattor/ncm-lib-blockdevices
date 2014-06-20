@@ -90,7 +90,7 @@ $cmds{file_s_sdb1_all_supported}{out}=<<'EOF';
 /dev/sdb1: BTRFS Filesystem sectorsize 4096, nodesize 4096, leafsize 4096)
 EOF
 
-$cmds{parted_print_sdb_nopart}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_nopart}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_nopart}{err}="Error: /dev/sdb: unrecognised disk label";
 $cmds{parted_print_sdb_nopart}{ec}=1;
 
@@ -110,23 +110,27 @@ EOF
 $cmds{parted_init_sdb_gpt}{cmd}="/sbin/parted -s /dev/sdb mklabel gpt";
 $cmds{parted_init_sdb_msdos}{cmd}="/sbin/parted -s -- /dev/sdb mklabel msdos";
 
-$cmds{parted_mkpart_sdb_prim1}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart primary 0 100";
-$cmds{parted_mkpart_sdb_prim2}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart primary 100 200";
-$cmds{parted_mkpart_sdb_ext1}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart extended 200 2700";
-$cmds{parted_mkpart_sdb_log1_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart logical 200 1224";
-$cmds{parted_mkpart_sdb_log1_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB mkpart logical 2700 3724";
+$cmds{parted_mkpart_sdb_prim1}{cmd}="/sbin/parted -s -- /dev/sdb u MiB mkpart primary 0 100";
+$cmds{parted_mkpart_sdb_prim1_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MiB mkpart primary 1 101";
+$cmds{parted_mkpart_sdb_prim2}{cmd}="/sbin/parted -s -- /dev/sdb u MiB mkpart primary 100 200";
+$cmds{parted_mkpart_sdb_prim2_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MiB mkpart primary 101 201";
+$cmds{parted_mkpart_sdb_ext1}{cmd}="/sbin/parted -s -- /dev/sdb u MiB mkpart extended 200 2700";
+$cmds{parted_mkpart_sdb_ext1_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MiB mkpart extended 202 2702";
+$cmds{parted_mkpart_sdb_log1_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MiB mkpart logical 200 1224";
+$cmds{parted_mkpart_sdb_log1_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MiB mkpart logical 2700 3724";
+$cmds{parted_mkpart_sdb_log1_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MiB mkpart logical 2702 3726";
 
-$cmds{parted_rm_1}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 1";
-$cmds{parted_rm_2}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 2";
-$cmds{parted_rm_3}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 3";
-$cmds{parted_rm_4}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 4";
-$cmds{parted_rm_5}{cmd}="/sbin/parted -s -- /dev/sdb u MB rm 5";
+$cmds{parted_rm_1}{cmd}="/sbin/parted -s -- /dev/sdb u MiB rm 1";
+$cmds{parted_rm_2}{cmd}="/sbin/parted -s -- /dev/sdb u MiB rm 2";
+$cmds{parted_rm_3}{cmd}="/sbin/parted -s -- /dev/sdb u MiB rm 3";
+$cmds{parted_rm_4}{cmd}="/sbin/parted -s -- /dev/sdb u MiB rm 4";
+$cmds{parted_rm_5}{cmd}="/sbin/parted -s -- /dev/sdb u MiB rm 5";
 
 
-$cmds{parted_print_sdb_label_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_label_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_label_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: gpt
 
@@ -134,63 +138,119 @@ Number  Start  End  Size  File system  Name  Flags
 
 EOF
 
-$cmds{parted_print_sdb_1prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_1prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_1prim_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: gpt
 
-Number  Start   End    Size   File system  Name     Flags
- 1      17.4kB  100MB  100MB               primary
+Number  Start    End     Size    File system  Name     Flags
+ 1      0.02MiB  100MiB  100MiB               primary
+
+
 EOF
 
-$cmds{parted_print_sdb_2prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_1prim_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
+$cmds{parted_print_sdb_1prim_gpt_offset}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4096MiB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start    End     Size    File system  Name     Flags
+ 1      1.00MiB  101MiB  100MiB               primary
+
+EOF
+
+$cmds{parted_print_sdb_2prim_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_2prim_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: gpt
 
-Number  Start   End    Size    File system  Name     Flags
- 1      17.4kB  100MB  100MB                primary
- 2      100MB   200MB  100MB                primary
+Number  Start    End     Size    File system  Name     Flags
+ 1      0.02MiB  100MiB  100MiB               primary
+ 2      100MiB   200MiB  100MiB               primary
 
 EOF
 
-$cmds{parted_print_sdb_2prim_1ext_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_2prim_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
+$cmds{parted_print_sdb_2prim_gpt_offset}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4096MiB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start    End     Size    File system  Name     Flags
+ 1      1.00MiB  101MiB  100MiB               primary
+ 2      101MiB   201MiB  100MiB               primary
+
+EOF
+
+$cmds{parted_print_sdb_2prim_1ext_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_2prim_1ext_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: gpt
 
-Number  Start   End     Size    File system  Name      Flags
- 1      17.4kB  100MB   100MB                primary
- 2      100MB   200MB   100MB                primary
- 3      200MB   2700MB  2500MB               extended
+Number  Start    End      Size     File system  Name      Flags
+ 1      0.02MiB  100MiB   100MiB                primary
+ 2      100MiB   200MiB   100MiB                primary
+ 3      200MiB   2700MiB  2500MiB               extended
 
 EOF
 
-$cmds{parted_print_sdb_2prim_1ext_1log_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_2prim_1ext_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
+$cmds{parted_print_sdb_2prim_1ext_gpt_offset}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4096MiB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start    End      Size     File system  Name      Flags
+ 1      1.00MiB  101MiB   100MiB                primary
+ 2      101MiB   201MiB   100MiB                primary
+ 3      202MiB   2702MiB  2500MiB               extended
+
+EOF
+
+$cmds{parted_print_sdb_2prim_1ext_1log_gpt}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_2prim_1ext_1log_gpt}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: gpt
 
-Number  Start   End     Size    File system  Name      Flags
- 1      17.4kB  100MB   100MB                primary
- 2      100MB   200MB   100MB                primary
- 3      200MB   2700MB  2500MB               extended
- 4      2700MB  3724MB  1024MB               logical
+Number  Start    End      Size     File system  Name      Flags
+ 1      0.02MiB  100MiB   100MiB                primary
+ 2      100MiB   200MiB   100MiB                primary
+ 3      200MiB   2700MiB  2500MiB               extended
+ 4      2700MiB  3724MiB  1024MiB               logical
 
 EOF
 
-$cmds{parted_print_sdb_label_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_2prim_1ext_1log_gpt_offset}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
+$cmds{parted_print_sdb_2prim_1ext_1log_gpt_offset}{out}= <<'EOF';
+Model: ATA QEMU HARDDISK (scsi)
+Disk /dev/sdb: 4096MiB
+Sector size (logical/physical): 512B/512B
+Partition Table: gpt
+
+Number  Start    End      Size     File system  Name      Flags
+ 1      1.00MiB  101MiB   100MiB                primary
+ 2      101MiB   201MiB   100MiB                primary
+ 3      202MiB   2702MiB  2500MiB               extended
+ 4      2702MiB  3726MiB  1024MiB               logical
+
+EOF
+
+$cmds{parted_print_sdb_label_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_label_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: msdos
 
@@ -198,58 +258,58 @@ Number  Start  End  Size  Type  File system  Flags
 
 EOF
 
-$cmds{parted_print_sdb_1prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_1prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_1prim_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: msdos
 
-Number  Start  End    Size   Type     File system  Flags
- 1      512B   100MB  100MB  primary
+Number  Start    End     Size    Type     File system  Flags
+ 1      0.00MiB  100MiB  100MiB  primary
 
 EOF
 
-$cmds{parted_print_sdb_2prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_2prim_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_2prim_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: msdos
 
-Number  Start  End    Size   Type     File system  Flags
- 1      512B   100MB  100MB  primary
- 2      100MB  200MB  100MB  primary
+Number  Start    End     Size    Type     File system  Flags
+ 1      0.00MiB  100MiB  100MiB  primary
+ 2      100MiB   200MiB  100MiB  primary
 
 EOF
 
-$cmds{parted_print_sdb_2prim_1ext_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_2prim_1ext_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_2prim_1ext_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: msdos
 
-Number  Start  End     Size    Type      File system  Flags
- 1      512B   100MB   100MB   primary
- 2      100MB  200MB   100MB   primary
- 3      200MB  2700MB  2500MB  extended               lba
+Number  Start    End      Size     Type      File system  Flags
+ 1      0.00MiB  100MiB   100MiB   primary
+ 2      100MiB   200MiB   100MiB   primary
+ 3      200MiB   2700MiB  2500MiB  extended               lba
 
 EOF
 
 
-$cmds{parted_print_sdb_2prim_1ext_1log_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MB print";
+$cmds{parted_print_sdb_2prim_1ext_1log_msdos}{cmd}="/sbin/parted -s -- /dev/sdb u MiB print";
 $cmds{parted_print_sdb_2prim_1ext_1log_msdos}{out}= <<'EOF';
 Model: ATA QEMU HARDDISK (scsi)
-Disk /dev/sdb: 4295MB
+Disk /dev/sdb: 4096MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: msdos
 
-Number  Start  End     Size    Type      File system  Flags
- 1      512B   100MB   100MB   primary
- 2      100MB  200MB   100MB   primary
- 3      200MB  3700MB  3500MB  extended               lba
- 5      200MB  1224MB  1024MB  logical
+Number  Start    End      Size     Type      File system  Flags
+ 1      0.00MiB  100MiB   100MiB   primary
+ 2      100MiB   200MiB   100MiB   primary
+ 3      200MiB   2700MiB  2500MiB  extended               lba
+ 5      200MiB   1224MiB  1024MiB  logical
 
 EOF
 
@@ -408,14 +468,14 @@ This filesystem will be automatically checked every 34 mounts or
 180 days, whichever comes first.  Use tune2fs -c or -i to override.
 EOF
 
-$cmds{fs_sdb1_parted_print_ext3}{cmd}="/sbin/parted -s -- /dev/sdb1 u MB print";
+$cmds{fs_sdb1_parted_print_ext3}{cmd}="/sbin/parted -s -- /dev/sdb1 u MiB print";
 $cmds{fs_sdb1_parted_print_ext3}{out}= <<'EOF';
 Model: Unknown (unknown)
-Disk /dev/sdb1: 100MB
+Disk /dev/sdb1: 100MiB
 Sector size (logical/physical): 512B/512B
 Partition Table: loop
 
-Number  Start  End    Size   File system  Flags
- 1      0.00B  100MB  100MB  ext3
+Number  Start    End     Size    File system  Flags
+ 1      0.00MiB  100MiB  100MiB  ext3
 
 EOF
