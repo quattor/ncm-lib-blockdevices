@@ -564,13 +564,20 @@ then
 
     if [ -z \$prev ]
     then
-        if [ $offset = 0 ]
-        then 
-            # The first partition must be aligned to the first MiB (0%)
-            begin=1
-        else
-            begin=$offset
-        fi            
+EOF
+
+    if ( $offset == 0 ) {
+        # The first partition must be aligned to the first MiB (0%)
+        print <<EOF;
+        begin=1
+EOF
+    } else {
+        print <<EOF;
+        begin=$offset
+EOF
+    }         
+
+    print <<EOF;
     else
         let begin=\${prev/MiB}+$offset
     fi
@@ -583,11 +590,18 @@ then
     fi
     parted $disk -s -- u MiB mkpart $self->{type} \$begin \$end
     
+EOF
+
+    if ( $flagstxt ) {
+        print <<EOF;
     for flagval in $flagstxt
     do
         parted $disk -s -- set $n \$flagval
     done
+EOF
+    }
 
+    print <<EOF;
     rereadpt $disk
     if [ $self->{type} != "extended" ]
     then
