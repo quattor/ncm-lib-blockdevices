@@ -537,19 +537,13 @@ sub create_pre_ks
     return unless $self->should_create_ks;
 
     my $n = $self->partition_number;
+    my $prev_n = $n - 1;
     #my $type = substr ($self->{type}, 0, 1);
     my $size = exists $self->{size}? "$self->{size}":'100%';
     my $offset = exists $self->{offset}? $self->{offset} : 0;
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
 
-    my @flags;
-    for my $flag (sort keys %{$self->{flags}})  {
-        my $value = $self->{flags}{$flag} ? "on" : "off";
-        push(@flags, "'$flag $value'"); # to used on for loop
-    }    
-    my $flagstxt = join(" ", @flags);
-    
     # Clear two times the alignment, but at least 1M
     my $align_sect = int($self->{holding_dev}->{alignment} / 512);
     my $clear_mb = int($align_sect / 2 / 1024) * 2;
@@ -559,46 +553,41 @@ sub create_pre_ks
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
     echo "Creating partition $self->{devname}"
-   
-    prev=\`parted $disk -s u MiB p |awk '\$1 == $n-1 {print \$5=="extended" ? \$2:\$3}'\`
+    prev=\`parted $disk -s u MiB p |awk '\$1==$prev_n {print \$5=="extended" ? \$2:\$3}'\`
 
     if [ -z \$prev ]
     then
+        prev=1
 EOF
 
-    if ( $offset == 0 ) {
-        # The first partition must be aligned to the first MiB (0%)
-        print <<EOF;
-        begin=1
-EOF
-    } else {
-        print <<EOF;
-        begin=$offset
-EOF
-    }         
-
+    # The first partition must be aligned to the first MiB (0%)
+    my $begin = $offset || 1;
     print <<EOF;
+        begin=$begin
     else
         let begin=\${prev/MiB}+$offset
     fi
+EOF
 
-    if [ $size = '100%'  ] || [ $size = -1 ]
-    then
-        end=$size
-    else
-        let end=\${prev/MiB}+$size
-    fi
+    my $end_txt;
+    if ( ($size eq '100%') || ($size == -1) ) {
+        $end_txt = "end=$size";
+    } else {
+        $end_txt="let end=\${prev/MiB}+$size";
+    }
+    print <<EOF;
+    $end_txt
     parted $disk -s -- u MiB mkpart $self->{type} \$begin \$end
-    
 EOF
 
-    if ( $flagstxt ) {
-        print <<EOF;
-    for flagval in $flagstxt
-    do
-        parted $disk -s -- set $n \$flagval
-    done
+    my @flags = keys(%{$self->{flags}});
+    if ( @flags > 0 ) {
+        for my $flag (sort @flags) {
+            my $value = $self->{flags}{$flag} ? "on" : "off";
+            print <<EOF;
+    parted $disk -s -- set $n $flag $value
 EOF
+        }
     }
 
     print <<EOF;
