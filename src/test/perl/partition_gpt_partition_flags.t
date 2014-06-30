@@ -41,8 +41,8 @@ ok(command_history_ok([
 my $fh = CAF::FileWriter->new("target/test/ks");
 select($fh);
 $sdb1->create_pre_ks();
-like($fh, qr{for flagval in 'bad off' 'good on'}, "flagval for loop");
-like($fh, qr{parted /dev/sdb -s -- set 1 \$flagval}, "parted set flagval");
+like($fh, qr{parted /dev/sdb -s -- set 1 bad off}, "parted set flag 'bad'");
+like($fh, qr{parted /dev/sdb -s -- set 1 good on}, "parted set flag 'good'");
 
 
 done_testing();
