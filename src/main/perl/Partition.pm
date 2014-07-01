@@ -397,7 +397,7 @@ sub begin
 sub end
 {
     my $self = shift;
-    return exists $self->{size}? $self->{begin} + $self->{size} : '-0';
+    return exists $self->{size}? $self->{begin} + $self->{size} : '-1';
 }
 
 # Returns the number of the partition.
