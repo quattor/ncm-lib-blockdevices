@@ -9,6 +9,8 @@ package NCM::Blockdevices;
 use strict;
 use warnings;
 
+use Cwd qw(abs_path);
+
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use CAF::Object;
@@ -186,8 +188,7 @@ sub has_filesystem
         };
     };
 
-    my $p = $self->devpath;
-    $p = readlink ($p) if -l $p;
+    my $p = abs_path($self->devpath);
     my $f =  CAF::Process->new([FILES, $p], log => $this_app)->output();
 
     $this_app->debug(4, "Checking for filesystem on device $p",
