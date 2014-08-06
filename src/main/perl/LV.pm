@@ -229,7 +229,7 @@ sub print_ks
 	$self->{volume_group}->print_ks;
     print "\n";
 
-	print join (" ", 
+	print join (" ",
 	        "logvol", $fs->{mountpoint},
 		    "--vgname=$self->{volume_group}->{devname}",
 		    "--name=$self->{devname}",
@@ -276,7 +276,7 @@ EOC
 	print <<EOF;
 	sed -i '\\:@{[$self->{volume_group}->devpath]}\$:d' @{[PART_FILE]}
 EOF
-    my $size="-l 95%FREE";
+    my $size='-l 100%FREE';
     $size="-L $self->{size}M" if (exists($self->{size})
 				  && defined($self->{size})
 				  && "$self->{size}" =~ m/\d+/);
