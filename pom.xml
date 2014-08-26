@@ -127,6 +127,7 @@
 	  </provides>
 	  <requires>
 	    <require>ncm-ncd</require>
+	    <require>/sbin/parted</require>
 	  </requires>
 
 	  <mappings>
