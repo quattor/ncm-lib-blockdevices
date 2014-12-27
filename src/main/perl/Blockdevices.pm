@@ -103,6 +103,38 @@ sub should_create_ks
 	$this_app->error ("should_create_ks method not defined for this class");
 }
 
+# Returns size in bytes (assumes devpath exists).
+# Is used by size_in_MiB
+sub _size_in_byte
+{
+    my $self = shift;
+    $this_app->error ("_size_in_byte method not defined for this class");
+}
+
+=pod
+
+=head2 size
+
+Returns size in MiB if the device exists in the system. 
+Returns undef if the device doesn't exist.
+
+=cut
+
+sub size
+{
+    my $self = shift;
+    my $size;
+    if ($self->devexists) {
+        my $bytes = $self->_size_in_byte();
+        $size = $bytes / (1024 * 1024);
+        $this_app->verbose("Device ", $self->devname, " has size $size MiB ($bytes byte)");
+    } else {
+        $this_app->verbose("No size for device ", $self->devname, 
+                           ", devpath ", $self->devpath, " doesn't exist");
+    }
+    return $size;
+}
+
 =pod
 
 =head2 ksfsformat 

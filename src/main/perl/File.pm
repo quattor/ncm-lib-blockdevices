@@ -92,6 +92,29 @@ sub remove
 
 =pod
 
+=head2 devexists
+
+Returns true if the file exists in the system.
+
+=cut
+
+
+sub devexists
+{
+    my $self = shift;
+    return -f $self->devpath;
+}
+
+# Returns size in byte (assumes devpath exists).
+# Is used by size
+sub _size_in_byte
+{
+    my $self = shift;
+    return -s $self->devpath;
+}
+
+=pod
+
 =head2 devpath
 
 Returns the absolute path to the file.
