@@ -225,6 +225,9 @@ sub disk_empty
 sub create
 {
     my $self = shift;
+
+    # TODO: TEST correct device
+
     if ($self->disk_empty) {
         $self->set_readahead if $self->{readahead};
         $self->remove;
@@ -258,6 +261,9 @@ allows the disk to be re-defined.
 sub remove
 {
     my $self = shift;
+    
+    # TODO: TEST correct device
+
     unless ($self->partitions_in_disk) {
         $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
         my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();

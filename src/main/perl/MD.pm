@@ -99,6 +99,8 @@ sub create
     my $self = shift;
     my @devnames;
 
+    # TODO: TEST correct device_list
+
     if ($self->devexists) {
         $this_app->debug (5, "Device ", $self->devpath, " already exists.",
 			              " Leaving.");
@@ -128,6 +130,9 @@ Removes the MD device and all its associated devices from the system.
 sub remove
 {
     my $self = shift;
+
+    # TODO: TEST correct device_list
+    # TODO: TEST correct device
 
     CAF::Process->new([MDSTOP, $self->devpath], log => $this_app)->execute();
     foreach my $dev (@{$self->{device_list}}) {

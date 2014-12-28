@@ -195,6 +195,9 @@ if force_filesystem is true.
 sub formatfs
 {
     my $self = shift;
+
+    # TODO: TEST correct holding device
+
     my $tunecmd;
     my @opts = exists $self->{label} ? (MKFSLABEL, $self->{label}):();
     push (@opts, split ('\s+', $self->{mkfsopts})) if exists $self->{mkfsopts};
@@ -318,6 +321,8 @@ sub create_if_needed
 {
     my $self = shift;
 
+    # TODO: TEST correct device
+
     $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
                       " blockdev ", $self->{block_device}->devpath);
 
@@ -362,6 +367,9 @@ piece will be called by ncm-filesystems, and thus it is safe.
 sub format_if_needed
 {
     my ($self, %protected) = @_;
+
+    # TODO: TEST correct device
+
     $self->can_be_formatted(%protected) or return 0;
     my $r;
     CAF::Process->new ([UMOUNT, $self->{mountpoint}], log => $this_app)->run();

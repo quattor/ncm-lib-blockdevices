@@ -211,6 +211,8 @@ sub create
 {
     my $self = shift;
 
+    # TODO: TEST correct holding device
+
     # Check the device doesn't exist already.
     if ($self->devexists) {
         $this_app->debug (5, "Partition $self->{devname} already exists: ",
@@ -266,6 +268,9 @@ for erasing its partition table.
 sub remove
 {
     my $self = shift;
+
+    # TODO: TEST correct holding device
+    # TODO: TEST correct device
 
     $this_app->debug (5, "Removing $self->{devname}");
     my $num = $self->partition_number;
