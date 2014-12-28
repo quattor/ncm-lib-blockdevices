@@ -235,7 +235,9 @@ is($forcetruefs->is_create_needed, 1, 'create needed, mountpoint not in fstab bu
 
 # test some ks functions, those just print to default FH
 my $fhfs = CAF::FileWriter->new("target/test/ksfs");
-select($fhfs);
+
+my $origfh = select($fhfs);
+
 ok(!exists($fs->{ksfsformat}), 'ksfsformat not defined');
 $fs->print_ks;
 like($fhfs, qr{^part\s/Lagoon\s--onpart\ssdb1}m, 'Default print_ks');
@@ -270,5 +272,8 @@ $fs_vol->print_ks;
 like($fhfs_vol, qr{^logvol\s/Lagoon\s--vgname=vg0\s--name=lv0}m, 'Default print_ks for logvol');
 like($fhfs_vol, qr{\s--noformat(\s|$)?}m, 'Default print_ks --noformat for logvol');
 unlike($fhfs_vol, qr{\s--fstype}m, 'Default print_ks noformat has no fstype for logvol');
+
+# restore FH for DESTROY
+select($origfh);
 
 done_testing();

@@ -39,10 +39,12 @@ ok(command_history_ok([
 );
 
 my $fh = CAF::FileWriter->new("target/test/ks");
-select($fh);
+my $origfh = select($fh);
 $sdb1->create_pre_ks();
 like($fh, qr{parted /dev/sdb -s -- set 1 bad off}, "parted set flag 'bad'");
 like($fh, qr{parted /dev/sdb -s -- set 1 good on}, "parted set flag 'good'");
 
+# restore FH for DESTROY
+select($origfh);
 
 done_testing();
