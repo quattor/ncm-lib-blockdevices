@@ -60,6 +60,11 @@ $cmds{file_s_nomd0}{ec} = 1;
 $cmds{file_s_md0_data}{cmd}="file -s /dev/md0";
 $cmds{file_s_md0_data}{out} = "/dev/md0: data";
 
+$cmds{blockdev_sdb_4GB}{cmd} = "/sbin/blockdev --getsize64 /dev/sdb";
+$cmds{blockdev_sdb_4GB}{out} = <<EOF;
+4294967296
+EOF
+
 $cmds{file_s_sdb_nodata}{cmd}="file -s /dev/sdb";
 $cmds{file_s_sdb_nodata}{out}="/dev/sdb: ERROR: cannot open `/dev/sdb' (No such file or directory)";
 $cmds{file_s_sdb_nodata}{ec}=1;

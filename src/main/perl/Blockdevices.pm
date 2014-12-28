@@ -127,10 +127,10 @@ sub size
     if ($self->devexists) {
         my $bytes = $self->_size_in_byte();
         $size = $bytes / (1024 * 1024);
-        $this_app->verbose("Device ", $self->devname, " has size $size MiB ($bytes byte)");
+        $this_app->verbose("Device $self->{devname}, has size $size MiB ($bytes byte)");
     } else {
-        $this_app->verbose("No size for device ", $self->devname, 
-                           ", devpath ", $self->devpath, " doesn't exist");
+        $this_app->verbose("No size for device $self->{devname}, devpath ",
+                           $self->devpath, " doesn't exist");
     }
     return $size;
 }

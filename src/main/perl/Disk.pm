@@ -299,6 +299,7 @@ sub _size_in_byte
 {
     my $self = shift;
     my $size = CAF::Process->new([GET_SIZE_BYTES, $self->devpath], log => $this_app)->output();
+    chomp($size);
     return $size;
 }
 
