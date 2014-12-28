@@ -11,11 +11,13 @@ use NCM::Blockdevices;
 
 our @ISA = qw{NCM::Blockdevices};
 
+# Returns 0 on success.
 sub create
 {
     return 0;
 }
 
+# Returns 0 on success.
 sub remove
 {
     return 0;

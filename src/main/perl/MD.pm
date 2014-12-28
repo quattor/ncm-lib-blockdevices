@@ -92,14 +92,17 @@ sub new
 
 Creates the MD device on the system, according to $self's state.
 
+Returns 0 on success.
+
 =cut
 
 sub create
 {
     my $self = shift;
-    my @devnames;
 
-    # TODO: TEST correct device_list
+    return 1 if (! $self->is_correct_device);
+
+    my @devnames;
 
     if ($self->devexists) {
         $this_app->debug (5, "Device ", $self->devpath, " already exists.",
@@ -125,14 +128,15 @@ sub create
 
 Removes the MD device and all its associated devices from the system.
 
+Returns 0 on success.
+
 =cut
 
 sub remove
 {
     my $self = shift;
 
-    # TODO: TEST correct device_list
-    # TODO: TEST correct device
+    return 1 if (! $self->is_correct_device);
 
     CAF::Process->new([MDSTOP, $self->devpath], log => $this_app)->execute();
     foreach my $dev (@{$self->{device_list}}) {
@@ -158,6 +162,28 @@ sub devexists
     my $self = shift;
     my $fh = CAF::FileReader->new(MDSTAT, log => $this_app);
     return $fh =~ m!^\s*$self->{devname}\s!m;
+}
+
+
+=pod
+
+=head2 is_correct_device
+
+Returns true if this is the device that corresponds with the device 
+described in the profile.
+
+The method can log an error, as it is more of a sanity check then a test.
+
+Implemented by checking if all devices in C<device_list> are correct.
+
+=cut
+
+sub is_correct_device
+{
+    my $self = shift;
+    # TODO check for correct devices in device_list
+    $this_app->error ("is_correct_device method not defined. Returning true for legacy behaviour.");
+    return 1;
 }
 
 =pod

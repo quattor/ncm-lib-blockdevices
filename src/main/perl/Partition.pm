@@ -2,7 +2,6 @@
 # ${developer-info}
 # ${author-info}
 # ${build-info}
-################################################################################
 
 =pod
 
@@ -58,6 +57,7 @@ use warnings;
 use EDG::WP4::CCM::Element qw (unescape);
 use EDG::WP4::CCM::Configuration;
 use NCM::Blockdevices qw ($this_app PART_FILE);
+use NCM::Disk;
 use CAF::Process;
 our @ISA = qw (NCM::Blockdevices Exporter);
 
@@ -205,13 +205,15 @@ partition table on the holding physical device.
 
 Extended partitions are not supported.
 
+Returns 0 on success.
+
 =cut
 
 sub create
 {
     my $self = shift;
 
-    # TODO: TEST correct holding device
+    return 1 if (! $self->is_correct_device);
 
     # Check the device doesn't exist already.
     if ($self->devexists) {
@@ -263,14 +265,15 @@ sub create
 Removes the physical partition and asks the holding physical device
 for erasing its partition table.
 
+Returns 0 on success.
+
 =cut
 
 sub remove
 {
     my $self = shift;
 
-    # TODO: TEST correct holding device
-    # TODO: TEST correct device
+    return 1 if (! $self->is_correct_device);
 
     $this_app->debug (5, "Removing $self->{devname}");
     my $num = $self->partition_number;
@@ -288,6 +291,34 @@ sub remove
     }
     sleep (SLEEPTIME);
     return $self->{holding_dev}->remove;
+}
+
+# Returns size in byte (assumes devpath exists).
+# Is used by size
+sub _size_in_byte
+{
+    return NCM::Disk::_size_in_byte(@_);
+}
+
+=pod
+
+=head2 is_correct_device
+
+Returns true if this is the device that corresponds with the device 
+described in the profile.
+
+The method can log an error, as it is more of a sanity check then a test.
+
+Implemented by checking if holding device is correct and size of partition.
+
+=cut
+
+sub is_correct_device
+{
+    my $self = shift;
+    # TODO check for correct devices in device_list
+    $this_app->error ("is_correct_device method not defined. Returning true for legacy behaviour.");
+    return 1;
 }
 
 =pod

@@ -80,12 +80,16 @@ Creates the volume group on the system. It creates the block devices
 holding its physical volumes, the physical volumes and then, the
 volume group.
 
+Returns 0 on success.
+
 =cut
 
 sub create
 {
     my $self = shift;
     my @devnames;
+
+    return 1 if (! $self->is_correct_device);
 
     if ($self->devexists)
     {
@@ -117,11 +121,15 @@ Note that failing to remove block is not a critical error: there may
 be logical volumes on top of it, and the kernel won't allow to remove
 this.
 
+Returns 0 on success.
+
 =cut
 
 sub remove
 {
     my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
 
     # Remove the VG only if it has no logical volumes left.
     my @n = split /:/, output ((VGDISPLAY, $self->{devname}));

@@ -93,13 +93,11 @@ ok(!($nofs->{preserve} || !$nofs->{format}), 'Allow removal');
 command_history_reset;
 set_file("fstab_sdb1_ext3");
 $nofs->remove_if_needed;
-# TODO 
-#   fstab should not have that line anymore
 ok(command_history_ok([
     "/bin/umount /Lagoon",
     "/sbin/parted -s -- /dev/sdb u MiB rm 1",
-    ],
-    "Removal commands called")
+    ]),
+    "Removal commands called"
 );
 unlike(get_file('/etc/fstab'), qr#\s+/Lagoon\s+#, 'Mountpoint removed to fstab');
 

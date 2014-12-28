@@ -222,11 +222,12 @@ sub disk_empty
     return !($self->partitions_in_disk || $self->has_filesystem);
 }
 
+# Returns 0 on success.
 sub create
 {
     my $self = shift;
 
-    # TODO: TEST correct device
+    return 1 if (! $self->is_correct_device);
 
     if ($self->disk_empty) {
         $self->set_readahead if $self->{readahead};
@@ -256,21 +257,44 @@ sub create
 If there are no partitions on $self, removes the disk instance and
 allows the disk to be re-defined.
 
+Returns 0 on success.
+
 =cut
 
 sub remove
 {
     my $self = shift;
     
-    # TODO: TEST correct device
+    return 1 if (! $self->is_correct_device);
 
     unless ($self->partitions_in_disk) {
         $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
         my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();
         $this_app->debug (5, "dd output:\n", $buffout);
-        #delete $disks{$self->{_cache_key}};
     }
     return 0;
+}
+
+
+=pod
+
+=head2 is_correct_device
+
+Returns true if this is the device that corresponds with the device 
+described in the profile.
+
+The method can log an error, as it is more of a sanity check then a test.
+
+Implemented by size check.
+
+=cut
+
+sub is_correct_device
+{
+    my $self = shift;
+    # TODO add size check
+    $this_app->error ("is_correct_device method not defined. Returning true for legacy behaviour.");
+    return 1;
 }
 
 sub devpath

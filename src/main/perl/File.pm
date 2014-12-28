@@ -55,11 +55,15 @@ sub _initialize
 Creates the file, with the desired name, size ownership and
 permissions.
 
+Returns 0 on success.
+
 =cut
 
 sub create
 {
 	my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
 
 	# Don't overwrite existing files. Data loss and symlink
 	# attacks!
@@ -81,11 +85,15 @@ sub create
 
 Removes the file.
 
+Returns 0 on success.
+
 =cut
 
 sub remove
 {
 	my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
 
 	return unlink ($self->devpath);
 }

@@ -103,6 +103,25 @@ sub should_create_ks
 	$this_app->error ("should_create_ks method not defined for this class");
 }
 
+=pod
+
+=head2 is_correct_device
+
+Returns true if this is the device that corresponds with the device 
+described in the profile.
+
+The method can log an error, as it is more of a sanity check then a test.
+
+=cut
+
+sub is_correct_device
+{
+    my $self = shift;
+    # Legacy behaviour is no checking; always assuming correct device.
+    $this_app->info ("is_correct_device method not defined. Returning true for legacy behaviour.");
+    return 1;
+}
+
 # Returns size in bytes (assumes devpath exists).
 # Is used by size_in_MiB
 sub _size_in_byte
