@@ -28,9 +28,6 @@ our @EXPORT = qw(set_output set_file);
 use Test::More;
 use Test::Quattor;
 
-#$Test::Quattor::log_cmd=$ENV{QUATTOR_TEST_LOG_CMD} || 0;
-#$Test::Quattor::log_cmd_missing=$ENV{QUATTOR_TEST_LOG_CMD_MISSING}  || 0;
-
 use CAF::Object;
 $CAF::Object::NoAction = 1;
 

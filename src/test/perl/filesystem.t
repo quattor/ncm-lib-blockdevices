@@ -76,6 +76,7 @@ ok(!command_history_ok(["dd"]), 'No dd called');
 
 # test create if needed with fstab
 set_file("fstab_default");
+
 is($fs->mountpoint_in_fstab, '', 'No mountpoint in fstab');
 set_file("fstab_sdb1_ext3_commented");
 is($fs->mountpoint_in_fstab, '', 'Mountpoint commented in fstab');
