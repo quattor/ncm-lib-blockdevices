@@ -22,6 +22,8 @@ use constant PART_FILE  => '/tmp/created_partitions';
 use constant HOSTNAME	=> "/system/network/hostname";
 use constant DOMAINNAME	=> "/system/network/domainname";
 
+use constant GET_SIZE_BYTES  => qw (/sbin/blockdev --getsize64);
+
 our @ISA = qw/CAF::Object Exporter/;
 
 our $this_app = $main::this_app;
@@ -122,12 +124,14 @@ sub is_correct_device
     return 1;
 }
 
-# Returns size in bytes (assumes devpath exists).
-# Is used by size_in_MiB
+# Returns size in byte (assumes devpath exists).
+# Is used by size
 sub _size_in_byte
 {
     my $self = shift;
-    $this_app->error ("_size_in_byte method not defined for this class");
+    my $size = CAF::Process->new([GET_SIZE_BYTES, $self->devpath], log => $this_app)->output();
+    chomp($size);
+    return $size;
 }
 
 =pod

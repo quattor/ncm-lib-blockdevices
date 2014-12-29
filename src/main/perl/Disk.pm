@@ -62,7 +62,6 @@ use constant PARTED	=> qw (/sbin/parted -s --);
 use constant PARTEDEXTRA => qw (u MiB);
 use constant PARTEDP	=> 'print';
 use constant SETRA	=> qw (/sbin/blockdev --setra);
-use constant GET_SIZE_BYTES  => qw (/sbin/blockdev --getsize64);
 use constant DDARGS	=> qw (if=/dev/zero count=1000);
 
 =pod
@@ -317,15 +316,6 @@ sub devexists
     return (-b $self->devpath);
 }
 
-# Returns size in byte (assumes devpath exists).
-# Is used by size
-sub _size_in_byte
-{
-    my $self = shift;
-    my $size = CAF::Process->new([GET_SIZE_BYTES, $self->devpath], log => $this_app)->output();
-    chomp($size);
-    return $size;
-}
 
 =pod
 

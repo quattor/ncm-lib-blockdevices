@@ -293,12 +293,6 @@ sub remove
     return $self->{holding_dev}->remove;
 }
 
-# Returns size in byte (assumes devpath exists).
-# Is used by size
-sub _size_in_byte
-{
-    return NCM::Disk::_size_in_byte(@_);
-}
 
 =pod
 
