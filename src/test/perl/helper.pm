@@ -23,7 +23,7 @@ use strict;
 use warnings;
 use base 'Exporter';
 use Test::MockModule;
-our @EXPORT = qw(set_output set_file);
+our @EXPORT = qw(set_output set_file set_disks set_parts);
 
 use Test::More;
 use Test::Quattor;
@@ -58,8 +58,35 @@ sub set_file {
     set_file_contents($path, $txt);
 };
 
+
+my $disks = {};
+my $parts = {};
+
+sub set_disks
+{
+    $disks = shift;
+}
+
+sub set_parts
+{
+    $parts = shift;
+}
+
 # mock devexists, it has a -b test, which can't be mocked
 our $mockdisk = Test::MockModule->new('NCM::Disk');
-$mockdisk->mock('devexists', 1);
+$mockdisk->mock('devexists', sub {
+    my $self = shift;
+    my $res = $disks->{$self->{devname}};
+    diag("devexists: disk $self->{devname} does not exist") if (! $res);
+    return $res;
+});
+
+our $mockpart = Test::MockModule->new('NCM::Partition');
+$mockpart->mock('devexists', sub {
+    my $self = shift;
+    my $res = $parts->{$self->{devname}};
+    diag("devexists: partition $self->{devname} does not exist") if (! $res);
+    return $res;
+});
 
 1;

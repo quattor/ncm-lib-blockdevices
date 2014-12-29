@@ -318,6 +318,30 @@ Number  Start    End      Size     Type      File system  Flags
 
 EOF
 
+# The follwing sizes match
+# parted_print_sdb_2prim_1ext_1log_msdos
+# in particular, size of sdb3 is "interesting"
+$cmds{blockdev_sdb1_100MiB}{cmd}= "/sbin/blockdev --getsize64 /dev/sdb1";
+$cmds{blockdev_sdb1_100MiB}{out}= <<'EOF';
+104857600
+EOF
+
+$cmds{blockdev_sdb2_100MiB}{cmd}= "/sbin/blockdev --getsize64 /dev/sdb2";
+$cmds{blockdev_sdb2_100MiB}{out}= <<'EOF';
+104857600
+EOF
+
+$cmds{blockdev_sdb3_1kiB}{cmd}= "/sbin/blockdev --getsize64 /dev/sdb3";
+$cmds{blockdev_sdb3_1kiB}{out}= <<'EOF';
+1024
+EOF
+
+$cmds{blockdev_sdb5_1GiB}{cmd}= "/sbin/blockdev --getsize64 /dev/sdb5";
+$cmds{blockdev_sdb5_1GiB}{out}= <<'EOF';
+1073741312
+EOF
+
+
 $files{proc_mdstat_no_md0}{path} = '/proc/mdstat';
 $files{proc_mdstat_no_md0}{txt} = <<'EOF';
 Personalities : 
