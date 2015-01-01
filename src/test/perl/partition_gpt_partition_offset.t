@@ -10,7 +10,7 @@ use warnings;
 
 use Test::More;
 use Test::Quattor qw(blockdevices_gpt_partition_offset);
-use helper qw(set_output);
+use helper;
 
 use NCM::Partition;
 
@@ -28,6 +28,9 @@ set_output("file_s_sdb_labeled"); # file -s works too
 set_output("dd_init_1000");
 set_output("parted_init_sdb_gpt");
 set_output("parted_mkpart_sdb_prim1_offset");
+
+set_disks({sdb => 1});
+
 my $sdb1 = NCM::Partition->new ("/system/blockdevices/partitions/sdb1", $cfg);
 is ($sdb1->{offset}, 1, 'Offset set for 1st partition');
 is ($sdb1->create, 0, "Partition $sdb1->{devname} on logical partitions test created correctly");
@@ -40,6 +43,10 @@ set_output("parted_mkpart_sdb_prim2_offset");
 my $sdb2 = NCM::Partition->new ("/system/blockdevices/partitions/sdb2", $cfg);
 ok (! exists($sdb2->{offset}), 'Offset not set for 2nd partition');
 is ($sdb2->create, 0, "Partition $sdb2->{devname} on logical partitions test created correctly");
+
+set_parts({sdb1 => 1, sdb2 => 1});
+
+
 is ($sdb2->begin, 101, 'Begin from 101 (no offset) for 2nd partition'); 
 set_output("parted_print_sdb_2prim_gpt_offset"); # needed to update for begin/end calculations
 is($sdb1->{holding_dev}, $sdb2->{holding_dev}, "Using the same disk instance sdb1 sdb2");
@@ -48,6 +55,9 @@ is($sdb2->{holding_dev}->partitions_in_disk, 2, "partition created correctly");
 set_output("parted_mkpart_sdb_ext1_offset");
 my $sdb3 = NCM::Partition->new ("/system/blockdevices/partitions/sdb3", $cfg);
 is ($sdb3->create, 0, "Partition $sdb3->{devname} on logical partitions test created correctly");
+
+set_parts({sdb1 => 1, sdb2 => 1, sdb3 => 1});
+
 is ($sdb3->begin, 202, 'Begin from 202 (offset 1) for 3rd partition'); 
 set_output("parted_print_sdb_2prim_1ext_gpt_offset"); # needed to update for begin/end calculations
 is($sdb1->{holding_dev}, $sdb3->{holding_dev}, "Using the same disk instance sdb1 sdb3");
@@ -57,6 +67,9 @@ is($sdb3->{holding_dev}->partitions_in_disk, 3, "partition created correctly");
 set_output("parted_mkpart_sdb_log1_gpt_offset");
 my $sdb4 = NCM::Partition->new ("/system/blockdevices/partitions/sdb4", $cfg);
 is ($sdb4->create, 0, "Partition $sdb4->{devname} on logical partitions test created correctly");
+
+set_parts({sdb1 => 1, sdb2 => 1, sdb3 => 1, sdb4 => 1});
+
 is ($sdb4->begin, 2702, 'Begin from 2702 (no offset) for 4th partition'); 
 set_output("parted_print_sdb_2prim_1ext_1log_gpt_offset"); # all partitions
 is($sdb1->{holding_dev}, $sdb4->{holding_dev}, "Using the same disk instance sdb1 sdb4");

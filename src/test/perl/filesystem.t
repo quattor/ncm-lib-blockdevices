@@ -19,6 +19,8 @@ use CAF::Object;
 
 my $cfg = get_config_for_profile('filesystem');
 
+set_disks({sdb => 1});
+
 # resolve LABEL/UUID
 set_output("fs_sdb1_parted_print_ext3");
 set_file("mtab_sdb1_ext3_mounted");
@@ -32,7 +34,6 @@ is($fsuuid->{mountpoint}, '/Lagoon', 'Correct mountpoint');
 is($fsuuid->{block_device}->{devname}, 'sdb1', 'Correct partition found');
 is($fsuuid->{block_device}->{holding_dev}->{devname}, 'sdb', 'Correct holding device found');
 
-
 # regular fs test
 my $fs = NCM::Filesystem->new ("/system/filesystems/0", $cfg);
 command_history_reset;
@@ -42,12 +43,15 @@ set_output("parted_print_sdb_1prim_gpt");
 set_output("file_s_sdb_labeled");
 set_output("file_s_sdb1_data");
 set_output("fs_lagoon_missing");
+
 $fs->create_if_needed;
 ok(command_history_ok([
         "/sbin/parted -s -- /dev/sdb u MiB print", 
         "file -s /dev/sdb1", 
         "mkfs.ext3 /dev/sdb1"]), 
     "mkfs.ext3 called on /dev/sdb1");
+
+set_parts({sdb1 => 1});
 
 # set empty fstab
 set_file("fstab_default");
@@ -100,6 +104,9 @@ ok(command_history_ok([
     "Removal commands called"
 );
 unlike(get_file('/etc/fstab'), qr#\s+/Lagoon\s+#, 'Mountpoint removed to fstab');
+
+# remove the partition again
+set_parts({sdb1 => 0});
 
 #
 # test has_filesystem

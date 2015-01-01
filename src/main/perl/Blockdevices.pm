@@ -158,6 +158,141 @@ sub size
     return $size;
 }
 
+=pod 
+
+=head2 correct_size_interval
+
+Compute the smallest interval for the expected C<size>
+given the conditions (one or more of):
+
+=over
+
+=item fraction : double
+
+The difference between the found and the expected size is at most 
+C<fraction> of the expected size. C<fraction> is a double 
+(e.g. 1 percent is 0.01).
+
+=item diff : long
+
+The difference between the found and the expected size (in MiB) is at most 
+C<diff> MiB.
+
+=back
+
+=cut
+
+sub correct_size_interval
+{
+    my $self= shift;
+
+    my @conds = sort keys %{$self->{correct}->{size}};
+    $this_app->verbose("Going to use ", scalar @conds, " conditions: ", join(", ", @conds));    
+
+    my ($min, $max);
+
+    my $update_min_max = sub {
+        my ($nmin, $nmax) = @_;
+        if (defined($min)) {
+            $min = $nmin if ($nmin > $min);
+        } else {
+            $min = $nmin;
+        }
+        if (defined($max)) {
+            $max = $nmax if ($nmax < $max);
+        } else {
+            $max = $nmax;
+        }
+    };
+
+    foreach my $cond (@conds) {
+        if ($cond eq "diff") {
+            my $diff =  $self->{correct}->{size}->{diff};
+            $update_min_max->($self->{size} - $diff, $self->{size} + $diff);
+            $this_app->verbose("Diff defined $diff, (new?) min/max $min / $max");
+        } elsif ($cond eq "fraction") {
+            my $frac = $self->{correct}->{size}->{fraction};
+            $update_min_max->((1-$frac) * $self->{size}, (1+$frac) * $self->{size});
+            $this_app->verbose("Fraction defined $frac, (new?) min/max $min / $max");
+        } else {
+            $this_app->error("is_correct_size unknown condition $cond");
+            return;
+        }
+    };
+
+
+    if(!defined($min)) {
+        $this_app->info("Minimum undefined after the conditions, using expected size $self->{size}");
+        $min = $self->{size};
+    }        
+    if(!defined($max)) {
+        $this_app->info("Maximum undefined after the conditions, using expected size $self->{size}");
+        $max = $self->{size};
+    }
+
+    return ($min, $max);
+}
+
+=pod
+
+=head2 is_correct_size
+
+Returns true if the size of this device
+lies in the C<correct_size_interval>.
+
+Returns undef if device does not exists.
+
+Logs error if attributes are missing (like C<size>), 
+possibly due to incomplete profiles.
+
+=cut
+
+sub is_correct_size
+{
+    my $self = shift;
+    
+    if(! defined($self->{size})) {
+        $this_app->error("size attribute not defined (missing in profile?)");
+        # considered failed. don't specify "correct/size" if you don't want this to run?
+        return 0;
+    }
+
+    if(! $self->{correct}->{size}) {
+        $this_app->error("correct/size not defined (missing in profile?)");
+        # considered failed. the code calling this method should check the existance 
+        return 0;
+    }
+
+    my $size = $self->size;
+    
+    return if (!defined($size));
+
+    if($self->{size} == 0) {
+        if ($self->{size} == $size) {
+            $this_app->verbose("expected size 0 matches found size");
+            return 1;
+        } else {            
+            $this_app->error("expected size 0 not supported");
+            # considered failed. don't specify "correct/size" if you don't want this to run?
+            return 0;
+        }
+    }
+    
+    my $diff = abs($self->{size} - $size);
+    my $msg = "found size $size MiB and expected size $self->{size} MiB";
+    $this_app->verbose("Size difference of $diff MiB between $msg");    
+
+    my ($min, $max) = $self->correct_size_interval();
+
+    if($size >= $min && $size <= $max) {
+        $this_app->verbose("Found size $size in allowed interval [$min,$max] MiB");
+    } else {
+        $this_app->error("Found size $size outside allowed interval [$min,$max] MiB");
+        return 0;
+    }
+    return 1;
+}
+
 =pod
 
 =head2 ksfsformat 

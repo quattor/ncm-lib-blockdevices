@@ -111,6 +111,7 @@ sub _initialize
     my ($self, $path, $config) = @_;
     my $st = $config->getElement($path)->getTree;
     $path =~ m(.*/([^/]+));
+
     $self->{devname} = unescape ($1);
     $self->{num_spares} = $st->{num_spares};
     $self->{label} = $st->{label};
@@ -118,8 +119,17 @@ sub _initialize
 
     my $hw;
     $hw = $config->getElement(HWPATH . $1)->getTree if $config->elementExists(HWPATH . $1);
+    # It is a bug in the templates if this happens
     my $host = $config->getElement (HOSTNAME)->getValue;
     my $domain = $config->getElement (DOMAINNAME)->getValue;
+    $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
+
+    if (exists $st->{size} ) {
+        $self->{size} = $st->{size} ;
+    } elsif ($hw && exists($hw->{capacity})) {
+        $self->{size} = $hw->{capacity} ;
+    }
+    $self->{correct} = $st->{correct};
 
     # If the disk is mentioned by the "ignoredisk --drives=..." statement,
     # then partitions/logical volumes/etc. on this disk should also be ignored
@@ -130,9 +140,6 @@ sub _initialize
             $self->{_ignore_print_ks} = 1 if $dev eq $self->{devname};
         }
     }
-
-    # It is a bug in the templates if this happens
-    $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
 
     # Inherit the topology from the physical device unless it is explicitely
     # overridden
@@ -291,9 +298,28 @@ Implemented by size check.
 sub is_correct_device
 {
     my $self = shift;
-    # TODO add size check
-    $this_app->error ("is_correct_device method not defined. Returning true for legacy behaviour.");
+    
+    if (!$self->devexists) {
+        $this_app->error("is_correct_size no disk found for $self->{devname}.");
+        return 0;
+    }
+    
+    if ($self->{correct}->{size}) {
+        my $correct_size = $self->is_correct_size();
+        if (! $correct_size) {
+            # undef here due to e.g. missing size, non-existing device,...
+            # is treated as failure
+            $this_app->error("is_correct_size failed for $self->{devname}");
+            return 0;
+        };
+    }
+
     return 1;
+}
+
+
+sub correct_size 
+{
 }
 
 sub devpath

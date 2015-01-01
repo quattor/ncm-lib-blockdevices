@@ -153,6 +153,8 @@ sub _initialize
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
                                            $st->{holding_dev},
                                            $config);
+    $self->{correct} = $st->{correct} if (exists $self->{correct});
+
     $self->_set_alignment($st, 0, 0);
     return $self;
 }

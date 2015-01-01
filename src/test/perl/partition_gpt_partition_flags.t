@@ -10,7 +10,7 @@ use warnings;
 
 use Test::More;
 use Test::Quattor qw(blockdevices_gpt_partition_flags);
-use helper qw(set_output);
+use helper;
 
 use NCM::Partition;
 
@@ -26,6 +26,8 @@ set_output("file_s_sdb_labeled"); # file -s works too
 set_output("dd_init_1000");
 set_output("parted_init_sdb_gpt");
 set_output("parted_mkpart_sdb_prim1");
+set_disks({sdb => 1});
+
 my $sdb1 = NCM::Partition->new ("/system/blockdevices/partitions/sdb1", $cfg);
 is ($sdb1->create, 0, "Partition $sdb1->{devname} on logical partitions test created correctly");
 
