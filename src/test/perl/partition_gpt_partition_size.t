@@ -46,4 +46,19 @@ is($sdb1->size, 100, "Correct partition sdb1 size in MiB");
 
 is($sdb1->{holding_dev}->size, 4096, "Correct sdb1 holding_dev size in MiB");
 
+# no correct size conditions set, legacy behaviour
+ok(! $sdb1->is_correct_size, "No correct size condition set on partition sdb1 (so size check fails)");
+# holding_dev correct check
+ok($sdb1->{holding_dev}->is_correct_device,  "Holding device has correct size; so correct device");
+ok($sdb1->is_correct_device, "Holding dev is ok, and no correct size condition set on partition sdb1, legacy beahviour is to assume all is ok");
+
+# test size check of partition
+$sdb1->{correct}->{size}->{diff} = 0;
+ok($sdb1->is_correct_size, "Exact match between size and expected size");
+ok($sdb1->is_correct_device, "Holding dev is ok, and sdb1 has correct size");
+
+$sdb1->{holding_dev}->{correct}->{size}->{diff} = 0;
+ok(! $sdb1->{holding_dev}->is_correct_device,  "Holding device doesn't have correct size; so no correct device");
+ok(! $sdb1->is_correct_device, "Holding dev is not ok");
+
 done_testing();

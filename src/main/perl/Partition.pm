@@ -312,8 +312,26 @@ Implemented by checking if holding device is correct and size of partition.
 sub is_correct_device
 {
     my $self = shift;
-    # TODO check for correct devices in device_list
-    $this_app->error ("is_correct_device method not defined. Returning true for legacy behaviour.");
+
+    if(! $self->{holding_dev}->is_correct_device) {
+        $this_app->error("partition holding_device ", $self->{holding_dev}->{devname}, 
+                         "is ot the correct device");
+        return 0;
+    }
+    
+    # during create, partition might not exist
+    if ($self->devexists) {
+        if ($self->{correct}->{size}) {
+            my $correct_size = $self->is_correct_size();
+            if (! $correct_size) {
+                # undef here due to e.g. missing size, non-existing device,...
+                # is treated as failure
+                $this_app->error("is_correct_size failed for partition $self->{devname}");
+                return 0;
+            };
+        }
+    }
+
     return 1;
 }
 
