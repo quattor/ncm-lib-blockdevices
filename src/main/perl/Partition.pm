@@ -540,6 +540,8 @@ sub del_pre_ks
 {
     my $self = shift;
 
+    $self->ks_is_correct_device;
+
     my $n = $self->partition_number;
     my $devpath = $self->{holding_dev}->devpath;
 
@@ -576,6 +578,8 @@ sub create_pre_ks
     my $self = shift;
 
     return unless $self->should_create_ks;
+
+    $self->ks_is_correct_device;
 
     my $n = $self->partition_number;
     my $prev_n = $n - 1;
@@ -643,5 +647,24 @@ fi
 EOF
 
 }
+
+=pod
+
+=head2 ks_is_correct_device
+
+Print the kickstart pre bash code to determine if
+the device is the correct device or not. 
+Currently supports checking the holding_dev.
+
+=cut
+
+sub ks_is_correct_device
+{
+    my $self = shift;
+
+    $self->{holding_dev}->ks_is_correct_device;
+
+};
+
 
 1;

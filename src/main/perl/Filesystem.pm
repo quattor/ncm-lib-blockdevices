@@ -498,6 +498,9 @@ sub format_ks
     my $self = shift;
 
     return unless $self->should_create_ks;
+
+    $self->{block_device}->ks_is_correct_device;
+
     print join (" ", "grep", "-q", "'" . $self->{block_device}->devpath . "\$'",
             PART_FILE, "&&", "")
         unless $self->{format};

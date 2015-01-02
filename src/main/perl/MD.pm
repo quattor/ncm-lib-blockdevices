@@ -281,6 +281,8 @@ sub del_pre_ks
 {
     my $self = shift;
 
+    $self->ks_is_correct_device;
+    
     print join (" ", MDSTOP, $self->devpath), "\n";
     foreach my $dev (@{$self->{device_list}}) {
         print join (" ", MDZERO, $dev->devpath), "\n";
@@ -293,6 +295,8 @@ sub create_ks
     my ($self, $fs) = @_;
 
     return unless $self->should_create_ks;
+
+    $self->ks_is_correct_device;
 
     my @devnames = ();
     my $path = $self->devpath;
@@ -335,6 +339,27 @@ EOF
     echo @{[$self->devpath]} >> @{[PART_FILE]}
 EOC
     print "fi\n";
+}
+
+=pod
+
+=head2 ks_is_correct_device
+
+Print the kickstart pre bash code to determine if
+the device is the correct device or not. 
+
+Currently supports checking the device_list.
+
+=cut
+
+sub ks_is_correct_device
+{
+    my $self = shift;
+
+    foreach my $dev (@{$self->{device_list}}) {
+        $dev->ks_is_correct_device;
+    }
+    
 }
 
 1;

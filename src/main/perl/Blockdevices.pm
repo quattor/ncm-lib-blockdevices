@@ -305,6 +305,22 @@ sub is_correct_size
 
 =pod
 
+=head2 ks_is_correct_device
+
+Print the kickstart pre bash code to determine if
+the device is the correct device or not.
+
+=cut
+
+sub ks_is_correct_device
+{
+    my $self = shift;
+    $this_app->info ("ks_is_correct_device method not defined. Not printing anything for legacy behaviour.");
+    return 1;
+}
+
+=pod
+
 =head2 ks_pre_is_correct_size
 
 Kickstart code in pre section to determine if device has correct size.
@@ -351,6 +367,7 @@ EOF
 
     return 0;
 }
+
 
 =pod
 

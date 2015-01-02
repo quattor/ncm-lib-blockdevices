@@ -399,6 +399,8 @@ sub clearpart_ks
 
     my $path = $self->devpath;
 
+    $self->ks_is_correct_device;
+
     print <<EOF;
 wipe_metadata $path 1
 
@@ -411,6 +413,31 @@ EOF
 
 sub del_pre_ks
 {
+    my $self = shift;
+    
+    $self->ks_is_correct_device;
+    
+}
+
+
+=pod
+
+=head2 ks_is_correct_device
+
+Print the kickstart pre bash code to determine if
+the device is the correct device or not. 
+Currently supports size conditions.
+
+=cut
+
+sub ks_is_correct_device
+{
+    my $self = shift;
+
+    if ($self->{correct}->{size}) {
+        $self->ks_is_correct_size;
+    }
+    
 }
 
 1;

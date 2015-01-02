@@ -261,6 +261,8 @@ sub del_pre_ks
 {
 	my $self = shift;
 
+    $self->ks_is_correct_device;
+
 	print "lvm lvremove ", $self->{volume_group}->devpath, "/$self->{devname}\n";
 	$self->{volume_group}->del_pre_ks;
 }
@@ -271,6 +273,8 @@ sub create_ks
 	my $path = $self->devpath;
 
 	return unless $self->should_create_ks;
+
+    $self->ks_is_correct_device;
 
 	my @stopts = ();
 	if (exists $self->{stripe_size}) {

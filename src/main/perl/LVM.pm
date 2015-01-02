@@ -343,6 +343,8 @@ sub del_pre_ks
 {
     my $self = shift;
 
+    $self->ks_is_correct_device;
+
     # The removal will succeed only if there are no logical volumes on
     # this volume group. If that's the case, remove all the physical
     # volumes too.
@@ -365,6 +367,8 @@ sub create_ks
     my ($self) = @_;
 
     return unless $self->should_create_ks;
+
+    $self->ks_is_correct_device;
 
     my $path = $self->devpath;
 
