@@ -196,7 +196,12 @@ sub formatfs
 {
     my $self = shift;
 
-    # TODO: TEST correct holding device
+    if (! $self->{block_device}->is_correct_device) {
+        $this_app->error("Filesystem mountpoint $self->{mountpoint}",
+                          " not correct blockdev ", $self->{block_device}->devpath);
+        $? = 1;
+        return 1;
+    };
 
     my $tunecmd;
     my @opts = exists $self->{label} ? (MKFSLABEL, $self->{label}):();
@@ -321,10 +326,15 @@ sub create_if_needed
 {
     my $self = shift;
 
-    # TODO: TEST correct device
-
     $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
                       " blockdev ", $self->{block_device}->devpath);
+
+    if (! $self->{block_device}->is_correct_device) {
+        $this_app->error("Filesystem mountpoint $self->{mountpoint}",
+                          " not correct blockdev ", $self->{block_device}->devpath);
+        $? = 1;
+        return 1;
+    };
 
     if($self->is_create_needed) {
         $self->{block_device}->create && return $?;
@@ -368,7 +378,12 @@ sub format_if_needed
 {
     my ($self, %protected) = @_;
 
-    # TODO: TEST correct device
+    if (! $self->{block_device}->is_correct_device) {
+        $this_app->error("Filesystem mountpoint $self->{mountpoint}",
+                          " not correct blockdev ", $self->{block_device}->devpath);
+		$? = 1;
+        return 1;
+    };
 
     $self->can_be_formatted(%protected) or return 0;
     my $r;
