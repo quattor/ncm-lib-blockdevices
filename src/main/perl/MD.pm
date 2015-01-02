@@ -181,8 +181,14 @@ Implemented by checking if all devices in C<device_list> are correct.
 sub is_correct_device
 {
     my $self = shift;
-    # TODO check for correct devices in device_list
-    $this_app->error ("is_correct_device method not defined. Returning true for legacy behaviour.");
+
+    foreach my $dev (@{$self->{device_list}}) {
+        if (! $dev->is_correct_device) {
+            $this_app->error("$dev->{devname} from device_list is not correct device.");
+            return 0;
+        }
+    }
+
     return 1;
 }
 
