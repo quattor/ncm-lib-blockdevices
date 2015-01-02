@@ -51,8 +51,6 @@ ok(command_history_ok([
         "mkfs.ext3 /dev/sdb1"]), 
     "mkfs.ext3 called on /dev/sdb1");
 
-set_parts({sdb1 => 1});
-
 # set empty fstab
 set_file("fstab_default");
 $fs->update_fstab;
@@ -104,9 +102,6 @@ ok(command_history_ok([
     "Removal commands called"
 );
 unlike(get_file('/etc/fstab'), qr#\s+/Lagoon\s+#, 'Mountpoint removed to fstab');
-
-# remove the partition again
-set_parts({sdb1 => 0});
 
 #
 # test has_filesystem

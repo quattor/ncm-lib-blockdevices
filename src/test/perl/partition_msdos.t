@@ -38,9 +38,6 @@ is(scalar(keys %NCM::Disk::disks), 1, "One known disk in NCM::Disk");
 set_output("parted_mkpart_sdb_prim2");
 my $sdb2 = NCM::Partition->new ("/system/blockdevices/partitions/sdb2", $cfg);
 is ($sdb2->create, 0, "Partition $sdb2->{devname} on logical partitions test created correctly");
-
-set_parts({sdb1 => 1, sdb2 => 1});
-
 is ($sdb2->begin, 100, 'Begin from 0 (no offset) for 2nd partition'); 
 set_output("parted_print_sdb_2prim_msdos"); # needed to update for begin/end calculations
 is($sdb1->{holding_dev}, $sdb2->{holding_dev}, "Using the same disk instance sdb1 sdb2");
@@ -50,9 +47,6 @@ is(scalar(keys %NCM::Disk::disks), 1, "One known disk in NCM::Disk");
 set_output("parted_mkpart_sdb_ext1");
 my $sdb3 = NCM::Partition->new ("/system/blockdevices/partitions/sdb3", $cfg);
 is ($sdb3->create, 0, "Partition $sdb3->{devname} on logical partitions test created correctly");
-
-set_parts({sdb1 => 1, sdb2 => 1, sdb3 => 1});
-
 is ($sdb3->begin, 200, 'Begin from 0 (no offset) for 3rd partition'); 
 set_output("parted_print_sdb_2prim_1ext_msdos"); # needed to update for begin/end calculations
 is($sdb1->{holding_dev}, $sdb3->{holding_dev}, "Using the same disk instance sdb1 sdb3");
@@ -62,10 +56,9 @@ is($sdb3->{holding_dev}->partitions_in_disk, 3, "partition created correctly");
 set_output("parted_mkpart_sdb_log1_msdos");
 my $sdb5 = NCM::Partition->new ("/system/blockdevices/partitions/sdb5", $cfg);
 is ($sdb5->create, 0, "Partition $sdb5->{devname} on logical partitions test created correctly");
-
-set_parts({sdb1 => 1, sdb2 => 1, sdb3 => 1, sdb5 => 1});
-
 is ($sdb5->begin, 200, 'Begin from 0 (no offset) for 5th partition'); 
+
+
 set_output("parted_print_sdb_2prim_1ext_1log_msdos"); # all partitions
 is($sdb1->{holding_dev}, $sdb5->{holding_dev}, "Using the same disk instance sdb1 sdb5");
 is($sdb2->{holding_dev}, $sdb5->{holding_dev}, "Using the same disk instance sdb2 sdb5");

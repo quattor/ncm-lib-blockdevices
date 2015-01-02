@@ -43,10 +43,6 @@ set_output("parted_mkpart_sdb_prim2_offset");
 my $sdb2 = NCM::Partition->new ("/system/blockdevices/partitions/sdb2", $cfg);
 ok (! exists($sdb2->{offset}), 'Offset not set for 2nd partition');
 is ($sdb2->create, 0, "Partition $sdb2->{devname} on logical partitions test created correctly");
-
-set_parts({sdb1 => 1, sdb2 => 1});
-
-
 is ($sdb2->begin, 101, 'Begin from 101 (no offset) for 2nd partition'); 
 set_output("parted_print_sdb_2prim_gpt_offset"); # needed to update for begin/end calculations
 is($sdb1->{holding_dev}, $sdb2->{holding_dev}, "Using the same disk instance sdb1 sdb2");
@@ -55,9 +51,6 @@ is($sdb2->{holding_dev}->partitions_in_disk, 2, "partition created correctly");
 set_output("parted_mkpart_sdb_ext1_offset");
 my $sdb3 = NCM::Partition->new ("/system/blockdevices/partitions/sdb3", $cfg);
 is ($sdb3->create, 0, "Partition $sdb3->{devname} on logical partitions test created correctly");
-
-set_parts({sdb1 => 1, sdb2 => 1, sdb3 => 1});
-
 is ($sdb3->begin, 202, 'Begin from 202 (offset 1) for 3rd partition'); 
 set_output("parted_print_sdb_2prim_1ext_gpt_offset"); # needed to update for begin/end calculations
 is($sdb1->{holding_dev}, $sdb3->{holding_dev}, "Using the same disk instance sdb1 sdb3");
@@ -67,8 +60,6 @@ is($sdb3->{holding_dev}->partitions_in_disk, 3, "partition created correctly");
 set_output("parted_mkpart_sdb_log1_gpt_offset");
 my $sdb4 = NCM::Partition->new ("/system/blockdevices/partitions/sdb4", $cfg);
 is ($sdb4->create, 0, "Partition $sdb4->{devname} on logical partitions test created correctly");
-
-set_parts({sdb1 => 1, sdb2 => 1, sdb3 => 1, sdb4 => 1});
 
 is ($sdb4->begin, 2702, 'Begin from 2702 (no offset) for 4th partition'); 
 set_output("parted_print_sdb_2prim_1ext_1log_gpt_offset"); # all partitions

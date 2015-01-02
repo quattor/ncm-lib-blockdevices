@@ -67,25 +67,12 @@ sub set_disks
     $disks = shift;
 }
 
-sub set_parts
-{
-    $parts = shift;
-}
-
 # mock devexists, it has a -b test, which can't be mocked
 our $mockdisk = Test::MockModule->new('NCM::Disk');
 $mockdisk->mock('devexists', sub {
     my $self = shift;
     my $res = $disks->{$self->{devname}};
     diag("devexists: disk $self->{devname} does not exist") if (! $res);
-    return $res;
-});
-
-our $mockpart = Test::MockModule->new('NCM::Partition');
-$mockpart->mock('devexists', sub {
-    my $self = shift;
-    my $res = $parts->{$self->{devname}};
-    diag("devexists: partition $self->{devname} does not exist") if (! $res);
     return $res;
 });
 
