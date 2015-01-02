@@ -14,6 +14,8 @@ use helper;
 
 use NCM::MD;
 
+set_disks({sdb => 1});
+
 my $cfg = get_config_for_profile('raid');
 my $md = NCM::MD->new ("/system/blockdevices/md/md0", $cfg);
 is (ref ($md), "NCM::MD", "MD correctly instantiated");
