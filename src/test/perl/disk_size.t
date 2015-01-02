@@ -87,6 +87,19 @@ command_history_reset;
 is($o->remove, 1, "Remove returns 1 with incorrect device");
 ok(! command_history_ok(['/bin/dd']), "No dd with incorrect device during remove");
 
+# test some ks functions, those just print to default FH
+my $fhks = CAF::FileWriter->new("target/test/ksfs");
+my $origfh = select($fhks);
+
+@int = $o->correct_size_interval();
+$o->ks_pre_is_correct_size;
+my $command = join(" ", "correct_disksize_MiB", $o->devpath, @int);
+like("$fhks", qr{^$command$}m, "Found correct min/max");
+like("$fhks", qr{^if\s+\[\s+\$\?\s+-eq\s+0\s+\]}m, "Found correct condition");
+like("$fhks", qr{exit\s+1}m, "Found correct exit");
+
+# restore FH for DESTROY
+select($origfh);
 
 done_testing();
 

@@ -224,11 +224,21 @@ sub correct_size_interval
     if(!defined($min)) {
         $this_app->info("Minimum undefined after the conditions, using expected size $self->{size}");
         $min = $self->{size};
-    }        
+    }
+    
     if(!defined($max)) {
         $this_app->info("Maximum undefined after the conditions, using expected size $self->{size}");
         $max = $self->{size};
     }
+
+    $min = 0 if ($min < 0);
+    $max = 0 if ($max < 0);
+
+    if($min > $max) {
+        $this_app->error("is_correct_size minimum $min larger then maximum $max");
+        return;
+    }
+
 
     return ($min, $max);
 }
@@ -291,6 +301,55 @@ sub is_correct_size
         return 0;
     }
     return 1;
+}
+
+=pod
+
+=head2 ks_pre_is_correct_size
+
+Kickstart code in pre section to determine if device has correct size.
+Uses the bash function C<correct_disksize_MiB> available in the pre section.
+
+=cut
+
+sub ks_pre_is_correct_size
+{
+    my $self = shift;
+    
+    if(! defined($self->{size})) {
+        $this_app->error("size attribute not defined (missing in profile?)");
+        # considered failed. don't specify "correct/size" if you don't want this to run?
+        return;
+    }
+
+    if(! $self->{correct}->{size}) {
+        $this_app->error("correct/size not defined (missing in profile?)");
+        # considered failed. the code calling this method should check the existance 
+        return;
+    }
+
+    if($self->{size} == 0) {
+        $this_app->error("expected size 0 not supported in kickstart");
+        # considered failed. don't specify "correct/size" if you don't want this to run?
+        return;
+    }
+    
+    my ($min, $max) = $self->correct_size_interval();
+
+    print "correct_disksize_MiB ", $self->devpath, " $min $max\n";
+
+    # TODO: %pre --erroronfail to avoid boot loop 
+    #  (but then requires console access/power control to get past)
+
+    # The correct_disksize_MiB also logs/echoes some error messages
+    print <<'EOF';
+if [ $? -eq 0 ]; then
+    echo "[ERROR] Incorrect size. Exiting pre with exitcode 1."
+    exit 1
+fi
+EOF
+
+    return 0;
 }
 
 =pod
