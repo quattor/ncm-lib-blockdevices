@@ -319,19 +319,6 @@ sub is_correct_device
         return 0;
     }
     
-    # during create, partition might not exist
-    if ($self->devexists) {
-        if ($self->{correct}->{size}) {
-            my $correct_size = $self->is_correct_size();
-            if (! $correct_size) {
-                # undef here due to e.g. missing size, non-existing device,...
-                # is treated as failure
-                $this_app->error("is_correct_size failed for partition $self->{devname}");
-                return 0;
-            };
-        }
-    }
-
     return 1;
 }
 
