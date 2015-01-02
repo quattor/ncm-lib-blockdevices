@@ -315,10 +315,14 @@ sub is_correct_device
 
     if(! $self->{holding_dev}->is_correct_device) {
         $this_app->error("partition holding_device ", $self->{holding_dev}->{devname}, 
-                         "is ot the correct device");
+                         " is not the correct device");
         return 0;
     }
-    
+
+    # TODO: Need to find a way to toggle size (or other) checks
+    # E.g. when creating or removing a partition, the size check makes no sense
+    # but when partitions are used for e.g. MD, the partition size check makes sense
+        
     return 1;
 }
 
