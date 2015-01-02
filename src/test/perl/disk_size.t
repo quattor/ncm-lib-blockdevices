@@ -73,5 +73,20 @@ delete $o->{correct}->{size};
 ok(! $o->is_correct_size, "Disk does not have correct size (no correct size condition defined)");
 ok($o->is_correct_device, "Disk is correct device (without any condition, legacy behaviour is to assume it is the correct)");
 
+# No remove/create
+command_history_reset;
+
+$o->{correct}->{size}->{fraction} = 0.01;
+ok(! $o->is_correct_device, "Disk is not correct device (only size condition)");
+is($o->create, 1, "Create returns 1 with incorrect device");
+# No parted mklabel nor dd (have to be 2 checks).
+ok(! command_history_ok(['/bin/dd']), "No dd with incorrect device during remove");
+ok(! command_history_ok(['parted']), "No parted (for mklabel) with incorrect device during create");
+
+command_history_reset;
+is($o->remove, 1, "Remove returns 1 with incorrect device");
+ok(! command_history_ok(['/bin/dd']), "No dd with incorrect device during remove");
+
+
 done_testing();
 
