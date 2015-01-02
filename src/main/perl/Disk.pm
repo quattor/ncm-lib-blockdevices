@@ -318,10 +318,6 @@ sub is_correct_device
 }
 
 
-sub correct_size 
-{
-}
-
 sub devpath
 {
     my $self = shift;
