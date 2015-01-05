@@ -359,7 +359,7 @@ sub ks_pre_is_correct_size
 
     # The correct_disksize_MiB also logs/echoes some error messages
     print <<'EOF';
-if [ $? -eq 0 ]; then
+if [ $? -ne 0 ]; then
     echo "[ERROR] Incorrect size. Exiting pre with exitcode 1."
     exit 1
 fi
