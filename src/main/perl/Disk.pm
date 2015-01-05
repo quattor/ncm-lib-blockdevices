@@ -435,7 +435,7 @@ sub ks_is_correct_device
     my $self = shift;
 
     if ($self->{correct}->{size}) {
-        $self->ks_is_correct_size;
+        $self->ks_pre_is_correct_size;
     }
     
 }

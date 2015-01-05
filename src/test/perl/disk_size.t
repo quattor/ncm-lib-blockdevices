@@ -105,6 +105,13 @@ like("$fhks2", qr{^$command$}m, "Found correct min/max with ks_is_correct_device
 like("$fhks2", qr{^if\s+\[\s+\$\?\s+-eq\s+0\s+\]}m, "Found correct condition  with ks_is_correct_device");
 like("$fhks2", qr{exit\s+1}m, "Found correct exit with ks_is_correct_device");
 
+my $fhks3 = CAF::FileWriter->new("target/test/ksdisksize3");
+select($fhks3);
+$o->ks_is_correct_device;
+like("$fhks2", qr{^$command$}m, "Found correct min/max with ks_is_correct_device");
+like("$fhks2", qr{^if\s+\[\s+\$\?\s+-eq\s+0\s+\]}m, "Found correct condition  with ks_is_correct_device");
+like("$fhks2", qr{exit\s+1}m, "Found correct exit with ks_is_correct_device");
+
 # restore FH for DESTROY
 select($origfh);
 
