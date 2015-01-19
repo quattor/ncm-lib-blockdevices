@@ -20,7 +20,7 @@ use warnings;
 
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
-use CAF::FileEditor;
+use CAF::FileReader;
 use CAF::Process;
 use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
@@ -151,7 +151,7 @@ Returns true if the device exists on the system.
 sub devexists
 {
     my $self = shift;
-    my $fh = CAF::FileEditor->new(MDSTAT, log => $this_app);
+    my $fh = CAF::FileReader->new(MDSTAT, log => $this_app);
     return $fh =~ m!^\s*$self->{devname}\s!m;
 }
 

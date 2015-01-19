@@ -13,6 +13,7 @@ use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use CAF::Process;
 use CAF::FileEditor;
+use CAF::FileReader;
 use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
@@ -78,7 +79,7 @@ sub new_from_fstab
                                log => $this_app)->run();
 
     if ($dev =~ m/^(LABEL|UUID)=/) {
-        my $fh = CAF::FileEditor->new(MTAB, log => $this_app);
+        my $fh = CAF::FileReader->new(MTAB, log => $this_app);
         my @mtd = grep (m{^\S+\s+$mountp/?\s}, split("\n", "$fh"));
         $fh->close();
         $dev = $mtd[0];
@@ -117,7 +118,7 @@ Returns whether the filesystem is mounted
 sub mounted
 {
     my $self = shift;
-    my $fh = CAF::FileEditor->new(MTAB, log => $this_app);
+    my $fh = CAF::FileReader->new(MTAB, log => $this_app);
     return $fh =~ m!^\S+\s+$self->{mountpoint}/?\s!m;
 }
 
@@ -179,6 +180,7 @@ sub update_fstab
                                $entry,
                                $entry,
                                ENDING_OF_FILE);
+    $fh->close();
 }
 
 =pod
@@ -265,7 +267,7 @@ sub mountpoint_in_fstab
 {
     my $self = shift;
 
-    my $fh = CAF::FileEditor->new(FSTAB, log => $this_app);
+    my $fh = CAF::FileReader->new(FSTAB, log => $this_app);
     return $fh =~ m!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
 }
 
