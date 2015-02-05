@@ -61,6 +61,8 @@ use constant VOLGROUP => 'volgroup';
 
 use constant VOLGROUP_REQUIRED_PATH => '/system/aii/osinstall/ks/volgroup_required';
 
+use constant LVMFORCE => '--force';
+
 our %vgs = ();
 
 sub new
@@ -343,16 +345,18 @@ sub del_pre_ks
 
     $self->ks_is_correct_device;
 
+    my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
+
     # The removal will succeed only if there are no logical volumes on
     # this volume group. If that's the case, remove all the physical
     # volumes too.
     print <<EOF;
-lvm vgreduce --removemissing $self->{devname} &&
-lvm vgremove $self->{devname} && (
+lvm vgreduce $force --removemissing $self->{devname} &&
+lvm vgremove $force $self->{devname} && (
 EOF
 
     foreach (@{$self->{device_list}}) {
-        print "lvm pvremove ", $_->devpath, "\n";
+        print "lvm pvremove $force ", $_->devpath, "\n";
         $_->del_pre_ks;
     }
     print ")\n";
@@ -367,6 +371,8 @@ sub create_ks
 
     $self->ks_is_correct_device;
 
+    my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
+
     my $path = $self->devpath;
 
     print <<EOC;
@@ -377,7 +383,7 @@ EOC
     my @devs = ();
     foreach my $pv (@{$self->{device_list}}) {
         $pv->create_ks;
-        print " " x 4, "lvm pvcreate ", $pv->devpath, "\n";
+        print " " x 4, "lvm pvcreate $force ", $pv->devpath, "\n";
         push(@devs, $pv->devpath);
         print " " x 4, "sed -i '\\:", $pv->devpath, "\$:d' @{[PART_FILE]}\n";
     }

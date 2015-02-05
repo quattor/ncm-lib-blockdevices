@@ -34,7 +34,8 @@ use constant {
     LVRMARGS   => '-f',
     LVDISP     => '/usr/sbin/lvdisplay',
     LVSTRIPESZ => '--stripesize',
-    LVSTRIPEN  => '--stripes'
+    LVSTRIPEN  => '--stripes',
+    LVMFORCE   => '--force'
 };
 
 =pod
@@ -267,7 +268,9 @@ sub del_pre_ks
 
     $self->ks_is_correct_device;
 
-    print "lvm lvremove ", $self->{volume_group}->devpath, "/$self->{devname}\n";
+    my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
+    
+    print "lvm lvremove $force ", $self->{volume_group}->devpath, "/$self->{devname}\n";
     $self->{volume_group}->del_pre_ks;
 }
 
