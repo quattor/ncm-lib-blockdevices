@@ -35,7 +35,8 @@ use constant {
     LVDISP     => '/usr/sbin/lvdisplay',
     LVSTRIPESZ => '--stripesize',
     LVSTRIPEN  => '--stripes',
-    LVMFORCE   => '--force'
+    LVMFORCE   => '--force',
+    AII_LVMFORCE_PATH => '/system/aii/osinstall/ks/lvmforce',
 };
 
 =pod
@@ -56,7 +57,11 @@ sub _initialize
     $self->{volume_group} = NCM::LVM->new(BASEPATH . VGS . $st->{volume_group}, $config);
     $self->{size}         = $st->{size};
     $self->{stripe_size}  = $st->{stripe_size} if exists $st->{stripe_size};
-
+    
+    # Defaults to false is not defined in AII
+    $self->{ks_lvmforce} = $config->elementExists(AII_LVMFORCE_PATH) ?
+         $config->getElement(AII_LVMFORCE_PATH)->getValue : 0;
+    
     # TODO: consider the stripe size when computing the alignment
     $self->_set_alignment($st, $self->{volume_group}->{alignment}, 0);
     return $self;

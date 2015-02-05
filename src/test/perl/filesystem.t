@@ -1,4 +1,4 @@
-#!/usr/bin/perl 
+#!/usr/bin/perl
 # -*- mode: cperl -*-
 # ${license-info}
 # ${developer-info}
@@ -9,7 +9,7 @@ use strict;
 use warnings;
 
 use Test::More;
-use Test::Quattor qw(filesystem);
+use Test::Quattor qw(filesystem filesystem_lvmforce);
 use helper;
 
 use NCM::Filesystem;
@@ -46,9 +46,9 @@ set_output("fs_lagoon_missing");
 
 $fs->create_if_needed;
 ok(command_history_ok([
-        "/sbin/parted -s -- /dev/sdb u MiB print", 
-        "file -s /dev/sdb1", 
-        "mkfs.ext3 /dev/sdb1"]), 
+        "/sbin/parted -s -- /dev/sdb u MiB print",
+        "file -s /dev/sdb1",
+        "mkfs.ext3 /dev/sdb1"]),
     "mkfs.ext3 called on /dev/sdb1");
 
 # set empty fstab
@@ -56,7 +56,7 @@ set_file("fstab_default");
 $fs->update_fstab;
 like(get_file('/etc/fstab'), qr#^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#m, 'Mount entry added to fstab');
 # do it again! should still work
-my $newtxt = get_file('/etc/fstab'); #otherwise Can't coerce GLOB to string in substr 
+my $newtxt = get_file('/etc/fstab'); #otherwise Can't coerce GLOB to string in substr
 set_file("fstab_default","$newtxt");
 $fs->update_fstab;
 like(get_file('/etc/fstab'), qr#^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#m, 'Mount entry added to fstab');
@@ -68,7 +68,7 @@ $fs->update_fstab($fh);
 like("$fh", qr#^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#m, 'Mount entry added to temporary fstab');
 $fh->close();
 
-# test mounted call; 
+# test mounted call;
 set_file("mtab_default");
 is($fs->mounted, '', 'Mountpoint not mounted');
 set_file("mtab_sdb1_ext3_mounted");
@@ -154,7 +154,7 @@ command_history_reset;
 $fs->formatfs;
 ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'mkfs.ext3 called');
 
-# regular filesystem type, filesystem present 
+# regular filesystem type, filesystem present
 #   no mkfs is called
 set_output("file_s_sdb1_ext3");
 command_history_reset;
@@ -182,7 +182,7 @@ set_output("file_s_sdb1_data");
 command_history_reset;
 $forcefalsefs->formatfs;
 ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'force false mkfs.ext3 called');
-#   regular filesystem type, filesystem present 
+#   regular filesystem type, filesystem present
 #     no mkfs is called
 set_output("file_s_sdb1_ext3");
 command_history_reset;
@@ -228,7 +228,7 @@ is($fs->is_create_needed, 0, 'Mountpoint mounted');
 is($forcefalsefs->is_create_needed, 0, 'Mountpoint mounted');
 is($forcetruefs->is_create_needed, 0, 'Mountpoint mounted');
 
-# not mounted, mountpoint exists in fstab 
+# not mounted, mountpoint exists in fstab
 set_file("mtab_default");
 set_file("fstab_sdb1_ext3");
 is($fs->is_create_needed, 0, 'create not needed, mountpoint in fstab');
@@ -280,6 +280,41 @@ $fs_vol->print_ks;
 like($fhfs_vol, qr{^logvol\s/Lagoon\s--vgname=vg0\s--name=lv0}m, 'Default print_ks for logvol');
 like($fhfs_vol, qr{\s--noformat(\s|$)?}m, 'Default print_ks --noformat for logvol');
 unlike($fhfs_vol, qr{\s--fstype}m, 'Default print_ks noformat has no fstype for logvol');
+
+# preserve / no format
+my $fhfs_vol_del = CAF::FileWriter->new("target/test/ksfs_vol_del");
+select($fhfs_vol_del);
+$fs_vol->del_pre_ks;
+is("$fhfs_vol_del", '', "Not removing anything in ks pre");
+
+# This one is formattable/no preserve
+my $fs_vol1 = NCM::Filesystem->new ("/system/filesystems/8", $cfg);
+my $fhfs_vol1_del = CAF::FileWriter->new("target/test/ksfs_vol1_del");
+select($fhfs_vol1_del);
+$fs_vol1->del_pre_ks;
+like($fhfs_vol1_del, qr{^lvm lvremove\s+/dev/vg0/lv1}m, "Removing LV in ks pre");
+
+like($fhfs_vol1_del, qr{^lvm vgreduce\s+--removemissing vg0}m, "Removing unused PVs from vg0 in ks pre");
+like($fhfs_vol1_del, qr{^lvm vgremove\s+vg0}m, "Remove PV vg0 in ks pre");
+like($fhfs_vol1_del, qr{^lvm pvremove\s+/dev/sdb1}m, "Remove sdb1 partition as physical volume in ks pre");
+like($fhfs_vol1_del, qr{^\s+parted /dev/sdb -s rm 1}m, "Remove sdb1 partition from disk sdb in ks pre");
+
+# Check the force options (e.g. required fro EL7)
+
+# reset the LVM vgs cache (these vgs should have new attribute).
+use NCM::LVM;
+NCM::LVM::_reset_cache;
+
+my $cfg_force = get_config_for_profile('filesystem_lvmforce');
+my $fs_vol1_force = NCM::Filesystem->new ("/system/filesystems/8", $cfg_force);
+my $fhfs_vol1_del_force = CAF::FileWriter->new("target/test/ksfs_vol1_del_force");
+select($fhfs_vol1_del_force);
+$fs_vol1_force->del_pre_ks;
+like($fhfs_vol1_del_force, qr{^lvm lvremove\s--force\s/dev/vg0/lv1}m, "Removing LV in ks pre (--force)");
+
+like($fhfs_vol1_del_force, qr{^lvm vgreduce\s--force\s--removemissing vg0}m, "Removing unused PVs from vg0 in ks pre (--force)");
+like($fhfs_vol1_del_force, qr{^lvm vgremove\s--force\svg0}m, "Remove PV vg0 in ks pre (--force)");
+like($fhfs_vol1_del_force, qr{^lvm pvremove\s--force\s/dev/sdb1}m, "Remove sdb1 partition as physical volume in ks pre (--force)");
 
 # restore FH for DESTROY
 select($origfh);

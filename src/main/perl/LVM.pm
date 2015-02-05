@@ -63,7 +63,16 @@ use constant VOLGROUP_REQUIRED_PATH => '/system/aii/osinstall/ks/volgroup_requir
 
 use constant LVMFORCE => '--force';
 
+use constant AII_LVMFORCE_PATH => "/system/aii/osinstall/ks/lvmforce";
+
+
 our %vgs = ();
+
+# private method to reset the cache. For unittests only.
+sub _reset_cache
+{
+    %vgs = ();
+}
 
 sub new
 {
@@ -197,9 +206,14 @@ sub _initialize
         push(@{$self->{device_list}}, $dev);
     }
 
+    # Defaults to false is not defined in AII
+    $self->{ks_lvmforce} = $config->elementExists(AII_LVMFORCE_PATH) ?
+         $config->getElement(AII_LVMFORCE_PATH)->getValue : 0;
+
     # TODO: check the requirements of the component devices
     $self->_set_alignment($st, 0, 0);
     $self->{_cache_key} = $self->get_cache_key($path, $config);
+
     return $vgs{$self->{_cache_key}} = $self;
 }
 
