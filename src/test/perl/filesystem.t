@@ -299,6 +299,14 @@ like($fhfs_vol1_del, qr{^lvm vgremove\s+vg0}m, "Remove PV vg0 in ks pre");
 like($fhfs_vol1_del, qr{^lvm pvremove\s+/dev/sdb1}m, "Remove sdb1 partition as physical volume in ks pre");
 like($fhfs_vol1_del, qr{^\s+parted /dev/sdb -s rm 1}m, "Remove sdb1 partition from disk sdb in ks pre");
 
+my $fhfs_vol1_cre = CAF::FileWriter->new("target/test/ksfs_vol1_cre");
+select($fhfs_vol1_cre);
+$fs_vol1->create_ks;
+like($fhfs_vol1_cre, qr{^\s+lvm pvcreate\s+/dev/sdb1}m, "Add partition sdb1 as pyscial volume");
+like($fhfs_vol1_cre, qr{^\s+lvm vgcreate vg0}m, "Add VG vg0");
+like($fhfs_vol1_cre, qr{^\s+lvm lvcreate -n lv1}m, "Add LV lv1 to VG vg0");
+
+
 # Check the force options (e.g. required fro EL7)
 
 # reset the LVM vgs cache (these vgs should have new attribute).
@@ -315,6 +323,15 @@ like($fhfs_vol1_del_force, qr{^lvm lvremove\s--force\s/dev/vg0/lv1}m, "Removing 
 like($fhfs_vol1_del_force, qr{^lvm vgreduce\s--force\s--removemissing vg0}m, "Removing unused PVs from vg0 in ks pre (--force)");
 like($fhfs_vol1_del_force, qr{^lvm vgremove\s--force\svg0}m, "Remove PV vg0 in ks pre (--force)");
 like($fhfs_vol1_del_force, qr{^lvm pvremove\s--force\s/dev/sdb1}m, "Remove sdb1 partition as physical volume in ks pre (--force)");
+like($fhfs_vol1_del_force, qr{^\s+parted /dev/sdb -s rm 1}m, "Remove sdb1 partition from disk sdb in ks pre (no --force)");
+
+my $fhfs_vol1_cre_force = CAF::FileWriter->new("target/test/ksfs_vol1_cre_force");
+select($fhfs_vol1_cre_force);
+$fs_vol1_force->create_ks;
+like($fhfs_vol1_cre_force, qr{^\s+lvm pvcreate --force /dev/sdb1}m, "Add partition sdb1 as pyscial volume (--force)");
+like($fhfs_vol1_cre_force, qr{^\s+lvm vgcreate vg0}m, "Add VG vg0 (no --force)");
+like($fhfs_vol1_cre_force, qr{^\s+lvm lvcreate -n lv1}m, "Add LV lv1 to VG vg0 (no --force)");
+
 
 # restore FH for DESTROY
 select($origfh);
