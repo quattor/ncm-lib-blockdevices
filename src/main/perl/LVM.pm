@@ -14,11 +14,11 @@ The available fields on this class are:
 
 =over 4
 
-=item * devname : string
+=item devname : string
 
 Name of the device.
 
-=item * device_list : list of BlockDevices.
+=item device_list : list of BlockDevices.
 
 The devices the volume group consists of.
 
@@ -234,7 +234,14 @@ sub devpath
     return "/dev/$self->{devname}";
 }
 
-# Returns true if the given partition is a physical volume
+=pod 
+
+=head2 pvexists
+
+Returns true if the given partition is a physical volume.
+
+=cut
+
 sub pvexists
 {
     my ($self, $path) = @_;

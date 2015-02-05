@@ -182,6 +182,14 @@ sub devexists
     return !$?;
 }
 
+=pod
+
+=head2 devpath
+
+Returns the absolute path to the block device file.
+
+=cut
+
 sub devpath
 {
     my $self = shift;
