@@ -155,13 +155,32 @@ sub remove_if_needed
     return $?;
 }
 
-# Updates the fstab entry for the $self filesystem. Optionally, the
-# handle to the fstab CAF::FileEditor handle can be passed as an
-# argument
+=pod
+
+=head2 update_fstab
+
+Updates the fstab entry for the C<$self> filesystem. Optionally, the
+handle to the fstab CAF::FileEditor handle can be passed as an
+argument.
+
+When the handle is passed, it is not closed.
+
+=cut
+
 sub update_fstab
 {
     my ($self, $fh) = @_;
-    $fh = CAF::FileEditor->new (FSTAB, log => $this_app) unless $fh;
+
+    my $close_fh = 1;
+    if(ref($fh) eq 'CAF::FileEditor') {
+        # TODO check if not closed?
+        $close_fh = 0;
+        $this_app->verbose("A CAF::FileEditor instance was passed. ",
+                           "It will not be closed at end of this method.");
+    } else {
+        $fh = CAF::FileEditor->new (FSTAB, log => $this_app);
+    };
+
     my $re = qr!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
     my $entry = join ("\t",
                         (exists $self->{label}?
@@ -171,7 +190,7 @@ sub update_fstab
                         $self->{type},
                         $self->{mountopts} .
                             (!$self->{mount} ? ",noauto":""),
-                            $self->{freq},
+                        $self->{freq},
                         $self->{pass});
     
     $entry .= "\n"; # add trailing newline
@@ -180,7 +199,8 @@ sub update_fstab
                                $entry,
                                $entry,
                                ENDING_OF_FILE);
-    $fh->close();
+
+    $fh->close() if $close_fh;
 }
 
 =pod

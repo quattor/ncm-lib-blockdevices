@@ -10,12 +10,12 @@ use warnings;
 
 use Test::More;
 use Test::Quattor qw(filesystem);
-use helper; 
+use helper;
 
 use NCM::Filesystem;
 use CAF::FileWriter;
+use CAF::FileEditor;
 use CAF::Object;
-
 
 my $cfg = get_config_for_profile('filesystem');
 
@@ -60,6 +60,13 @@ my $newtxt = get_file('/etc/fstab'); #otherwise Can't coerce GLOB to string in s
 set_file("fstab_default","$newtxt");
 $fs->update_fstab;
 like(get_file('/etc/fstab'), qr#^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#m, 'Mount entry added to fstab');
+
+# try update_fstab with existing CAF::FileEditor instance
+my $fh = CAF::FileEditor->new("target/test/update_fstab");
+ok(! $fh, "Empty / new file is logical false.");
+$fs->update_fstab($fh);
+like("$fh", qr#^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#m, 'Mount entry added to temporary fstab');
+$fh->close();
 
 # test mounted call; 
 set_file("mtab_default");
