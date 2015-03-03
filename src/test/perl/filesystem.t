@@ -305,7 +305,7 @@ select($fhfs_vol1_cre);
 $fs_vol1->create_ks;
 like($fhfs_vol1_cre, qr{^\s+lvm pvcreate\s+/dev/sdb1}m, "Add partition sdb1 as pyscial volume");
 like($fhfs_vol1_cre, qr{^\s+lvm vgcreate vg0}m, "Add VG vg0");
-like($fhfs_vol1_cre, qr{^\s+lvm lvcreate -n lv1}m, "Add LV lv1 to VG vg0");
+like($fhfs_vol1_cre, qr{^\s+lvm lvcreate\s+-n lv1}m, "Add LV lv1 to VG vg0");
 
 
 # Check the force options (e.g. required fro EL7)
@@ -331,7 +331,7 @@ select($fhfs_vol1_cre_force);
 $fs_vol1_force->create_ks;
 like($fhfs_vol1_cre_force, qr{^\s+lvm pvcreate --force /dev/sdb1}m, "Add partition sdb1 as pyscial volume (--force)");
 like($fhfs_vol1_cre_force, qr{^\s+lvm vgcreate vg0}m, "Add VG vg0 (no --force)");
-like($fhfs_vol1_cre_force, qr{^\s+lvm lvcreate -n lv1}m, "Add LV lv1 to VG vg0 (no --force)");
+like($fhfs_vol1_cre_force, qr{^\s+lvm lvcreate --wipesignatures y -n lv1}m, "Add LV lv1 to VG vg0 (--wipesignatures)");
 
 
 # restore FH for DESTROY

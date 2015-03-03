@@ -39,6 +39,8 @@ use constant {
     AII_LVMFORCE_PATH => '/system/aii/osinstall/ks/lvmforce',
 };
 
+use constant LVMWIPESIGNATURE => qw(--wipesignatures y);
+
 =pod
 
 head2 _initialize
@@ -310,8 +312,11 @@ EOF
         && defined($self->{size})
         && "$self->{size}" =~ m/\d+/);
 
+    my $wipesignature = $self->{ks_lvmforce} ? join(" ", LVMWIPESIGNATURE) : '';
+
     print <<EOC;
-	lvm lvcreate -n $self->{devname} \\
+
+	lvm lvcreate $wipesignature -n $self->{devname} \\
 	    $self->{volume_group}->{devname} \\
 	    $size \\
 	    @stopts
