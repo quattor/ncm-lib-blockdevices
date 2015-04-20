@@ -184,13 +184,14 @@ C<diff> MiB.
 
 sub correct_size_interval
 {
-    my $self= shift;
+    my $self = shift;
 
     my @conds = sort keys %{$self->{correct}->{size}};
     $this_app->verbose("Going to use ", scalar @conds, " conditions: ", join(", ", @conds));    
 
     my ($min, $max);
 
+    # Update min and max with possible new minimum and maximum.
     my $update_min_max = sub {
         my ($nmin, $nmax) = @_;
         if (defined($min)) {
@@ -209,11 +210,11 @@ sub correct_size_interval
         if ($cond eq "diff") {
             my $diff =  $self->{correct}->{size}->{diff};
             $update_min_max->($self->{size} - $diff, $self->{size} + $diff);
-            $this_app->verbose("Diff defined $diff, (new?) min/max $min / $max");
+            $this_app->verbose("Diff defined $diff, updated min/max $min / $max");
         } elsif ($cond eq "fraction") {
             my $frac = $self->{correct}->{size}->{fraction};
             $update_min_max->((1-$frac) * $self->{size}, (1+$frac) * $self->{size});
-            $this_app->verbose("Fraction defined $frac, (new?) min/max $min / $max");
+            $this_app->verbose("Fraction defined $frac, updated min/max $min / $max");
         } else {
             $this_app->error("is_correct_size unknown condition $cond");
             return;
@@ -350,9 +351,10 @@ sub ks_pre_is_correct_size
         return;
     }
     
+    my $devpath = $self->devpath;
     my ($min, $max) = $self->correct_size_interval();
 
-    print "correct_disksize_MiB ", $self->devpath, " $min $max\n";
+    print "correct_disksize_MiB $devpath $min $max\n";
 
     # TODO: %pre --erroronfail to avoid boot loop 
     #  (but then requires console access/power control to get past)
@@ -360,7 +362,7 @@ sub ks_pre_is_correct_size
     # The correct_disksize_MiB also logs/echoes some error messages
     print <<'EOF';
 if [ $? -ne 0 ]; then
-    echo "[ERROR] Incorrect size. Exiting pre with exitcode 1."
+    echo "[ERROR] Incorrect size for $devpath. Exiting pre with exitcode 1."
     exit 1
 fi
 EOF
