@@ -2,7 +2,6 @@
 # ${developer-info}
 # ${author-info}
 # ${build-info}
-################################################################################
 
 package NCM::Blockdevices;
 
@@ -263,13 +262,13 @@ sub is_correct_size
     my $self = shift;
     
     if(! defined($self->{size})) {
-        $this_app->error("size attribute not defined (missing in profile?)");
+        $this_app->error("Attribute 'size' not found in profile");
         # considered failed. don't specify "correct/size" if you don't want this to run?
         return 0;
     }
 
     if(! $self->{correct}->{size}) {
-        $this_app->error("correct/size not defined (missing in profile?)");
+        $this_app->error("Sub-path 'correct/size' not found in profile");
         # considered failed. the code calling this method should check the existance 
         return 0;
     }
@@ -334,19 +333,19 @@ sub ks_pre_is_correct_size
     my $self = shift;
     
     if(! defined($self->{size})) {
-        $this_app->error("size attribute not defined (missing in profile?)");
+        $this_app->error("Attribute 'size' not found in profile");
         # considered failed. don't specify "correct/size" if you don't want this to run?
         return;
     }
 
     if(! $self->{correct}->{size}) {
-        $this_app->error("correct/size not defined (missing in profile?)");
+        $this_app->error("Sub-path 'correct/size' not found in profile");
         # considered failed. the code calling this method should check the existance 
         return;
     }
 
     if($self->{size} == 0) {
-        $this_app->error("expected size 0 not supported in kickstart");
+        $this_app->error("Expected size 0 not supported in kickstart");
         # considered failed. don't specify "correct/size" if you don't want this to run?
         return;
     }
