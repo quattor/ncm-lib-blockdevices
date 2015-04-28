@@ -39,7 +39,7 @@ use constant {
     AII_LVMFORCE_PATH => '/system/aii/osinstall/ks/lvmforce',
 };
 
-use constant LVMWIPESIGNATURE => qw(--wipesignatures y);
+use constant LVMWIPESIGNATURE => qw(-W y);
 
 =pod
 
