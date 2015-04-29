@@ -353,14 +353,13 @@ sub ks_pre_is_correct_size
     my $devpath = $self->devpath;
     my ($min, $max) = $self->correct_size_interval();
 
-    print "correct_disksize_MiB $devpath $min $max\n";
-
     # TODO: %pre --erroronfail to avoid boot loop 
     #  (but then requires console access/power control to get past)
 
     # The correct_disksize_MiB also logs/echoes some error messages
-    print <<'EOF';
-if [ $? -ne 0 ]; then
+    print <<"EOF";
+correct_disksize_MiB $devpath $min $max
+if [ \$? -ne 0 ]; then
     echo "[ERROR] Incorrect size for $devpath. Exiting pre with exitcode 1."
     exit 1
 fi
