@@ -59,7 +59,11 @@ unique template blockdevices;
 			"size", 800,
 			"volume_group", "vg0"
 			),
-		)
+        "lv1", nlist (
+            "size", 800,
+            "volume_group", "vg0"
+            ),
+        )
 	);
 
 "/system/filesystems" = list (

@@ -2,7 +2,6 @@
 # ${developer-info}
 # ${author-info}
 # ${build-info}
-################################################################################
 
 =pod
 
@@ -17,26 +16,30 @@ package NCM::LV;
 
 use strict;
 use warnings;
-
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
-use LC::Process qw (execute output);
-use NCM::Blockdevices qw ($this_app PART_FILE);
-our @ISA = qw (NCM::Blockdevices);
+use LC::Process qw(execute output);
+use NCM::Blockdevices qw($this_app PART_FILE);
+our @ISA = qw(NCM::Blockdevices);
 
-use constant BASEPATH	=> "/system/blockdevices/";
-use constant VGS	=> "volume_groups/";
+use constant BASEPATH => "/system/blockdevices/";
+use constant VGS      => "volume_groups/";
 
-use constant { LVCREATE	=> '/usr/sbin/lvcreate',
-	       LVSIZE	=> '-L',
-	       LVEXTENTS=> '-l',
-	       LVNAME	=> '-n',
-	       LVREMOVE	=> '/usr/sbin/lvremove',
-	       LVRMARGS	=> '-f',
-	       LVDISP	=> '/usr/sbin/lvdisplay',
-	       LVSTRIPESZ	=> '--stripesize',
-	       LVSTRIPEN=> '--stripes'
-       };
+use constant {
+    LVCREATE   => '/usr/sbin/lvcreate',
+    LVSIZE     => '-L',
+    LVEXTENTS  => '-l',
+    LVNAME     => '-n',
+    LVREMOVE   => '/usr/sbin/lvremove',
+    LVRMARGS   => '-f',
+    LVDISP     => '/usr/sbin/lvdisplay',
+    LVSTRIPESZ => '--stripesize',
+    LVSTRIPEN  => '--stripes',
+    LVMFORCE   => '--force',
+    AII_LVMFORCE_PATH => '/system/aii/osinstall/ks/lvmforce',
+};
+
+use constant LVMWIPESIGNATURE => qw(-W y);
 
 =pod
 
@@ -48,19 +51,22 @@ Where the object creation is actually done.
 
 sub _initialize
 {
-	my ($self, $path, $config) = @_;
+    my ($self, $path, $config) = @_;
 
-	my $st = $config->getElement ($path)->getTree;
-	$path =~ m!/([^/]+)$!;
-	$self->{devname} = $1;
-	$self->{volume_group} = NCM::LVM->new (BASEPATH . VGS .
-						    $st->{volume_group},
-						    $config);
-	$self->{size} = $st->{size};
-	$self->{stripe_size} = $st->{stripe_size} if exists $st->{stripe_size};
-	# TODO: consider the stripe size when computing the alignment
-	$self->_set_alignment($st, $self->{volume_group}->{alignment}, 0);
-	return $self;
+    my $st = $config->getElement($path)->getTree;
+    $path =~ m!/([^/]+)$!;
+    $self->{devname}      = $1;
+    $self->{volume_group} = NCM::LVM->new(BASEPATH . VGS . $st->{volume_group}, $config);
+    $self->{size}         = $st->{size};
+    $self->{stripe_size}  = $st->{stripe_size} if exists $st->{stripe_size};
+    
+    # Defaults to false is not defined in AII
+    $self->{ks_lvmforce} = $config->elementExists(AII_LVMFORCE_PATH) ?
+         $config->getElement(AII_LVMFORCE_PATH)->getValue : 0;
+    
+    # TODO: consider the stripe size when computing the alignment
+    $self->_set_alignment($st, $self->{volume_group}->{alignment}, 0);
+    return $self;
 }
 
 =pod
@@ -77,16 +83,17 @@ rest of the class can understand.
 
 sub new_from_system
 {
-	my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg) = @_;
 
-	$dev =~ m{(/dev/.*[^-]+)-([^-].*)$};
-	my ($vgname, $devname) = ($1, $2);
-	$devname =~ s/-{2}/-/g;
-	my $vg = NCM::LVM->new_from_system ($vgname, $cfg);
-	my $self = { devname		=> $devname,
-		     volume_group	=> $vg
-		   };
-	return bless ($self, $class);
+    $dev =~ m{(/dev/.*[^-]+)-([^-].*)$};
+    my ($vgname, $devname) = ($1, $2);
+    $devname =~ s/-{2}/-/g;
+    my $vg = NCM::LVM->new_from_system($vgname, $cfg);
+    my $self = {
+        devname      => $devname,
+        volume_group => $vg
+    };
+    return bless($self, $class);
 }
 
 =pod
@@ -103,38 +110,41 @@ Returns 0 on success.
 
 sub create
 {
-	my $self = shift;
+    my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (!$self->is_correct_device);
 
-	my ($szflag, $sz);
+    my ($szflag, $sz);
 
-	if ($self->devexists) {
-		$this_app->debug (5, "Logical volume ", $self->devpath,
-				  " already exists. Leaving");
-		return 0;
-	}
-	$self->{volume_group}->create==0 or return $?;
-	if ($self->{size}) {
-		$szflag = LVSIZE;
-		$sz = $self->{size}
-	} else {
-		$szflag = LVEXTENTS;
-		$sz = $self->{volume_group}->free_extents;
-	}
-	my @stopt = ();
-	if (exists $self->{stripe_size}) {
-	    @stopt = (LVSTRIPESZ, $self->{stripe_size},
-		      LVSTRIPEN,
-		      scalar (@{$self->{volume_group}->{device_list}}));
-	}
-	execute ([LVCREATE, $szflag, $sz, LVNAME, $self->{devname},
-		  $self->{volume_group}->{devname}, @stopt]);
-	$this_app->error ("Failed to create logical volume", $self->devpath)
-	    if $?;
-	return $?;
+    if ($self->devexists) {
+        $this_app->debug(5, "Logical volume ", $self->devpath, " already exists. Leaving");
+        return 0;
+    }
+    $self->{volume_group}->create == 0 or return $?;
+    if ($self->{size}) {
+        $szflag = LVSIZE;
+        $sz     = $self->{size};
+    } else {
+        $szflag = LVEXTENTS;
+        $sz     = $self->{volume_group}->free_extents;
+    }
+    my @stopt = ();
+    if (exists $self->{stripe_size}) {
+        @stopt =
+            (LVSTRIPESZ, $self->{stripe_size}, LVSTRIPEN,
+            scalar(@{$self->{volume_group}->{device_list}})
+            );
+    }
+    execute(
+        [
+            LVCREATE, $szflag, $sz, LVNAME, $self->{devname},
+            $self->{volume_group}->{devname}, @stopt
+        ]
+    );
+    $this_app->error("Failed to create logical volume", $self->devpath)
+        if $?;
+    return $?;
 }
-
 
 =pod
 
@@ -148,22 +158,21 @@ Returns 0 on success.
 
 sub remove
 {
-	my $self = shift;
+    my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (!$self->is_correct_device);
 
-	if ($self->devexists) {
-		execute ([LVREMOVE, LVRMARGS,
-			  $self->{volume_group}->devpath."/$self->{devname}"]);
-		if ($?) {
-			$this_app->error ("Failed to remove logical volume ",
-					  $self->devpath);
-			return $?;
-		}
-	}
-	# TODO: why not return with exitcode from this call?
-	$self->{volume_group}->remove;
-	return 0;
+    if ($self->devexists) {
+        execute([LVREMOVE, LVRMARGS, $self->{volume_group}->devpath . "/$self->{devname}"]);
+        if ($?) {
+            $this_app->error("Failed to remove logical volume ", $self->devpath);
+            return $?;
+        }
+    }
+
+    # TODO: why not return with exitcode from this call?
+    $self->{volume_group}->remove;
+    return 0;
 }
 
 =pod
@@ -176,18 +185,24 @@ Returns true if the device already exists in the system.
 
 sub devexists
 {
-	my $self = shift;
-	output (LVDISP, "$self->{volume_group}->{devname}/$self->{devname}");
-	return !$?;
+    my $self = shift;
+    output(LVDISP, "$self->{volume_group}->{devname}/$self->{devname}");
+    return !$?;
 }
+
+=pod
+
+=head2 devpath
+
+Returns the absolute path to the block device file.
+
+=cut
 
 sub devpath
 {
-	my $self = shift;
-	return $self->{volume_group}->devpath . "/" . $self->{devname};
+    my $self = shift;
+    return $self->{volume_group}->devpath . "/" . $self->{devname};
 }
-
-
 
 =pod
 
@@ -203,8 +218,8 @@ volume should be printed.
 
 sub should_print_ks
 {
-	my $self = shift;
-	return $self->{volume_group}->should_print_ks;
+    my $self = shift;
+    return $self->{volume_group}->should_print_ks;
 }
 
 =pod
@@ -218,8 +233,8 @@ Returns whether the logical volume should be defined in the
 
 sub should_create_ks
 {
-	my $self = shift;
-	return $self->{volume_group}->should_create_ks;
+    my $self = shift;
+    return $self->{volume_group}->should_create_ks;
 }
 
 =pod
@@ -233,19 +248,16 @@ kickstart commands.
 
 sub print_ks
 {
-	my ($self, $fs) = @_;
+    my ($self, $fs) = @_;
 
-	return unless $self->should_print_ks;
+    return unless $self->should_print_ks;
 
-	$self->{volume_group}->print_ks;
+    $self->{volume_group}->print_ks;
     print "\n";
 
-	print join (" ",
-	        "logvol", $fs->{mountpoint},
-		    "--vgname=$self->{volume_group}->{devname}",
-		    "--name=$self->{devname}",
-		    $self->ksfsformat($fs),
-		    "\n");
+    print join(" ",
+        "logvol", $fs->{mountpoint}, "--vgname=$self->{volume_group}->{devname}",
+        "--name=$self->{devname}", $self->ksfsformat($fs), "\n");
 }
 
 =pod
@@ -259,52 +271,59 @@ system, if that's needed.
 
 sub del_pre_ks
 {
-	my $self = shift;
+    my $self = shift;
 
     $self->ks_is_correct_device;
 
-	print "lvm lvremove ", $self->{volume_group}->devpath, "/$self->{devname}\n";
-	$self->{volume_group}->del_pre_ks;
+    my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
+    
+    print "lvm lvremove $force ", $self->{volume_group}->devpath, "/$self->{devname}\n";
+    $self->{volume_group}->del_pre_ks;
 }
 
 sub create_ks
 {
-	my $self = shift;
-	my $path = $self->devpath;
+    my $self = shift;
+    my $path = $self->devpath;
 
-	return unless $self->should_create_ks;
+    return unless $self->should_create_ks;
 
     $self->ks_is_correct_device;
 
-	my @stopts = ();
-	if (exists $self->{stripe_size}) {
-	    @stopts = (LVSTRIPESZ, $self->{stripe_size},
-		       LVSTRIPEN,
-		       scalar (@{$self->{volume_group}->{device_list}}));
-	}
-	print <<EOC;
+    my @stopts = ();
+    if (exists $self->{stripe_size}) {
+        @stopts =
+            (LVSTRIPESZ, $self->{stripe_size}, LVSTRIPEN,
+            scalar(@{$self->{volume_group}->{device_list}})
+            );
+    }
+    print <<EOC;
 if ! lvm lvdisplay $self->{volume_group}->{devname}/$self->{devname} > /dev/null
 then
 EOC
 
-	$self->{volume_group}->create_ks;
-	print <<EOF;
+    $self->{volume_group}->create_ks;
+    print <<EOF;
 	sed -i '\\:@{[$self->{volume_group}->devpath]}\$:d' @{[PART_FILE]}
 EOF
-    my $size='-l 100%FREE';
-    $size="-L $self->{size}M" if (exists($self->{size})
-				  && defined($self->{size})
-				  && "$self->{size}" =~ m/\d+/);
+    my $size = '-l 100%FREE';
+    $size = "-L $self->{size}M"
+        if (exists($self->{size})
+        && defined($self->{size})
+        && "$self->{size}" =~ m/\d+/);
 
-	print <<EOC;
-	lvm lvcreate -n $self->{devname} \\
+    my $wipesignature = $self->{ks_lvmforce} ? join(" ", LVMWIPESIGNATURE) : '';
+
+    print <<EOC;
+
+	lvm lvcreate $wipesignature -n $self->{devname} \\
 	    $self->{volume_group}->{devname} \\
 	    $size \\
 	    @stopts
         echo @{[$self->devpath]} >> @{[PART_FILE]}
 
 EOC
-	print "fi\n";
+    print "fi\n";
 }
 
 1;
