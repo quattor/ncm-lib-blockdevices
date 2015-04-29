@@ -155,13 +155,32 @@ sub remove_if_needed
     return $?;
 }
 
-# Updates the fstab entry for the $self filesystem. Optionally, the
-# handle to the fstab CAF::FileEditor handle can be passed as an
-# argument
+=pod
+
+=head2 update_fstab
+
+Updates the fstab entry for the C<$self> filesystem. Optionally, the
+handle to the fstab CAF::FileEditor handle can be passed as an
+argument.
+
+When the handle is passed, it is not closed.
+
+=cut
+
 sub update_fstab
 {
     my ($self, $fh) = @_;
-    $fh = CAF::FileEditor->new (FSTAB, log => $this_app) unless $fh;
+
+    my $close_fh = 1;
+    if(ref($fh) eq 'CAF::FileEditor') {
+        # TODO check if not closed?
+        $close_fh = 0;
+        $this_app->verbose("A CAF::FileEditor instance was passed. ",
+                           "It will not be closed at end of this method.");
+    } else {
+        $fh = CAF::FileEditor->new (FSTAB, log => $this_app);
+    };
+
     my $re = qr!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
     my $entry = join ("\t",
                         (exists $self->{label}?
@@ -171,7 +190,7 @@ sub update_fstab
                         $self->{type},
                         $self->{mountopts} .
                             (!$self->{mount} ? ",noauto":""),
-                            $self->{freq},
+                        $self->{freq},
                         $self->{pass});
     
     $entry .= "\n"; # add trailing newline
@@ -180,7 +199,8 @@ sub update_fstab
                                $entry,
                                $entry,
                                ENDING_OF_FILE);
-    $fh->close();
+
+    $fh->close() if $close_fh;
 }
 
 =pod
@@ -195,6 +215,14 @@ if force_filesystem is true.
 sub formatfs
 {
     my $self = shift;
+
+    if (! $self->{block_device}->is_correct_device) {
+        $this_app->error("Filesystem mountpoint $self->{mountpoint}",
+                          " not correct blockdev ", $self->{block_device}->devpath);
+        $? = 1;
+        return 1;
+    };
+
     my $tunecmd;
     my @opts = exists $self->{label} ? (MKFSLABEL, $self->{label}):();
     push (@opts, split ('\s+', $self->{mkfsopts})) if exists $self->{mkfsopts};
@@ -321,6 +349,13 @@ sub create_if_needed
     $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
                       " blockdev ", $self->{block_device}->devpath);
 
+    if (! $self->{block_device}->is_correct_device) {
+        $this_app->error("Filesystem mountpoint $self->{mountpoint}",
+                          " not correct blockdev ", $self->{block_device}->devpath);
+        $? = 1;
+        return 1;
+    };
+
     if($self->is_create_needed) {
         $self->{block_device}->create && return $?;
         $self->formatfs && return $?;
@@ -362,6 +397,14 @@ piece will be called by ncm-filesystems, and thus it is safe.
 sub format_if_needed
 {
     my ($self, %protected) = @_;
+
+    if (! $self->{block_device}->is_correct_device) {
+        $this_app->error("Filesystem mountpoint $self->{mountpoint}",
+                          " not correct blockdev ", $self->{block_device}->devpath);
+		$? = 1;
+        return 1;
+    };
+
     $self->can_be_formatted(%protected) or return 0;
     my $r;
     CAF::Process->new ([UMOUNT, $self->{mountpoint}], log => $this_app)->run();
@@ -475,6 +518,9 @@ sub format_ks
     my $self = shift;
 
     return unless $self->should_create_ks;
+
+    $self->{block_device}->ks_is_correct_device;
+
     print join (" ", "grep", "-q", "'" . $self->{block_device}->devpath . "\$'",
             PART_FILE, "&&", "")
         unless $self->{format};

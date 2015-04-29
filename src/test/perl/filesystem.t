@@ -10,14 +10,16 @@ use warnings;
 
 use Test::More;
 use Test::Quattor qw(filesystem);
-use helper; 
+use helper;
 
 use NCM::Filesystem;
 use CAF::FileWriter;
+use CAF::FileEditor;
 use CAF::Object;
 
-
 my $cfg = get_config_for_profile('filesystem');
+
+set_disks({sdb => 1});
 
 # resolve LABEL/UUID
 set_output("fs_sdb1_parted_print_ext3");
@@ -32,7 +34,6 @@ is($fsuuid->{mountpoint}, '/Lagoon', 'Correct mountpoint');
 is($fsuuid->{block_device}->{devname}, 'sdb1', 'Correct partition found');
 is($fsuuid->{block_device}->{holding_dev}->{devname}, 'sdb', 'Correct holding device found');
 
-
 # regular fs test
 my $fs = NCM::Filesystem->new ("/system/filesystems/0", $cfg);
 command_history_reset;
@@ -42,6 +43,7 @@ set_output("parted_print_sdb_1prim_gpt");
 set_output("file_s_sdb_labeled");
 set_output("file_s_sdb1_data");
 set_output("fs_lagoon_missing");
+
 $fs->create_if_needed;
 ok(command_history_ok([
         "/sbin/parted -s -- /dev/sdb u MiB print", 
@@ -58,6 +60,13 @@ my $newtxt = get_file('/etc/fstab'); #otherwise Can't coerce GLOB to string in s
 set_file("fstab_default","$newtxt");
 $fs->update_fstab;
 like(get_file('/etc/fstab'), qr#^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#m, 'Mount entry added to fstab');
+
+# try update_fstab with existing CAF::FileEditor instance
+my $fh = CAF::FileEditor->new("target/test/update_fstab");
+ok(! $fh, "Empty / new file is logical false.");
+$fs->update_fstab($fh);
+like("$fh", qr#^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*#m, 'Mount entry added to temporary fstab');
+$fh->close();
 
 # test mounted call; 
 set_file("mtab_default");
@@ -93,13 +102,11 @@ ok(!($nofs->{preserve} || !$nofs->{format}), 'Allow removal');
 command_history_reset;
 set_file("fstab_sdb1_ext3");
 $nofs->remove_if_needed;
-# TODO 
-#   fstab should not have that line anymore
 ok(command_history_ok([
     "/bin/umount /Lagoon",
     "/sbin/parted -s -- /dev/sdb u MiB rm 1",
-    ],
-    "Removal commands called")
+    ]),
+    "Removal commands called"
 );
 unlike(get_file('/etc/fstab'), qr#\s+/Lagoon\s+#, 'Mountpoint removed to fstab');
 

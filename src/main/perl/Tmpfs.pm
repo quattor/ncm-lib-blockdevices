@@ -7,15 +7,17 @@ package NCM::Tmpfs;
 use strict;
 use warnings;
 
-use NCM::Blockdevices;
+use NCM::Blockdevices qw ($this_app);
 
 our @ISA = qw{NCM::Blockdevices};
 
+# Returns 0 on success.
 sub create
 {
     return 0;
 }
 
+# Returns 0 on success.
 sub remove
 {
     return 0;
@@ -34,6 +36,14 @@ sub should_print_ks
 sub should_create_ks
 {
     return 0;
+}
+
+# Returns size in bytes (assumes devpath exists).
+# Is used by size_in_MiB
+sub _size_in_byte
+{
+    my $self = shift;
+    $this_app->error ("_size_in_byte method not defined for this class");
 }
 
 __END__

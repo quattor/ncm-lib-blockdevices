@@ -60,6 +60,11 @@ $cmds{file_s_nomd0}{ec} = 1;
 $cmds{file_s_md0_data}{cmd}="file -s /dev/md0";
 $cmds{file_s_md0_data}{out} = "/dev/md0: data";
 
+$cmds{blockdev_sdb_4GB}{cmd} = "/sbin/blockdev --getsize64 /dev/sdb";
+$cmds{blockdev_sdb_4GB}{out} = <<EOF;
+4294967296
+EOF
+
 $cmds{file_s_sdb_nodata}{cmd}="file -s /dev/sdb";
 $cmds{file_s_sdb_nodata}{out}="/dev/sdb: ERROR: cannot open `/dev/sdb' (No such file or directory)";
 $cmds{file_s_sdb_nodata}{ec}=1;
@@ -312,6 +317,30 @@ Number  Start    End      Size     Type      File system  Flags
  5      200MiB   1224MiB  1024MiB  logical
 
 EOF
+
+# The follwing sizes match
+# parted_print_sdb_2prim_1ext_1log_msdos
+# in particular, size of sdb3 is "interesting"
+$cmds{blockdev_sdb1_100MiB}{cmd}= "/sbin/blockdev --getsize64 /dev/sdb1";
+$cmds{blockdev_sdb1_100MiB}{out}= <<'EOF';
+104857600
+EOF
+
+$cmds{blockdev_sdb2_100MiB}{cmd}= "/sbin/blockdev --getsize64 /dev/sdb2";
+$cmds{blockdev_sdb2_100MiB}{out}= <<'EOF';
+104857600
+EOF
+
+$cmds{blockdev_sdb3_1kiB}{cmd}= "/sbin/blockdev --getsize64 /dev/sdb3";
+$cmds{blockdev_sdb3_1kiB}{out}= <<'EOF';
+1024
+EOF
+
+$cmds{blockdev_sdb5_1GiB}{cmd}= "/sbin/blockdev --getsize64 /dev/sdb5";
+$cmds{blockdev_sdb5_1GiB}{out}= <<'EOF';
+1073741312
+EOF
+
 
 $files{proc_mdstat_no_md0}{path} = '/proc/mdstat';
 $files{proc_mdstat_no_md0}{txt} = <<'EOF';

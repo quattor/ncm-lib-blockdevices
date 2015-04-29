@@ -10,7 +10,7 @@ use warnings;
 
 use Test::More;
 use Test::Quattor qw(blockdevices_gpt);
-use helper qw(set_output);
+use helper;
 
 use NCM::Partition;
 
@@ -28,6 +28,9 @@ set_output("file_s_sdb_labeled"); # file -s works too
 set_output("dd_init_1000");
 set_output("parted_init_sdb_gpt");
 set_output("parted_mkpart_sdb_prim1");
+
+set_disks({sdb => 1});
+
 my $sdb1 = NCM::Partition->new ("/system/blockdevices/partitions/sdb1", $cfg);
 is ($sdb1->create, 0, "Partition $sdb1->{devname} on logical partitions test created correctly");
 is ($sdb1->begin, 0, 'Begin from 0 (no offset) for 1st partition'); 
@@ -55,6 +58,8 @@ set_output("parted_mkpart_sdb_log1_gpt");
 my $sdb4 = NCM::Partition->new ("/system/blockdevices/partitions/sdb4", $cfg);
 is ($sdb4->create, 0, "Partition $sdb4->{devname} on logical partitions test created correctly");
 is ($sdb4->begin, 2700, 'Begin from 0 (no offset) for 4th partition'); 
+
+
 set_output("parted_print_sdb_2prim_1ext_1log_gpt"); # all partitions
 is($sdb1->{holding_dev}, $sdb4->{holding_dev}, "Using the same disk instance sdb1 sdb4");
 is($sdb2->{holding_dev}, $sdb4->{holding_dev}, "Using the same disk instance sdb2 sdb4");

@@ -97,11 +97,16 @@ Creates the logical volume on the system. Returns $? (0 if
 success). If the logical volume already exists, it returns 0 without
 doing anything.
 
+Returns 0 on success.
+
 =cut
 
 sub create
 {
 	my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
+
 	my ($szflag, $sz);
 
 	if ($self->devexists) {
@@ -137,11 +142,16 @@ sub create
 
 Removes the logical volume from the system.
 
+Returns 0 on success.
+
 =cut
 
 sub remove
 {
 	my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
+
 	if ($self->devexists) {
 		execute ([LVREMOVE, LVRMARGS,
 			  $self->{volume_group}->devpath."/$self->{devname}"]);
@@ -151,6 +161,7 @@ sub remove
 			return $?;
 		}
 	}
+	# TODO: why not return with exitcode from this call?
 	$self->{volume_group}->remove;
 	return 0;
 }
@@ -250,6 +261,8 @@ sub del_pre_ks
 {
 	my $self = shift;
 
+    $self->ks_is_correct_device;
+
 	print "lvm lvremove ", $self->{volume_group}->devpath, "/$self->{devname}\n";
 	$self->{volume_group}->del_pre_ks;
 }
@@ -260,6 +273,8 @@ sub create_ks
 	my $path = $self->devpath;
 
 	return unless $self->should_create_ks;
+
+    $self->ks_is_correct_device;
 
 	my @stopts = ();
 	if (exists $self->{stripe_size}) {

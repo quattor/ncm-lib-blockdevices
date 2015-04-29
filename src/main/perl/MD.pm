@@ -92,11 +92,16 @@ sub new
 
 Creates the MD device on the system, according to $self's state.
 
+Returns 0 on success.
+
 =cut
 
 sub create
 {
     my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
+
     my @devnames;
 
     if ($self->devexists) {
@@ -123,11 +128,15 @@ sub create
 
 Removes the MD device and all its associated devices from the system.
 
+Returns 0 on success.
+
 =cut
 
 sub remove
 {
     my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
 
     CAF::Process->new([MDSTOP, $self->devpath], log => $this_app)->execute();
     foreach my $dev (@{$self->{device_list}}) {
@@ -153,6 +162,34 @@ sub devexists
     my $self = shift;
     my $fh = CAF::FileReader->new(MDSTAT, log => $this_app);
     return $fh =~ m!^\s*$self->{devname}\s!m;
+}
+
+
+=pod
+
+=head2 is_correct_device
+
+Returns true if this is the device that corresponds with the device 
+described in the profile.
+
+The method can log an error, as it is more of a sanity check then a test.
+
+Implemented by checking if all devices in C<device_list> are correct.
+
+=cut
+
+sub is_correct_device
+{
+    my $self = shift;
+
+    foreach my $dev (@{$self->{device_list}}) {
+        if (! $dev->is_correct_device) {
+            $this_app->error("$dev->{devname} from device_list is not correct device.");
+            return 0;
+        }
+    }
+
+    return 1;
 }
 
 =pod
@@ -244,6 +281,8 @@ sub del_pre_ks
 {
     my $self = shift;
 
+    $self->ks_is_correct_device;
+    
     print join (" ", MDSTOP, $self->devpath), "\n";
     foreach my $dev (@{$self->{device_list}}) {
         print join (" ", MDZERO, $dev->devpath), "\n";
@@ -256,6 +295,8 @@ sub create_ks
     my ($self, $fs) = @_;
 
     return unless $self->should_create_ks;
+
+    $self->ks_is_correct_device;
 
     my @devnames = ();
     my $path = $self->devpath;
@@ -298,6 +339,27 @@ EOF
     echo @{[$self->devpath]} >> @{[PART_FILE]}
 EOC
     print "fi\n";
+}
+
+=pod
+
+=head2 ks_is_correct_device
+
+Print the kickstart pre bash code to determine if
+the device is the correct device or not. 
+
+Currently supports checking the device_list.
+
+=cut
+
+sub ks_is_correct_device
+{
+    my $self = shift;
+
+    foreach my $dev (@{$self->{device_list}}) {
+        $dev->ks_is_correct_device;
+    }
+    
 }
 
 1;

@@ -2,7 +2,6 @@
 # ${developer-info}
 # ${author-info}
 # ${build-info}
-################################################################################
 
 =pod
 
@@ -58,6 +57,7 @@ use warnings;
 use EDG::WP4::CCM::Element qw (unescape);
 use EDG::WP4::CCM::Configuration;
 use NCM::Blockdevices qw ($this_app PART_FILE);
+use NCM::Disk;
 use CAF::Process;
 our @ISA = qw (NCM::Blockdevices Exporter);
 
@@ -153,6 +153,8 @@ sub _initialize
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
                                            $st->{holding_dev},
                                            $config);
+    $self->{correct} = $st->{correct} if (exists $self->{correct});
+
     $self->_set_alignment($st, 0, 0);
     return $self;
 }
@@ -205,11 +207,15 @@ partition table on the holding physical device.
 
 Extended partitions are not supported.
 
+Returns 0 on success.
+
 =cut
 
 sub create
 {
     my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
 
     # Check the device doesn't exist already.
     if ($self->devexists) {
@@ -261,11 +267,15 @@ sub create
 Removes the physical partition and asks the holding physical device
 for erasing its partition table.
 
+Returns 0 on success.
+
 =cut
 
 sub remove
 {
     my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
 
     $this_app->debug (5, "Removing $self->{devname}");
     my $num = $self->partition_number;
@@ -283,6 +293,37 @@ sub remove
     }
     sleep (SLEEPTIME);
     return $self->{holding_dev}->remove;
+}
+
+
+=pod
+
+=head2 is_correct_device
+
+Returns true if this is the device that corresponds with the device 
+described in the profile.
+
+The method can log an error, as it is more of a sanity check then a test.
+
+Implemented by checking if holding device is correct and size of partition.
+
+=cut
+
+sub is_correct_device
+{
+    my $self = shift;
+
+    if(! $self->{holding_dev}->is_correct_device) {
+        $this_app->error("partition holding_device ", $self->{holding_dev}->{devname}, 
+                         " is not the correct device");
+        return 0;
+    }
+
+    # TODO: Need to find a way to toggle size (or other) checks
+    # E.g. when creating or removing a partition, the size check makes no sense
+    # but when partitions are used for e.g. MD, the partition size check makes sense
+        
+    return 1;
 }
 
 =pod
@@ -499,6 +540,8 @@ sub del_pre_ks
 {
     my $self = shift;
 
+    $self->ks_is_correct_device;
+
     my $n = $self->partition_number;
     my $devpath = $self->{holding_dev}->devpath;
 
@@ -535,6 +578,8 @@ sub create_pre_ks
     my $self = shift;
 
     return unless $self->should_create_ks;
+
+    $self->ks_is_correct_device;
 
     my $n = $self->partition_number;
     my $prev_n = $n - 1;
@@ -602,5 +647,24 @@ fi
 EOF
 
 }
+
+=pod
+
+=head2 ks_is_correct_device
+
+Print the kickstart pre bash code to determine if
+the device is the correct device or not. 
+Currently supports checking the holding_dev.
+
+=cut
+
+sub ks_is_correct_device
+{
+    my $self = shift;
+
+    $self->{holding_dev}->ks_is_correct_device;
+
+};
+
 
 1;

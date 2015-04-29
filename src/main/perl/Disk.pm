@@ -111,6 +111,7 @@ sub _initialize
     my ($self, $path, $config) = @_;
     my $st = $config->getElement($path)->getTree;
     $path =~ m(.*/([^/]+));
+
     $self->{devname} = unescape ($1);
     $self->{num_spares} = $st->{num_spares};
     $self->{label} = $st->{label};
@@ -118,8 +119,17 @@ sub _initialize
 
     my $hw;
     $hw = $config->getElement(HWPATH . $1)->getTree if $config->elementExists(HWPATH . $1);
+    # It is a bug in the templates if this happens
     my $host = $config->getElement (HOSTNAME)->getValue;
     my $domain = $config->getElement (DOMAINNAME)->getValue;
+    $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
+
+    if (exists $st->{size} ) {
+        $self->{size} = $st->{size} ;
+    } elsif ($hw && exists($hw->{capacity})) {
+        $self->{size} = $hw->{capacity} ;
+    }
+    $self->{correct} = $st->{correct};
 
     # If the disk is mentioned by the "ignoredisk --drives=..." statement,
     # then partitions/logical volumes/etc. on this disk should also be ignored
@@ -130,9 +140,6 @@ sub _initialize
             $self->{_ignore_print_ks} = 1 if $dev eq $self->{devname};
         }
     }
-
-    # It is a bug in the templates if this happens
-    $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
 
     # Inherit the topology from the physical device unless it is explicitely
     # overridden
@@ -221,9 +228,13 @@ sub disk_empty
     return !($self->partitions_in_disk || $self->has_filesystem);
 }
 
+# Returns 0 on success.
 sub create
 {
     my $self = shift;
+
+    return 1 if (! $self->is_correct_device);
+
     if ($self->disk_empty) {
         $self->set_readahead if $self->{readahead};
         $self->remove;
@@ -252,19 +263,60 @@ sub create
 If there are no partitions on $self, removes the disk instance and
 allows the disk to be re-defined.
 
+Returns 0 on success.
+
 =cut
 
 sub remove
 {
     my $self = shift;
+    
+    return 1 if (! $self->is_correct_device);
+
     unless ($self->partitions_in_disk) {
         $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
         my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();
         $this_app->debug (5, "dd output:\n", $buffout);
-        #delete $disks{$self->{_cache_key}};
     }
     return 0;
 }
+
+
+=pod
+
+=head2 is_correct_device
+
+Returns true if this is the device that corresponds with the device 
+described in the profile.
+
+The method can log an error, as it is more of a sanity check then a test.
+
+Implemented by size check.
+
+=cut
+
+sub is_correct_device
+{
+    my $self = shift;
+    
+    if (!$self->devexists) {
+        $this_app->error("is_correct_size no disk found for $self->{devname}.");
+        return 0;
+    }
+    
+    if ($self->{correct}->{size}) {
+        my $correct_size = $self->is_correct_size();
+        if (! $correct_size) {
+            # undef here due to e.g. missing size, non-existing device,...
+            # is treated as failure
+            $this_app->error("is_correct_size failed for $self->{devname}");
+            return 0;
+        };
+    }
+
+    return 1;
+}
+
 
 sub devpath
 {
@@ -285,6 +337,7 @@ sub devexists
     my $self = shift;
     return (-b $self->devpath);
 }
+
 
 =pod
 
@@ -346,6 +399,8 @@ sub clearpart_ks
 
     my $path = $self->devpath;
 
+    $self->ks_is_correct_device;
+
     print <<EOF;
 wipe_metadata $path 1
 
@@ -358,6 +413,31 @@ EOF
 
 sub del_pre_ks
 {
+    my $self = shift;
+    
+    $self->ks_is_correct_device;
+    
+}
+
+
+=pod
+
+=head2 ks_is_correct_device
+
+Print the kickstart pre bash code to determine if
+the device is the correct device or not. 
+Currently supports size conditions.
+
+=cut
+
+sub ks_is_correct_device
+{
+    my $self = shift;
+
+    if ($self->{correct}->{size}) {
+        $self->ks_pre_is_correct_size;
+    }
+    
 }
 
 1;
