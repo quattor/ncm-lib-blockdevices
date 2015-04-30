@@ -119,7 +119,7 @@ sub is_correct_device
 {
     my $self = shift;
     # Legacy behaviour is no checking; always assuming correct device.
-    $this_app->info ("is_correct_device method not defined. Returning true for legacy behaviour.");
+    $this_app->verbose ("is_correct_device method not defined. Returning true for legacy behaviour.");
     return 1;
 }
 
@@ -315,7 +315,7 @@ the device is the correct device or not.
 sub ks_is_correct_device
 {
     my $self = shift;
-    $this_app->info ("ks_is_correct_device method not defined. Not printing anything for legacy behaviour.");
+    $this_app->verbose ("ks_is_correct_device method not defined. Not printing anything for legacy behaviour.");
     return 1;
 }
 
