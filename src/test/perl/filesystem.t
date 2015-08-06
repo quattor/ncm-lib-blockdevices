@@ -17,6 +17,10 @@ use NCM::Filesystem;
 use CAF::FileWriter;
 use CAF::FileEditor;
 use CAF::Object;
+use Test::Quattor::RegexpTest;
+use Cwd;
+
+my $regexpdir= getcwd()."/src/test/resources/regexps";
 
 my $cfg = get_config_for_profile('filesystem');
 
@@ -293,12 +297,13 @@ my $fs_vol1 = NCM::Filesystem->new ("/system/filesystems/8", $cfg);
 my $fhfs_vol1_del = CAF::FileWriter->new("target/test/ksfs_vol1_del");
 select($fhfs_vol1_del);
 $fs_vol1->del_pre_ks;
-like($fhfs_vol1_del, qr{^lvm lvremove\s+/dev/vg0/lv1}m, "Removing LV in ks pre");
 
-like($fhfs_vol1_del, qr{^lvm vgreduce\s+--removemissing vg0}m, "Removing unused PVs from vg0 in ks pre");
-like($fhfs_vol1_del, qr{^lvm vgremove\s+vg0}m, "Remove PV vg0 in ks pre");
-like($fhfs_vol1_del, qr{^lvm pvremove\s+/dev/sdb1}m, "Remove sdb1 partition as physical volume in ks pre");
-like($fhfs_vol1_del, qr{^\s+parted /dev/sdb -s rm 1}m, "Remove sdb1 partition from disk sdb in ks pre");
+Test::Quattor::RegexpTest->new(
+    regexp => "$regexpdir/fs_vol1_del",
+    text => "$fhfs_vol1_del"
+)->test();
+diag "$fhfs_vol1_del";
+
 
 my $fhfs_vol1_cre = CAF::FileWriter->new("target/test/ksfs_vol1_cre");
 select($fhfs_vol1_cre);
