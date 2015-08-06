@@ -545,11 +545,16 @@ sub del_pre_ks
     my $n = $self->partition_number;
     my $devpath = $self->{holding_dev}->devpath;
 
-    # Partitions are deleted only if they exist. This will make
-    # the partitioning phase much faster.
+    my $path = $self->devpath;
+    my $clear_mb = $self->get_clear_mb();
+
+    # Partitions are deleted only if they exist.
+    # This will make the partitioning phase much faster.
+    # Partitions are also wiped before they are removed.
     print <<EOF;
 if grep -q $self->{devname} /proc/partitions
 then
+    wipe_metadata $path $clear_mb
     parted $devpath -s rm $n
 fi
 EOF
