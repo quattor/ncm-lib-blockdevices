@@ -16,5 +16,11 @@ include 'blockdevices';
     fs["mountpoint"] = "/Lagoon3";
     append(fs);
 
+    fs=value("/system/filesystems/0");
+    fs["block_device"] = "partitions/sdb4";
+    fs["mountpoint"] = "/Lagoon4";
+    fs["label"] = "FSLAB";
+    append(fs);
+
 };
 

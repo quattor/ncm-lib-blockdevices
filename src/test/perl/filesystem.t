@@ -19,6 +19,7 @@ use CAF::FileEditor;
 use CAF::Object;
 
 my $cfg = get_config_for_profile('filesystem');
+$CAF::Object::NoAction = 1;
 
 set_disks({sdb => 1});
 

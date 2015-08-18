@@ -24,6 +24,7 @@ use Cwd qw(abs_path);
 
 use constant MOUNTPOINTPERMS => 0755;
 use constant BASEPATH	=> "/system/blockdevices/";
+use constant BLKID	=> "/sbin/blkid";
 use constant DISK	=> "physical_devs/";
 use constant UMOUNT	=> "/bin/umount";
 use constant MOUNT	=> "/bin/mount";
@@ -155,6 +156,83 @@ sub remove_if_needed
     return $?;
 }
 
+
+=pod
+
+=head2 get_disk_uuid
+
+Fetches the (PART)UUID of the device with blkid 
+
+=cut
+
+sub get_disk_uuid
+{
+    my ($self, $type, $device) = @_;
+    
+    my ($cmd_output, $cmd_err);
+    my $cmd = CAF::Process->new([BLKID, $device], log => $this_app, 
+        stdout => \$cmd_output, stderr => \$cmd_err);
+    $cmd->execute();
+    my $re = qr!\s${type}UUID="(\S+)"!m ;
+    if($cmd_output && $cmd_output =~m/$re/m){
+        return $1;
+    }
+}
+
+=pod
+
+=head2 check_in_fstab
+
+Parse the fstab entry for the C<$self> filesystem. When a (PART)UUID is found, 
+this is used instead of the device name or label. If it concerns a strict protected mountpoint or filesystem,
+it will add it, but changes will not be allowed.
+
+=cut
+
+sub check_in_fstab
+{
+    my ($self, $fh, $protected) = @_;
+    my $add = 1;
+    my $ndevice;
+    my $txt = "$fh";
+    my $re = qr!^\s*([^#\s]\S+)\s+$self->{mountpoint}\/?\s+(\S+)\s!m;
+    my $devpath = $self->{block_device}->devpath;
+    while ($txt =~m/$re/mg) {
+        $add = 0;
+        my ($device, $type) = ($1, $3);
+        if ($device =~ /^(PART)?UUID=(\S+)/) {
+            my ($type_uuid, $fstab_uuid) = ($1 || '' , $2);
+            my $qt_uuid = $self->get_disk_uuid($type_uuid, $devpath);
+            if (!$qt_uuid) {
+                $this_app->warn("$type_uuid", "UUID of device $devpath for $self->{mountpoint} in Quattor could not be found");
+                next;
+            } elsif ($qt_uuid ne $fstab_uuid) {
+                $this_app->warn("${type_uuid}UUID of disk in Quattor is different from the ${type_uuid}UUID in the fstab file!");
+            }
+            $ndevice = "${type_uuid}UUID=$qt_uuid";
+        } 
+    }
+    if ($add) {
+        return "LABEL=$self->{label}" if $self->{label};
+        my $uuid = $self->get_disk_uuid('', $devpath);
+        return "UUID=$uuid" if $uuid;
+        return $self->{block_device}->devpath;
+    } else {
+        if ($protected && $protected->{mounts}->{$self->{mountpoint}}){
+            $this_app->verbose("Mount $self->{mountpoint} is protected and will not be changed");
+            return 0;
+        } elsif ($protected && $protected->{filesystems}->{$self->{type}}){
+            $this_app->verbose("Mount $self->{mountpoint} is of protected type $self->{type} and will not be changed");
+            return 0;
+        } else {
+            if (!$ndevice){
+                $ndevice = exists $self->{label}? "LABEL=$self->{label}":$devpath;
+            }
+            return $ndevice;
+        }   
+    }
+}
+
 =pod
 
 =head2 update_fstab
@@ -169,8 +247,10 @@ When the handle is passed, it is not closed.
 
 sub update_fstab
 {
-    my ($self, $fh) = @_;
+    my ($self, $fh, $pstrict) = @_;
 
+    use Test::More;
+    diag "in";
     my $close_fh = 1;
     if(ref($fh) eq 'CAF::FileEditor') {
         # TODO check if not closed?
@@ -178,14 +258,15 @@ sub update_fstab
         $this_app->verbose("A CAF::FileEditor instance was passed. ",
                            "It will not be closed at end of this method.");
     } else {
-        $fh = CAF::FileEditor->new (FSTAB, log => $this_app);
+        $fh = CAF::FileEditor->new (FSTAB, log => $this_app, backup => '.old');
     };
+    diag "fh $fh";
 
-    my $re = qr!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
-    my $entry = join ("\t",
-                        (exists $self->{label}?
-                            "LABEL=$self->{label}":
-                            $self->{block_device}->devpath),
+    my $ok_device = $self->check_in_fstab($fh, $pstrict);
+    diag "after check $fh";
+    if ($ok_device) {
+        my $entry = join ("\t",
+                        $ok_device,
                         $self->{mountpoint},
                         $self->{type},
                         $self->{mountopts} .
@@ -193,14 +274,18 @@ sub update_fstab
                         $self->{freq},
                         $self->{pass});
     
-    $entry .= "\n"; # add trailing newline
-
-    $fh->add_or_replace_lines ($re,
+        $entry .= "\n"; # add trailing newline
+        my $re = qr!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
+        $fh->add_or_replace_lines ($re,
                                $entry,
                                $entry,
                                ENDING_OF_FILE);
 
+    } 
+    diag "before iclose$fh";
     $fh->close() if $close_fh;
+    diag "after iclose$fh";
+    
 }
 
 =pod
