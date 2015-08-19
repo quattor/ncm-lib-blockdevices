@@ -250,7 +250,6 @@ sub update_fstab
     my ($self, $fh, $pstrict) = @_;
 
     use Test::More;
-    diag "in";
     my $close_fh = 1;
     if(ref($fh) eq 'CAF::FileEditor') {
         # TODO check if not closed?
@@ -260,10 +259,8 @@ sub update_fstab
     } else {
         $fh = CAF::FileEditor->new (FSTAB, log => $this_app, backup => '.old');
     };
-    diag "fh $fh";
 
     my $ok_device = $self->check_in_fstab($fh, $pstrict);
-    diag "after check $fh";
     if ($ok_device) {
         my $entry = join ("\t",
                         $ok_device,
@@ -282,9 +279,7 @@ sub update_fstab
                                ENDING_OF_FILE);
 
     } 
-    diag "before iclose$fh";
     $fh->close() if $close_fh;
-    diag "after iclose$fh";
     
 }
 

@@ -20,6 +20,7 @@ include 'blockdevices';
     fs["block_device"] = "partitions/sdb4";
     fs["mountpoint"] = "/Lagoon4";
     fs["label"] = "FSLAB";
+    fs["type"] = "xfs";
     append(fs);
 
 };
