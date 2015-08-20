@@ -14,7 +14,7 @@ use EDG::WP4::CCM::Configuration;
 use CAF::Process;
 use CAF::FileEditor;
 use CAF::FileReader;
-use NCM::Blockdevices qw ($this_app PART_FILE);
+use NCM::Blockdevices qw ($this_app PART_FILE get_disk_uuid);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
 use File::Basename;
@@ -24,7 +24,6 @@ use Cwd qw(abs_path);
 
 use constant MOUNTPOINTPERMS => 0755;
 use constant BASEPATH	=> "/system/blockdevices/";
-use constant BLKID	=> "/sbin/blkid";
 use constant DISK	=> "physical_devs/";
 use constant UMOUNT	=> "/bin/umount";
 use constant MOUNT	=> "/bin/mount";
@@ -156,36 +155,16 @@ sub remove_if_needed
     return $?;
 }
 
-
-=pod
-
-=head2 get_disk_uuid
-
-Fetches the (PART)UUID of the device with blkid 
-
-=cut
-
-sub get_disk_uuid
-{
-    my ($self, $type, $device) = @_;
-    
-    my ($cmd_output, $cmd_err);
-    my $cmd = CAF::Process->new([BLKID, $device], log => $this_app, 
-        stdout => \$cmd_output, stderr => \$cmd_err);
-    $cmd->execute();
-    my $re = qr!\s${type}UUID="(\S+)"!m ;
-    if($cmd_output && $cmd_output =~m/$re/m){
-        return $1;
-    }
-}
-
 =pod
 
 =head2 check_in_fstab
 
 Parse the fstab entry for the C<$self> filesystem. When a (PART)UUID is found, 
-this is used instead of the device name or label. If it concerns a strict protected mountpoint or filesystem,
+this is used instead of the device name or label. 
+If it concerns a protected (i.e. never-modify) mountpoint or filesystem type,
 it will add it, but changes will not be allowed.
+When the entry should be added or inserted, this sub will return the device name to use,
+otherwise 0 is returned.
 
 =cut
 
@@ -194,43 +173,47 @@ sub check_in_fstab
     my ($self, $fh, $protected) = @_;
     my $add = 1;
     my $ndevice;
+    my $otype;
     my $txt = "$fh";
     my $re = qr!^\s*([^#\s]\S+)\s+$self->{mountpoint}\/?\s+(\S+)\s!m;
     my $devpath = $self->{block_device}->devpath;
-    while ($txt =~m/$re/mg) {
+    while ($txt =~ m/$re/mg) {
         $add = 0;
-        my ($device, $type) = ($1, $3);
-        if ($device =~ /^(PART)?UUID=(\S+)/) {
+        (my $device, $otype) = ($1, $2);
+        if ($device =~ m/^(PART)?UUID=(\S+)/) {
             my ($type_uuid, $fstab_uuid) = ($1 || '' , $2);
-            my $qt_uuid = $self->get_disk_uuid($type_uuid, $devpath);
-            if (!$qt_uuid) {
-                $this_app->warn("$type_uuid", "UUID of device $devpath for $self->{mountpoint} in Quattor could not be found");
+            my $prof_uuid = $self->get_disk_uuid($type_uuid, $devpath);
+            if (!$prof_uuid) {
+                $this_app->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
+                    "in profile could not be found");
                 next;
-            } elsif ($qt_uuid ne $fstab_uuid) {
-                $this_app->warn("${type_uuid}UUID of disk in Quattor is different from the ${type_uuid}UUID in the fstab file!");
+            } elsif ($prof_uuid ne $fstab_uuid) {
+                $this_app->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
+                    "in profile is different from that in the fstab file!");
             }
-            $ndevice = "${type_uuid}UUID=$qt_uuid";
+            $ndevice = "${type_uuid}UUID=$prof_uuid";
         } 
     }
     if ($add) {
-        return "LABEL=$self->{label}" if $self->{label};
-        my $uuid = $self->get_disk_uuid('', $devpath);
-        return "UUID=$uuid" if $uuid;
-        return $self->{block_device}->devpath;
+        if ($self->{label}){
+            $ndevice = "LABEL=$self->{label}";
+        } else {
+            my $uuid = $self->get_disk_uuid('', $devpath);
+            $ndevice = ($uuid) ? "UUID=$uuid" : $self->{block_device}->devpath;
+        }
     } else {
         if ($protected && $protected->{mounts}->{$self->{mountpoint}}){
             $this_app->verbose("Mount $self->{mountpoint} is protected and will not be changed");
-            return 0;
-        } elsif ($protected && $protected->{filesystems}->{$self->{type}}){
-            $this_app->verbose("Mount $self->{mountpoint} is of protected type $self->{type} and will not be changed");
-            return 0;
+            $ndevice = 0;
+        } elsif ($protected && $protected->{filesystems}->{$otype}){
+            $this_app->verbose("Mount $self->{mountpoint} is of protected type $otype and will not be changed");
+            $ndevice = 0;
         } else {
-            if (!$ndevice){
-                $ndevice = exists $self->{label}? "LABEL=$self->{label}":$devpath;
-            }
-            return $ndevice;
+            $ndevice = "LABEL=$self->{label}" if (exists $self->{label}); # Always use label if in template
+            $ndevice = $devpath if (!$ndevice);
         }   
     }
+    return $ndevice;
 }
 
 =pod
@@ -249,7 +232,6 @@ sub update_fstab
 {
     my ($self, $fh, $pstrict) = @_;
 
-    use Test::More;
     my $close_fh = 1;
     if(ref($fh) eq 'CAF::FileEditor') {
         # TODO check if not closed?

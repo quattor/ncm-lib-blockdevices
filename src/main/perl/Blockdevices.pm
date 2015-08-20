@@ -15,6 +15,7 @@ use EDG::WP4::CCM::Configuration;
 use CAF::Object;
 use CAF::Process;
 use Exporter;
+use constant BLKID	=> "/sbin/blkid";
 use constant FILES => qw (file -s);
 
 use constant PART_FILE  => '/tmp/created_partitions';
@@ -27,7 +28,7 @@ our @ISA = qw/CAF::Object Exporter/;
 
 our $this_app = $main::this_app;
 
-our @EXPORT_OK = qw ($this_app PART_FILE);
+our @EXPORT_OK = qw ($this_app PART_FILE get_disk_uuid);
 
 sub get_cache_key {
      my ($self, $path, $config) = @_;
@@ -463,6 +464,28 @@ sub has_filesystem
     # case insensitive match 
     # e.g. file -s returns uppercase filesystem for xfs adn btrfs
     return $f =~ m{\s$fsregex\s+file}i;
+}
+
+=pod
+
+=head2 get_disk_uuid
+
+Fetches the (PART)UUID of the device with blkid. Returns undef when not found.
+type can be an empty string or 'PART'
+
+=cut
+
+sub get_disk_uuid
+{
+    my ($self, $type, $device) = @_;
+    
+    my $output = CAF::Process->new([BLKID, $device], log => $this_app)->output();
+    if($type =~ m/^(PART)?$/) {
+        my $re = qr!\s${type}UUID="(\S+)"!m ;
+        if($output && $output =~ m/$re/m){
+        return $1;
+        }
+    }
 }
 
 1;

@@ -38,7 +38,8 @@ my $protected = {
 
 #not protected
 $fs0->update_fstab(undef, $protected);
-like(get_file('/etc/fstab'), qr{^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*[^/]*$}m, 'Mount fs0 entry added to fstab');
+like(get_file('/etc/fstab'), qr{^/dev/sdb1\s+/Lagoon\s+ext3\s+auto\s+0\s+1\s*[^/]*$}m, 
+    'Mount fs0 entry added to fstab');
 
 set_desired_output('/sbin/blkid /dev/sdb2', 
     '/dev/sdb2: UUID="3ba76f19-ce89-4f33-a818-2d5e34678830" TYPE="ext3" PARTUUID="069218b3-02"');
