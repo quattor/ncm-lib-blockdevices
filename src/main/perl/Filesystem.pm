@@ -14,7 +14,7 @@ use EDG::WP4::CCM::Configuration;
 use CAF::Process;
 use CAF::FileEditor;
 use CAF::FileReader;
-use NCM::Blockdevices qw ($this_app PART_FILE get_disk_uuid);
+use NCM::Blockdevices qw ($this_app PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
 use File::Basename;
@@ -164,7 +164,7 @@ this is used instead of the device name or label.
 If it concerns a protected (i.e. never-modify) mountpoint or filesystem type,
 it will add it, but changes will not be allowed.
 When the entry should be added or inserted, this sub will return the device name to use,
-otherwise 0 is returned.
+otherwise undef is returned.
 
 =cut
 
@@ -172,8 +172,7 @@ sub check_in_fstab
 {
     my ($self, $fh, $protected) = @_;
     my $add = 1;
-    my $ndevice;
-    my $otype;
+    my ($ndevice, $otype);
     my $txt = "$fh";
     my $re = qr!^\s*([^#\s]\S+)\s+$self->{mountpoint}\/?\s+(\S+)\s!m;
     my $devpath = $self->{block_device}->devpath;
@@ -182,7 +181,7 @@ sub check_in_fstab
         (my $device, $otype) = ($1, $2);
         if ($device =~ m/^(PART)?UUID=(\S+)/) {
             my ($type_uuid, $fstab_uuid) = ($1 || '' , $2);
-            my $prof_uuid = $self->get_disk_uuid($type_uuid, $devpath);
+            my $prof_uuid = $self->{block_device}->get_uuid($type_uuid);
             if (!$prof_uuid) {
                 $this_app->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
                     "in profile could not be found");
@@ -198,16 +197,16 @@ sub check_in_fstab
         if ($self->{label}){
             $ndevice = "LABEL=$self->{label}";
         } else {
-            my $uuid = $self->get_disk_uuid('', $devpath);
+            my $uuid = $self->{block_device}->get_uuid('');
             $ndevice = ($uuid) ? "UUID=$uuid" : $self->{block_device}->devpath;
         }
     } else {
         if ($protected && $protected->{mounts}->{$self->{mountpoint}}){
             $this_app->verbose("Mount $self->{mountpoint} is protected and will not be changed");
-            $ndevice = 0;
+            $ndevice = undef;
         } elsif ($protected && $protected->{filesystems}->{$otype}){
             $this_app->verbose("Mount $self->{mountpoint} is of protected type $otype and will not be changed");
-            $ndevice = 0;
+            $ndevice = undef;
         } else {
             $ndevice = "LABEL=$self->{label}" if (exists $self->{label}); # Always use label if in template
             $ndevice = $devpath if (!$ndevice);
@@ -243,7 +242,7 @@ sub update_fstab
     };
 
     my $ok_device = $self->check_in_fstab($fh, $pstrict);
-    if ($ok_device) {
+    if (defined($ok_device)) {
         my $entry = join ("\t",
                         $ok_device,
                         $self->{mountpoint},
