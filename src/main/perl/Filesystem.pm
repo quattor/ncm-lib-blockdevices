@@ -159,9 +159,9 @@ sub remove_if_needed
 
 =head2 check_in_fstab
 
-Parse the fstab entry for the C<$self> filesystem. When a (PART)UUID is found, 
+Parse the $fh instance for the C<$self> filesystem. When a (PART)UUID is found,
 this is used instead of the device name or label. 
-If it concerns a protected (i.e. never-modify) mountpoint or filesystem type,
+If it concerns a protected (i.e. 'static') mountpoint or filesystem type,
 it will add it, but changes will not be allowed.
 When the entry should be added or inserted, this sub will return the device name to use,
 otherwise undef is returned.
@@ -204,12 +204,13 @@ sub check_in_fstab
         if ($protected && $protected->{mounts}->{$self->{mountpoint}}){
             $this_app->verbose("Mount $self->{mountpoint} is protected and will not be changed");
             $ndevice = undef;
-        } elsif ($protected && $protected->{filesystems}->{$otype}){
+        } elsif ($protected && $protected->{fs_types}->{$otype}){
             $this_app->verbose("Mount $self->{mountpoint} is of protected type $otype and will not be changed");
             $ndevice = undef;
-        } else {
-            $ndevice = "LABEL=$self->{label}" if (exists $self->{label}); # Always use label if in template
-            $ndevice = $devpath if (!$ndevice);
+        } elsif (exists $self->{label}) {
+            $ndevice = "LABEL=$self->{label}"; # Always use label if in template
+        } elsif (!$ndevice) {
+            $ndevice = $devpath;
         }   
     }
     return $ndevice;
@@ -235,7 +236,7 @@ sub update_fstab
     if(ref($fh) eq 'CAF::FileEditor') {
         # TODO check if not closed?
         $close_fh = 0;
-        $this_app->verbose("A CAF::FileEditor instance was passed. ",
+        $this_app->debug(3, "A CAF::FileEditor instance was passed. ",
                            "It will not be closed at end of this method.");
     } else {
         $fh = CAF::FileEditor->new (FSTAB, log => $this_app, backup => '.old');

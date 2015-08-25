@@ -31,7 +31,7 @@ my $protected = {
         '/Lagoon2' => 1, 
         '/Lagoon3' => 1,
     },
-    filesystems => {
+    fs_types => {
         'xfs' => 1,
     },
 };
