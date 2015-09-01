@@ -203,7 +203,7 @@ Return the path in /dev/ of the MD device.
 sub devpath
 {
     my $self = shift;
-    return "/dev/$self->{devname}";
+    return "/dev/md/$self->{devname}";
 }
 
 =pod
@@ -313,19 +313,19 @@ EOC
             my $hdpath = $dev->{holding_dev}->devpath;
             my $hdname = $dev->{holding_dev}->{devname};
             my $n = $dev->partition_number;
-            print <<EOF;
-    fdisk $hdpath <<end_of_fdisk
-t
-\$(if [ \$(grep -c $hdname /proc/partitions) -gt 2 ]
-   then
-       echo $n
-   else
-       echo
-   fi)
-fd
-w
-end_of_fdisk
-EOF
+#            print <<EOF;
+#    fdisk $hdpath <<end_of_fdisk
+#t
+#\$(if [ \$(grep -c $hdname /proc/partitions) -gt 2 ]
+#   then
+#       echo $n
+#   else
+#       echo
+#   fi)
+#fd
+#w
+#end_of_fdisk
+#EOF
 
         }
         push (@devnames, $dev->devpath);
@@ -333,7 +333,7 @@ EOF
     }
     my $ndev = scalar(@devnames);
     print <<EOC;
-    sleep 5; mdadm --create --run $path --level=$self->{raid_level} --metadata=0.90 \\
+    sleep 5; mdadm --create --run $path --level=$self->{raid_level} #--metadata=0.90 \\
         --chunk=$self->{stripe_size} --raid-devices=$ndev \\
          @devnames
     echo @{[$self->devpath]} >> @{[PART_FILE]}
