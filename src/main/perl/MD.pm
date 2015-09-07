@@ -18,7 +18,7 @@ package NCM::MD;
 use strict;
 use warnings;
 
-use EDG::WP4::CCM::Element;
+use EDG::WP4::CCM::Element qw(unescape);
 use EDG::WP4::CCM::Configuration;
 use CAF::FileReader;
 use CAF::Process;
@@ -38,6 +38,7 @@ use constant MDSTOP	=> qw (/sbin/mdadm --stop);
 use constant MDFAIL	=> qw (/sbin/mdadm --fail);
 use constant MDREMOVE	=> qw (/sbin/mdadm --remove);
 use constant MDQUERY	=> qw (/sbin/mdadm --detail);
+use constant PARTED     => qw (/sbin/parted -s --);
 
 our %mds = ();
 
@@ -55,10 +56,11 @@ sub _initialize
 
     my $st = $config->getElement($path)->getTree;
     $path=~m!/([^/]+)$!;
-    $self->{devname} = $1;
+    $self->{devname} = unescape($1);
     $st->{raid_level} =~ m!(\d)$!;
     $self->{raid_level} = $1;
     $self->{stripe_size} = $st->{stripe_size};
+    $self->{metadata} = ($st->{metadata}) ? $st->{metadata} : "0.90";
     foreach my $devpath (@{$st->{device_list}}) {
         my $dev = NCM::BlockdevFactory::build ($config, $devpath);
         push (@{$self->{device_list}}, $dev);
@@ -267,11 +269,12 @@ sub print_ks
     return unless $self->should_print_ks;
 
     if (scalar (@_) == 2) {
+        (my $naming = $self->{devname}) =~ s!^md/!!;
         $_->print_ks foreach (@{$self->{device_list}});
         print join(" ",
                    "raid",
                    $fs->{mountpoint},
-                   "--device=$self->{devname}",
+                   "--device=$naming",
                    $self->ksfsformat($fs),
                    "\n");
     }
@@ -307,23 +310,18 @@ then
 EOC
     foreach my $dev (@{$self->{device_list}}) {
         $dev->create_ks;
-        # Well, fdisk sucks and Anaconda is plain crap. Let's
-        # guess how we can set the partition hex code
         if (ref ($dev) eq 'NCM::Partition') {
             my $hdpath = $dev->{holding_dev}->devpath;
             my $hdname = $dev->{holding_dev}->{devname};
             my $n = $dev->partition_number;
-            print <<EOF;
-	    parted $hdpath -s -- $hdpath set $n raid on
-EOF
-
+            print join (" ", PARTED, $hdpath, 'set', $n,'raid', 'on'), "\n";
         }
         push (@devnames, $dev->devpath);
         print "sed -i '\\:@{[$dev->devpath]}\$:d' @{[PART_FILE]}\n";
     }
     my $ndev = scalar(@devnames);
     print <<EOC;
-    sleep 5; mdadm --create --run $path --level=$self->{raid_level} --metadata=0.90 \\
+    sleep 5; mdadm --create --run $path --level=$self->{raid_level} --metadata=$self->{metadata} \\
         --chunk=$self->{stripe_size} --raid-devices=$ndev \\
          @devnames
     echo @{[$self->devpath]} >> @{[PART_FILE]}
