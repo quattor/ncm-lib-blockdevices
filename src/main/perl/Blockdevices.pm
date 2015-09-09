@@ -104,6 +104,20 @@ sub should_create_ks
 	$this_app->error ("should_create_ks method not defined for this class");
 }
 
+# Return the size of metadata to wipe in MB
+sub get_clear_mb
+{
+    my $self = shift;
+
+    # Clear two times the alignment, but at least 1MB
+    # TODO: in what unit is/was the aligment? 
+    # assuming bytes because the align_sect does a /512 (512 bytes in a sect)
+    my $align_mb = int($self->{holding_dev}->{alignment} / (1024*1024) );
+    my $clear_mb = $align_mb * 2;
+    $clear_mb = 1 if $clear_mb < 1;
+    return $clear_mb;
+}
+
 =pod
 
 =head2 is_correct_device

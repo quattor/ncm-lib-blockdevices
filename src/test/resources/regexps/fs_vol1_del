@@ -1,0 +1,16 @@
+fs_vol1_del
+---
+---
+^wipe_metadata /dev/vg0/lv1 1$
+^lvm lvremove  /dev/vg0/lv1$
+^lvm lvdisplay vg0 \| grep vg0$
+^\[ \$\? -ne 0 \] &&$
+^lvm vgreduce  --removemissing vg0 &&$
+^lvm vgremove  vg0 && \($
+^lvm pvremove  /dev/sdb1$
+^if grep -q sdb1 /proc/partitions$
+^then$
+^\s{4}wipe_metadata /dev/sdb1 1$
+^\s{4}parted /dev/sdb -s rm 1$
+^fi$
+^\)$

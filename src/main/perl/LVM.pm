@@ -364,7 +364,10 @@ sub del_pre_ks
     # The removal will succeed only if there are no logical volumes on
     # this volume group. If that's the case, remove all the physical
     # volumes too.
+    # Better check explicitly (e.g. when --force is enabled)
     print <<EOF;
+lvm lvdisplay $self->{devname} | grep $self->{devname}
+[ \$? -ne 0 ] &&
 lvm vgreduce $force --removemissing $self->{devname} &&
 lvm vgremove $force $self->{devname} && (
 EOF

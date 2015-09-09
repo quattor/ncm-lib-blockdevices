@@ -275,9 +275,15 @@ sub del_pre_ks
 
     $self->ks_is_correct_device;
 
+    my $devpath = $self->{volume_group}->devpath . "/$self->{devname}";
+
     my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
     
-    print "lvm lvremove $force ", $self->{volume_group}->devpath, "/$self->{devname}\n";
+    print <<EOF;
+wipe_metadata $devpath 1
+lvm lvremove $force $devpath
+EOF
+
     $self->{volume_group}->del_pre_ks;
 }
 

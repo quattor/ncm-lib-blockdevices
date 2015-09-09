@@ -545,11 +545,16 @@ sub del_pre_ks
     my $n = $self->partition_number;
     my $devpath = $self->{holding_dev}->devpath;
 
-    # Partitions are deleted only if they exist. This will make
-    # the partitioning phase much faster.
+    my $path = $self->devpath;
+    my $clear_mb = $self->get_clear_mb();
+
+    # Partitions are deleted only if they exist.
+    # This will make the partitioning phase much faster.
+    # Partitions are also wiped before they are removed.
     print <<EOF;
 if grep -q $self->{devname} /proc/partitions
 then
+    wipe_metadata $path $clear_mb
     parted $devpath -s rm $n
 fi
 EOF
@@ -589,16 +594,18 @@ sub create_pre_ks
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
 
-    # Clear two times the alignment, but at least 1M
-    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
-    my $clear_mb = int($align_sect / 2 / 1024) * 2;
-    $clear_mb = 1 if $clear_mb < 1;
+    my $clear_mb = $self->get_clear_mb();
+
+    my $extended_txt = "extended";
+    # extended partitons are only relevant for msdos label
+    # make sure this never matches on anything else
+    $extended_txt .= "_no_msdos_label" if ($self->{holding_dev}->{label} ne MSDOS);
 
     print <<EOF;
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
     echo "Creating partition $self->{devname}"
-    prev=\`parted $disk -s u MiB p |awk '\$1==$prev_n {print \$5=="extended" ? \$2:\$3}'\`
+    prev=\`parted $disk -s u MiB p |awk '\$1==$prev_n {print \$5=="$extended_txt" ? \$2:\$3}'\`
 
     if [ -z \$prev ]
     then
@@ -637,7 +644,7 @@ EOF
 
     print <<EOF;
     rereadpt $disk
-    if [ $self->{type} != "extended" ]
+    if [ "$self->{type}" != "$extended_txt" ]
     then
         wipe_metadata $path $clear_mb
     fi
