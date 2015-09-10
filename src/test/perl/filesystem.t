@@ -23,6 +23,7 @@ use Cwd;
 my $regexpdir= getcwd()."/src/test/resources/regexps";
 
 my $cfg = get_config_for_profile('filesystem');
+$CAF::Object::NoAction = 1;
 
 set_disks({sdb => 1});
 

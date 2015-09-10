@@ -16,6 +16,7 @@ use helper;
 
 my $cfg = get_config_for_profile('fstab');
 
+$CAF::Object::NoAction = 1;
 # regular fs test
 my $fs0 = NCM::Filesystem->new ("/system/filesystems/0", $cfg);
 my $fs1 = NCM::Filesystem->new ("/system/filesystems/1", $cfg);

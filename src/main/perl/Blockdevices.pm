@@ -15,6 +15,7 @@ use EDG::WP4::CCM::Configuration;
 use CAF::Object;
 use CAF::Process;
 use Exporter;
+use constant BLKID => "/sbin/blkid";
 use constant FILES => qw (file -s);
 
 use constant PART_FILE  => '/tmp/created_partitions';
@@ -477,6 +478,32 @@ sub has_filesystem
     # case insensitive match 
     # e.g. file -s returns uppercase filesystem for xfs adn btrfs
     return $f =~ m{\s$fsregex\s+file}i;
+}
+
+=pod
+
+=head2 get_uuid
+
+Fetches the (PART)UUID of the device with blkid. Returns undef when not found.
+If part is true, we use PARTUUID instead of UUID
+
+=cut
+
+sub get_uuid
+{
+    my ($self, $part) = @_;
+    my $device = $self->devpath; 
+    my $uuid;
+    my $output = CAF::Process->new([BLKID, $device], log => $this_app)->output();
+    $part = $part ? 'PART' : '';
+    my $re = qr!\s${part}UUID="(\S+)"!m ;
+    if($output && $output =~ m/$re/m){
+        $uuid = $1;
+    }
+    if (!defined($uuid)){
+        $this_app->warn("${part}UUID of device $device could not be found");
+    }
+    return $uuid;
 }
 
 1;

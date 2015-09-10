@@ -157,6 +157,67 @@ sub remove_if_needed
 
 =pod
 
+=head2 check_in_fstab
+
+Parse the $fh instance for the C<$self> filesystem. When a (PART)UUID is found,
+this is used instead of the device name or label. 
+If it concerns a protected (i.e. 'static') mountpoint or filesystem type,
+it will add it, but changes will not be allowed.
+When the entry should be added or inserted, this sub will return the device name to use,
+otherwise undef is returned.
+
+=cut
+
+sub check_in_fstab
+{
+    my ($self, $fh, $protected) = @_;
+    my $add = 1;
+    my ($ndevice, $otype);
+    my $txt = "$fh";
+    my $re = qr!^\s*([^#\s]\S+)\s+$self->{mountpoint}\/?\s+(\S+)\s!m;
+    my $devpath = $self->{block_device}->devpath;
+    while ($txt =~ m/$re/mg) {
+        $add = 0;
+        (my $device, $otype) = ($1, $2);
+        if ($device =~ m/^(PART)?UUID=(\S+)/) {
+            my ($type_uuid, $fstab_uuid) = ($1 || '' , $2);
+            my $prof_uuid = $self->{block_device}->get_uuid($type_uuid);
+            if (!$prof_uuid) {
+                $this_app->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
+                    "in profile could not be found");
+                next;
+            } elsif ($prof_uuid ne $fstab_uuid) {
+                $this_app->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
+                    "in profile is different from that in the fstab file!");
+            }
+            $ndevice = "${type_uuid}UUID=$prof_uuid";
+        } 
+    }
+    if ($add) {
+        if ($self->{label}){
+            $ndevice = "LABEL=$self->{label}";
+        } else {
+            my $uuid = $self->{block_device}->get_uuid('');
+            $ndevice = ($uuid) ? "UUID=$uuid" : $self->{block_device}->devpath;
+        }
+    } else {
+        if ($protected && $protected->{mounts}->{$self->{mountpoint}}){
+            $this_app->verbose("Mount $self->{mountpoint} is protected and will not be changed");
+            $ndevice = undef;
+        } elsif ($protected && $protected->{fs_types}->{$otype}){
+            $this_app->verbose("Mount $self->{mountpoint} is of protected type $otype and will not be changed");
+            $ndevice = undef;
+        } elsif (exists $self->{label}) {
+            $ndevice = "LABEL=$self->{label}"; # Always use label if in template
+        } elsif (!$ndevice) {
+            $ndevice = $devpath;
+        }   
+    }
+    return $ndevice;
+}
+
+=pod
+
 =head2 update_fstab
 
 Updates the fstab entry for the C<$self> filesystem. Optionally, the
@@ -169,23 +230,22 @@ When the handle is passed, it is not closed.
 
 sub update_fstab
 {
-    my ($self, $fh) = @_;
+    my ($self, $fh, $pstrict) = @_;
 
     my $close_fh = 1;
     if(ref($fh) eq 'CAF::FileEditor') {
         # TODO check if not closed?
         $close_fh = 0;
-        $this_app->verbose("A CAF::FileEditor instance was passed. ",
+        $this_app->debug(3, "A CAF::FileEditor instance was passed. ",
                            "It will not be closed at end of this method.");
     } else {
-        $fh = CAF::FileEditor->new (FSTAB, log => $this_app);
+        $fh = CAF::FileEditor->new (FSTAB, log => $this_app, backup => '.old');
     };
 
-    my $re = qr!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
-    my $entry = join ("\t",
-                        (exists $self->{label}?
-                            "LABEL=$self->{label}":
-                            $self->{block_device}->devpath),
+    my $ok_device = $self->check_in_fstab($fh, $pstrict);
+    if (defined($ok_device)) {
+        my $entry = join ("\t",
+                        $ok_device,
                         $self->{mountpoint},
                         $self->{type},
                         $self->{mountopts} .
@@ -193,14 +253,16 @@ sub update_fstab
                         $self->{freq},
                         $self->{pass});
     
-    $entry .= "\n"; # add trailing newline
-
-    $fh->add_or_replace_lines ($re,
+        $entry .= "\n"; # add trailing newline
+        my $re = qr!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
+        $fh->add_or_replace_lines ($re,
                                $entry,
                                $entry,
                                ENDING_OF_FILE);
 
+    } 
     $fh->close() if $close_fh;
+    
 }
 
 =pod
