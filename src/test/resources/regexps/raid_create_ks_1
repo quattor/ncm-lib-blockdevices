@@ -4,11 +4,11 @@ raid_create_ks_1
 ^if  ! grep -q md0 /proc/mdstat$
 ^then$
 ^/sbin/parted -s -- /dev/sdb set 1 raid on$
-^sed -i '\:/dev/sdb1\$:d' /tmp/created_partitions$
+^sed -i '\\:/dev/sdb1\$:d' /tmp/created_partitions$
 ^/sbin/parted -s -- /dev/sdb set 2 raid on$
-^sed -i '\:/dev/sdb2\$:d' /tmp/created_partitions$
-^\s{4}sleep 5; mdadm --create --run /dev/md0 --level=0 --metadata=0.90 \$
-^\s{8}--chunk=64 --raid-devices=2 \$
+^sed -i '\\:/dev/sdb2\$:d' /tmp/created_partitions$
+^\s{4}sleep 5; mdadm --create --run /dev/md0 --level=0 --metadata=0.90 \\$
+^\s{8}--chunk=64 --raid-devices=2 \\$
 ^\s{8} /dev/sdb1 /dev/sdb2$
 ^\s{4}echo /dev/md0 >> /tmp/created_partitions$
 ^fi$
