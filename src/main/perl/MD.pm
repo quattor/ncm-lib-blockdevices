@@ -29,6 +29,7 @@ our @ISA = qw (NCM::Blockdevices);
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant MDSTAT => "/proc/mdstat";
 use constant MDPATH	=> "md/";
+use constant MDASSEMBLE => qw (/sbin/mdadm --assemble);
 use constant MDCREATE	=> qw (/sbin/mdadm --create --run);
 use constant MDZERO	=> qw (/sbin/mdadm --zero-superblock);
 use constant MDLEVEL	=> '--level=';
@@ -162,6 +163,16 @@ Returns true if the device exists on the system.
 sub devexists
 {
     my $self = shift;
+    # First try to assemble to check for stopped raid arrays
+    my @devnames = ();
+    foreach my $dev (@{$self->{device_list}}) {
+        push (@devnames, $dev->devpath);
+    }
+
+    CAF::Process->new([MDASSEMBLE, $self->devpath, @devnames],
+                       log => $this_app
+                       )->execute();
+    
     my $fh = CAF::FileReader->new(MDSTAT, log => $this_app);
     return $fh =~ m!^\s*$self->{devname}\s!m;
 }
