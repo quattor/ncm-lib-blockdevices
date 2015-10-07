@@ -35,10 +35,12 @@ use constant MDZERO	=> qw (/sbin/mdadm --zero-superblock);
 use constant MDLEVEL	=> '--level=';
 use constant MDDEVS	=> '--raid-devices=';
 use constant MDSTRIPE	=> '--chunk=';
+use constant MDMETADATA => '--metadata=';
 use constant MDSTOP	=> qw (/sbin/mdadm --stop);
 use constant MDFAIL	=> qw (/sbin/mdadm --fail);
 use constant MDREMOVE	=> qw (/sbin/mdadm --remove);
 use constant MDQUERY	=> qw (/sbin/mdadm --detail);
+use constant MDQRY	=> qw (/sbin/mdadm -Q);
 use constant PARTED     => qw (/sbin/parted -s --);
 
 our %mds = ();
@@ -61,7 +63,7 @@ sub _initialize
     $st->{raid_level} =~ m!(\d)$!;
     $self->{raid_level} = $1;
     $self->{stripe_size} = $st->{stripe_size};
-    $self->{metadata} = ($st->{metadata}) ? $st->{metadata} : "0.90";
+    $self->{metadata} = $st->{metadata} || "0.90";
     foreach my $devpath (@{$st->{device_list}}) {
         my $dev = NCM::BlockdevFactory::build ($config, $devpath);
         push (@{$self->{device_list}}, $dev);
@@ -117,7 +119,7 @@ sub create
         push (@devnames, $dev->devpath);
     }
     CAF::Process->new([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
-                       MDSTRIPE.$self->{stripe_size},
+                       MDSTRIPE.$self->{stripe_size}, MDMETADATA.$self->{metadata},
                        MDDEVS.scalar(@{$self->{device_list}}), @devnames],
                        log => $this_app
                        )->execute();
@@ -172,9 +174,12 @@ sub devexists
     CAF::Process->new([MDASSEMBLE, $self->devpath, @devnames],
                        log => $this_app
                        )->execute();
-    
-    my $fh = CAF::FileReader->new(MDSTAT, log => $this_app);
-    return $fh =~ m!^\s*$self->{devname}\s!m;
+    CAF::Process->new([MDQRY, $self->devpath],
+                       log => $this_app
+                       )->execute();
+    my $ec=$?;
+    $this_app->debug(3, "querying $self->{devname} returned $ec");
+    return ($ec == 0);
 }
 
 

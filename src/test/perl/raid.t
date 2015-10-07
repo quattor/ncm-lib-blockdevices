@@ -20,14 +20,14 @@ my $cfg = get_config_for_profile('raid');
 my $md = NCM::MD->new ("/system/blockdevices/md/md0", $cfg);
 is (ref ($md), "NCM::MD", "MD correctly instantiated");
 
-# test mdstat parsing
-set_file('proc_mdstat_no_md0');
-is($md->devexists, '', 'No md0 entry in mdstat');
-set_file('proc_mdstat_md0');
-is($md->devexists, 1, 'Found md0 entry in mdstat');
+# test devexists 
+set_output('mdadm_query_ok');
+ok($md->devexists, 'Device exists');
+set_output('mdadm_query_nok');
+ok(!$md->devexists, 'No existing device');
 
 # doesn't exist yet
-set_file('proc_mdstat_no_md0');
+set_output('mdadm_query_nok');
 
 set_output("file_s_sdb_data"); # sdb exists (test via file -s)
 set_output("parted_print_sdb_2prim_gpt"); # sdb has 2 partitions
