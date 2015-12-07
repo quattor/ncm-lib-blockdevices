@@ -18,7 +18,7 @@ package NCM::MD;
 use strict;
 use warnings;
 
-use EDG::WP4::CCM::Element;
+use EDG::WP4::CCM::Element qw(unescape);
 use EDG::WP4::CCM::Configuration;
 use CAF::FileReader;
 use CAF::Process;
@@ -29,15 +29,19 @@ our @ISA = qw (NCM::Blockdevices);
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant MDSTAT => "/proc/mdstat";
 use constant MDPATH	=> "md/";
+use constant MDASSEMBLE => qw (/sbin/mdadm --assemble);
 use constant MDCREATE	=> qw (/sbin/mdadm --create --run);
 use constant MDZERO	=> qw (/sbin/mdadm --zero-superblock);
 use constant MDLEVEL	=> '--level=';
 use constant MDDEVS	=> '--raid-devices=';
 use constant MDSTRIPE	=> '--chunk=';
+use constant MDMETADATA => '--metadata=';
 use constant MDSTOP	=> qw (/sbin/mdadm --stop);
 use constant MDFAIL	=> qw (/sbin/mdadm --fail);
 use constant MDREMOVE	=> qw (/sbin/mdadm --remove);
 use constant MDQUERY	=> qw (/sbin/mdadm --detail);
+use constant MDQRY	=> qw (/sbin/mdadm -Q);
+use constant PARTED     => qw (/sbin/parted -s --);
 
 our %mds = ();
 
@@ -55,10 +59,11 @@ sub _initialize
 
     my $st = $config->getElement($path)->getTree;
     $path=~m!/([^/]+)$!;
-    $self->{devname} = $1;
+    $self->{devname} = unescape($1);
     $st->{raid_level} =~ m!(\d)$!;
     $self->{raid_level} = $1;
     $self->{stripe_size} = $st->{stripe_size};
+    $self->{metadata} = $st->{metadata} || "0.90";
     foreach my $devpath (@{$st->{device_list}}) {
         my $dev = NCM::BlockdevFactory::build ($config, $devpath);
         push (@{$self->{device_list}}, $dev);
@@ -114,7 +119,7 @@ sub create
         push (@devnames, $dev->devpath);
     }
     CAF::Process->new([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
-                       MDSTRIPE.$self->{stripe_size},
+                       MDSTRIPE.$self->{stripe_size}, MDMETADATA.$self->{metadata},
                        MDDEVS.scalar(@{$self->{device_list}}), @devnames],
                        log => $this_app
                        )->execute();
@@ -160,8 +165,21 @@ Returns true if the device exists on the system.
 sub devexists
 {
     my $self = shift;
-    my $fh = CAF::FileReader->new(MDSTAT, log => $this_app);
-    return $fh =~ m!^\s*$self->{devname}\s!m;
+    # First try to assemble to check for stopped raid arrays
+    my @devnames = ();
+    foreach my $dev (@{$self->{device_list}}) {
+        push (@devnames, $dev->devpath);
+    }
+
+    CAF::Process->new([MDASSEMBLE, $self->devpath, @devnames],
+                       log => $this_app
+                       )->execute();
+    CAF::Process->new([MDQRY, $self->devpath],
+                       log => $this_app
+                       )->execute();
+    my $ec=$?;
+    $this_app->debug(3, "querying $self->{devname} returned $ec");
+    return ($ec == 0);
 }
 
 
@@ -267,11 +285,12 @@ sub print_ks
     return unless $self->should_print_ks;
 
     if (scalar (@_) == 2) {
+        (my $naming = $self->{devname}) =~ s!^md/!!;
         $_->print_ks foreach (@{$self->{device_list}});
         print join(" ",
                    "raid",
                    $fs->{mountpoint},
-                   "--device=$self->{devname}",
+                   "--device=$naming",
                    $self->ksfsformat($fs),
                    "\n");
     }
@@ -307,33 +326,18 @@ then
 EOC
     foreach my $dev (@{$self->{device_list}}) {
         $dev->create_ks;
-        # Well, fdisk sucks and Anaconda is plain crap. Let's
-        # guess how we can set the partition hex code
         if (ref ($dev) eq 'NCM::Partition') {
             my $hdpath = $dev->{holding_dev}->devpath;
             my $hdname = $dev->{holding_dev}->{devname};
             my $n = $dev->partition_number;
-            print <<EOF;
-    fdisk $hdpath <<end_of_fdisk
-t
-\$(if [ \$(grep -c $hdname /proc/partitions) -gt 2 ]
-   then
-       echo $n
-   else
-       echo
-   fi)
-fd
-w
-end_of_fdisk
-EOF
-
+            print join (" ", PARTED, $hdpath, 'set', $n,'raid', 'on'), "\n";
         }
         push (@devnames, $dev->devpath);
         print "sed -i '\\:@{[$dev->devpath]}\$:d' @{[PART_FILE]}\n";
     }
     my $ndev = scalar(@devnames);
     print <<EOC;
-    sleep 5; mdadm --create --run $path --level=$self->{raid_level} --metadata=0.90 \\
+    sleep 5; mdadm --create --run $path --level=$self->{raid_level} --metadata=$self->{metadata} \\
         --chunk=$self->{stripe_size} --raid-devices=$ndev \\
          @devnames
     echo @{[$self->devpath]} >> @{[PART_FILE]}

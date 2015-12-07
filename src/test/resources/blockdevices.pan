@@ -44,7 +44,13 @@ unique template blockdevices;
 			"device_list", list ("partitions/sdb1", "partitions/sdb2"),
 			"raid_level", "RAID0",
 			"stripe_size", 64,
-			)
+			),
+        escape("md/myname"), nlist (
+            "device_list", list ("partitions/sdb3", "partitions/sdb4"),
+            "raid_level", "RAID0",
+            "stripe_size", 64,
+            "metadata", "1.2",
+            ),
 		),
 	"files", nlist (
 		escape ("/home/mejias/kk.ext3"), nlist (

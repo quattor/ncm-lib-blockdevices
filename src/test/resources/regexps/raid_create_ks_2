@@ -1,0 +1,14 @@
+raid_create_ks_2
+---
+---
+^if  ! grep -q md/myname /proc/mdstat$
+^then$
+^/sbin/parted -s -- /dev/sdb set 3 raid on$
+^sed -i '\\:/dev/sdb3\$:d' /tmp/created_partitions$
+^/sbin/parted -s -- /dev/sdb set 4 raid on$
+^sed -i '\\:/dev/sdb4\$:d' /tmp/created_partitions$
+^\s{4}sleep 5; mdadm --create --run /dev/md/myname --level=0 --metadata=1.2 \\$
+^\s{8}--chunk=64 --raid-devices=2 \\$
+^\s{8} /dev/sdb3 /dev/sdb4$
+^\s{4}echo /dev/md/myname >> /tmp/created_partitions$
+^fi$

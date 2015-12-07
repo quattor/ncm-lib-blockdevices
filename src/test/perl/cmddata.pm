@@ -508,3 +508,12 @@ Number  Start    End     Size    File system  Flags
  1      0.00MiB  100MiB  100MiB  ext3
 
 EOF
+
+
+$cmds{mdadm_query_ok}{cmd}="/sbin/mdadm -Q /dev/md0";
+$cmds{mdadm_query_ok}{out}="Device exists";
+$cmds{mdadm_query_ok}{ec}=0;
+
+$cmds{mdadm_query_nok}{cmd}="/sbin/mdadm -Q /dev/md0";
+$cmds{mdadm_query_nok}{err}="Device not found";
+$cmds{mdadm_query_nok}{ec}=1;
