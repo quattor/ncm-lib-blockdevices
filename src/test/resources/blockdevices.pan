@@ -69,8 +69,15 @@ unique template blockdevices;
             "size", 800,
             "volume_group", "vg0"
             ),
-        )
-	);
+        ),
+    "vxvm", nlist (
+        "vcslab.local", nlist("gnr.0", nlist (
+            "dev_path", "/dev/vx/dsk/vcslab.local/gnr.0",
+            "disk_group", "vcslab.local",
+            "volume", "gnr.0"
+        ))
+	)
+);
 
 "/system/filesystems" = list (
     nlist (

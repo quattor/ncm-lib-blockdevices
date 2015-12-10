@@ -12,6 +12,7 @@ use Test::More;
 use Test::Quattor qw(factory);
 use helper;
 
+use NCM::Blockdevices qw ($this_app);
 use NCM::BlockdevFactory qw (build);
 use CAF::Object;
 
@@ -31,5 +32,11 @@ $o = build ($cfg, "md/md0");
 is (ref ($o), "NCM::MD", "MD correctly instantiated");
 $o = build ($cfg, "logical_volumes/lv0");
 is (ref ($o), "NCM::LV", "LV correctly instantiated");
+$o = build ($cfg, "vxvm/vcslab.local/gnr.0" );
+is (ref ($o), "NCM::VXVM", "VXVM correctly instantiated");
+
+$o = build ($cfg, "unknown/unknown");
+ok(! defined($o), 'build returns undef with unknown blockdevice');
+is($this_app->{ERROR}, 1, "Errors for an unknown blockdevice");
 
 done_testing();
