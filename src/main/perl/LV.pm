@@ -16,17 +16,23 @@ package NCM::LV;
 
 use strict;
 use warnings;
+use CAF::Process;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw(execute output);
 use NCM::Blockdevices qw($this_app PART_FILE);
+use NCM::LVM;
 our @ISA = qw(NCM::Blockdevices);
 
 use constant BASEPATH => "/system/blockdevices/";
 use constant VGS      => "volume_groups/";
+use constant LVS      => "logical_volumes/";
 
 use constant {
+    LVCACHEPOOL => '--cachepool',
+    LVCONVERT  => '/usr/sbin/lvconvert',
     LVCREATE   => '/usr/sbin/lvcreate',
+    LVLVS      => '/usr/sbin/lvs',
     LVSIZE     => '-L',
     LVEXTENTS  => '-l',
     LVNAME     => '-n',
@@ -35,6 +41,8 @@ use constant {
     LVDISP     => '/usr/sbin/lvdisplay',
     LVSTRIPESZ => '--stripesize',
     LVSTRIPEN  => '--stripes',
+    LVTYPE     => '--type',
+    LVM        => 'lvm',
     LVMFORCE   => '--force',
     AII_LVMFORCE_PATH => '/system/aii/osinstall/ks/lvmforce',
 };
@@ -59,7 +67,19 @@ sub _initialize
     $self->{volume_group} = NCM::LVM->new(BASEPATH . VGS . $st->{volume_group}, $config);
     $self->{size}         = $st->{size};
     $self->{stripe_size}  = $st->{stripe_size} if exists $st->{stripe_size};
-    
+    if (exists $st->{cache}) {
+        $self->{cache} = $st->{cache};
+        $self->{cache_lv} = NCM::LV->new (BASEPATH . LVS . $self->{cache}->{cache_lv}, $config);
+    }
+    if (exists $st->{devices}) {
+        $self->{devices} = [];
+        foreach my $devpath (@{$st->{devices}}) {
+            my $dev = NCM::BlockdevFactory::build($config, $devpath);
+            push(@{$self->{devices}}, $dev);
+        }
+    }
+    $self->{type} = $st->{type} if exists $st->{type};
+
     # Defaults to false is not defined in AII
     $self->{ks_lvmforce} = $config->elementExists(AII_LVMFORCE_PATH) ?
          $config->getElement(AII_LVMFORCE_PATH)->getValue : 0;
@@ -98,6 +118,62 @@ sub new_from_system
 
 =pod
 
+=head2 lvcache_ks
+
+Print the ks code for the cache on the logical volume.
+
+=cut
+
+sub lvcache_ks
+{
+    my $self = shift;
+    $self->{cache_lv}->create_ks;
+    my $command = join(" ", LVCONVERT, LVTYPE, 'cache', LVCACHEPOOL,
+       "$self->{volume_group}->{devname}/$self->{cache_lv}->{devname}", "$self->{volume_group}->{devname}/$self->{devname}");
+
+    print <<EOC 
+if ! lvm lvs $self->{volume_group}->{devname}/$self->{devname} | awk '{ print \$5 }' | grep $self->{cache_lv}->{devname} > /dev/null
+then
+$command
+fi
+EOC
+
+}
+
+
+=pod
+
+=head2 create_cache
+
+Creates the cache on the logical volume. Returns $? (0 if
+success). If the logical volume cache already exists, it returns 0 without
+doing anything.
+
+Returns 0 on success.
+
+=cut
+
+sub create_cache
+{
+    my $self = shift;
+    $self->{cache_lv}->create == 0 or return $?; 
+    my $output = CAF::Process->new([LVLVS, "$self->{volume_group}->{devname}/$self->{devname}"])->output();
+    my @lines = split(/\n/, $output);
+    if ($lines[1] && $lines[1] =~ /\s\[$self->{cache_lv}->{devname}\]\s/m){
+        $this_app->debug(5, "Cache $self->{cache_lv}->{devname} on logical volume $self->devpath already exists. Leaving"); 
+        return 0;
+    }
+    my $command = [LVCONVERT, LVTYPE, 'cache', LVCACHEPOOL, 
+        "$self->{volume_group}->{devname}/$self->{cache_lv}->{devname}", "$self->{volume_group}->{devname}/$self->{devname}"];
+    CAF::Process->new($command, log => $this_app)->execute();
+    if ($?) {
+        $this_app->error("Failed to make cache $self->{cache_lv}->{devname} on $self->{devname}");
+    }
+    return $?; 
+}
+
+=pod
+
 =head2 create
 
 Creates the logical volume on the system. Returns $? (0 if
@@ -117,8 +193,12 @@ sub create
     my ($szflag, $sz);
 
     if ($self->devexists) {
-        $this_app->debug(5, "Logical volume ", $self->devpath, " already exists. Leaving");
-        return 0;
+        if (exists $self->{cache}) {
+            return $self->create_cache();
+        } else {  
+            $this_app->debug(5, "Logical volume ", $self->devpath, " already exists. Leaving");
+            return 0;
+        }
     }
     $self->{volume_group}->create == 0 or return $?;
     if ($self->{size}) {
@@ -135,15 +215,30 @@ sub create
             scalar(@{$self->{volume_group}->{device_list}})
             );
     }
-    execute(
-        [
-            LVCREATE, $szflag, $sz, LVNAME, $self->{devname},
-            $self->{volume_group}->{devname}, @stopt
-        ]
-    );
-    $this_app->error("Failed to create logical volume", $self->devpath)
-        if $?;
-    return $?;
+    my @devices = ();
+    if (exists $self->{devices}){   
+        foreach my $dev (@{$self->{devices}}) {
+            push (@devices, $dev->devpath);
+        }
+    }
+
+    my @type_opts = ();
+    if (exists $self->{type}) {
+        @type_opts = (LVTYPE, $self->{type});
+    }
+    my $command = [LVCREATE, @type_opts, $szflag, $sz, LVNAME, $self->{devname},
+                $self->{volume_group}->{devname}, @stopt, @devices];
+
+    CAF::Process->new($command, log => $this_app)->execute();
+    if ($?) {
+        $this_app->error("Failed to create logical volume", $self->devpath);
+        return $?;
+    }
+    if (exists $self->{cache}) {
+        return $self->create_cache();
+    }
+    return 0;
+    
 }
 
 =pod
@@ -303,6 +398,19 @@ sub create_ks
             scalar(@{$self->{volume_group}->{device_list}})
             );
     }
+
+    my @devices = (); 
+    if (exists $self->{devices}){   
+        foreach my $dev (@{$self->{devices}}) {
+            push (@devices, $dev->devpath);
+        }   
+    }
+
+    my @type_opts = (); 
+    if (exists $self->{type}) {
+        @type_opts = (LVTYPE, $self->{type});
+    }
+
     print <<EOC;
 if ! lvm lvdisplay $self->{volume_group}->{devname}/$self->{devname} > /dev/null
 then
@@ -323,12 +431,17 @@ EOF
     print <<EOC;
 
 	lvm lvcreate $wipesignature -n $self->{devname} \\
+        @type_opts \\
 	    $self->{volume_group}->{devname} \\
 	    $size \\
-	    @stopts
+	    @stopts \\
+        @devices
         echo @{[$self->devpath]} >> @{[PART_FILE]}
 
 EOC
+    if ($self->{cache}) {
+        $self->lvcache_ks();
+    }
     print "fi\n";
 }
 
