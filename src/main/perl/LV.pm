@@ -426,7 +426,8 @@ EOF
         && defined($self->{size})
         && "$self->{size}" =~ m/\d+/);
 
-    my $wipesignature = $self->{ks_lvmforce} ? join(" ", LVMWIPESIGNATURE) : '';
+    # 'Option --wipesignatures is unsupported with cache pools.'
+    my $wipesignature = ($self->{ks_lvmforce} && ($self->{type} ne 'cache-pool')) ? join(" ", LVMWIPESIGNATURE) : '';
 
     print <<EOC;
 
