@@ -8,9 +8,10 @@
 use strict;
 use warnings;
 use Test::More;
-
 use Test::Quattor qw(lv-create);
+use Test::Quattor::RegexpTest;
 
+use Cwd;
 use helper;
 
 use NCM::LV;
@@ -72,7 +73,12 @@ my $fhmd = CAF::FileWriter->new("target/test/kslv");
 my $origfh = select($fhmd);
 
 $lv->create_ks;
-diag "$fhmd";
+
+my $regexpdir= getcwd()."/src/test/resources/regexps";
+Test::Quattor::RegexpTest->new(
+    regexp => "$regexpdir/lvm_create_lv_cache",
+    text => "$fhmd"
+)->test();
 
 
 select($origfh);

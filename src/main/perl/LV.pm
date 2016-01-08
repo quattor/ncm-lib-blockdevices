@@ -132,10 +132,10 @@ sub lvcache_ks
        "$self->{volume_group}->{devname}/$self->{cache_lv}->{devname}", "$self->{volume_group}->{devname}/$self->{devname}");
 
     print <<EOC 
-if ! lvm lvs $self->{volume_group}->{devname}/$self->{devname} | awk '{ print \$5 }' | grep $self->{cache_lv}->{devname} > /dev/null
-then
-$command
-fi
+    if ! lvm lvs $self->{volume_group}->{devname}/$self->{devname} | awk '{ print \$5 }' | grep $self->{cache_lv}->{devname} > /dev/null
+    then
+        $command
+    fi
 EOC
 
 }
@@ -418,7 +418,7 @@ EOC
 
     $self->{volume_group}->create_ks;
     print <<EOF;
-	sed -i '\\:@{[$self->{volume_group}->devpath]}\$:d' @{[PART_FILE]}
+    sed -i '\\:@{[$self->{volume_group}->devpath]}\$:d' @{[PART_FILE]}
 EOF
     my $size = '-l 100%FREE';
     $size = "-L $self->{size}M"
@@ -431,11 +431,11 @@ EOF
 
     print <<EOC;
 
-	lvm lvcreate $wipesignature -n $self->{devname} \\
+    lvm lvcreate $wipesignature -n $self->{devname} \\
         @type_opts \\
-	    $self->{volume_group}->{devname} \\
-	    $size \\
-	    @stopts \\
+        $self->{volume_group}->{devname} \\
+        $size \\
+        @stopts \\
         @devices
         echo @{[$self->devpath]} >> @{[PART_FILE]}
 
