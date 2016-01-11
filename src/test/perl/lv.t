@@ -7,6 +7,7 @@
 
 use strict;
 use warnings;
+use CAF::Object;
 use Test::More;
 use Test::Quattor qw(lv-create);
 use Test::Quattor::RegexpTest;
@@ -30,11 +31,13 @@ We create several objects, and check
 
 =cut
 
+$CAF::Object::NoAction = 1;
 my $cfg = get_config_for_profile('lv-create');
 my $lv = NCM::LV->new ("/system/blockdevices/logical_volumes/lv0", $cfg);
 isa_ok($lv, "NCM::LV", "LV correctly instantiated");
 
 set_output("lv0_create_not_ok");
+set_output("lv0_not_present");
 my $out = $lv->create;
 ok($out, 'create not succeeded');
 
@@ -49,6 +52,8 @@ isa_ok($lv, "NCM::LV", "LV with cache correctly instantiated");
 set_desired_output("/usr/sbin/lvs vg1/lvCold", 
     "LV    VG     Attr       LSize   Pool        Origin        Data%  Meta%  Move Log Cpy%Sync Convert  \n  lvCold vg1 Cwi-a-C--- 100.00g [lvCache] [lvCold_corig] 0.00   10.74           100.00  ");
 
+set_output("lvCold_not_present");
+set_output("lvCache_not_present");
 $out = $lv->create;
 ok(!$out, "Create ok");
 
@@ -74,6 +79,7 @@ my $origfh = select($fhmd);
 
 $lv->create_ks;
 
+diag "$fhmd";
 my $regexpdir= getcwd()."/src/test/resources/regexps";
 Test::Quattor::RegexpTest->new(
     regexp => "$regexpdir/lvm_create_lv_cache",
