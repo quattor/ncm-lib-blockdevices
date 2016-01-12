@@ -20,6 +20,7 @@ use NCM::Disk;
 use NCM::Partition;
 use NCM::File;
 use NCM::Tmpfs;
+use NCM::VXVM;
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant PARTED	=> qw (/sbin/parted -s --);
 use constant PARTEDEXTRA => qw (u MiB);
@@ -41,28 +42,33 @@ sub build
 {
     my ($config, $dev) = @_;
 
-    if ($dev =~ m!^volume_groups/.*!) {
+    if ($dev =~ m!^volume_groups/!) {
         return NCM::LVM->new (BASEPATH . $dev, $config);
     }
-    elsif ($dev =~ m!^md/.*!) {
+    elsif ($dev =~ m!^md/!) {
         return NCM::MD->new (BASEPATH . $dev, $config);
     }
-    elsif ($dev =~ m!^partitions/.*!) {
+    elsif ($dev =~ m!^partitions/!) {
         return NCM::Partition->new (BASEPATH . $dev, $config);
     }
-    elsif ($dev =~ m!^physical_devs/.*!) {
+    elsif ($dev =~ m!^physical_devs/!) {
         return NCM::Disk->new (BASEPATH . $dev, $config);
     }
-    elsif ($dev =~ m!^files/.*!) {
+    elsif ($dev =~ m!^files/!) {
         return NCM::File->new (BASEPATH . $dev, $config);
     }
-    elsif ($dev =~ m!^logical_volumes/.*!) {
+    elsif ($dev =~ m!^logical_volumes/!) {
         return NCM::LV->new (BASEPATH . $dev, $config);
     }
     elsif ($dev eq "tmpfs") {
         return NCM::Tmpfs->new(BASEPATH . $dev, $config);
     }
-    # WTF?
+    elsif ($dev =~ m!^vxvm/!) {
+        return NCM::VXVM->new(BASEPATH . $dev, $config);
+    }
+
+    $this_app->error("Unable to find block device implementation for device $dev");
+
     return undef;
 }
 
