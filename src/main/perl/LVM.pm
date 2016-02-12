@@ -36,6 +36,7 @@ use constant PVS => qw(/usr/sbin/pvs -o name,vg_name);
 
 use warnings;
 
+use CAF::Process;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw(execute output);
@@ -280,7 +281,8 @@ sub devexists
 
     # Ugly hack because SL's vgdisplay sucks: the volume exists if
     # vgdisplay has any output
-    my $output = output(VGDISPLAY, $self->{devname});
+    # -> Is this still valid? In >= sl6, exitcode can be used
+    my $output = CAF::Process->new([VGDISPLAY, $self->{devname}], log => $this_app)->output();
     my @lines = split /:/, $output;
     return scalar(@lines) > 1;
 }

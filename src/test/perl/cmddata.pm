@@ -517,3 +517,25 @@ $cmds{mdadm_query_ok}{ec}=0;
 $cmds{mdadm_query_nok}{cmd}="/sbin/mdadm -Q /dev/md0";
 $cmds{mdadm_query_nok}{err}="Device not found";
 $cmds{mdadm_query_nok}{ec}=1;
+
+$cmds{lv0_create_not_ok}{cmd}="/usr/sbin/lvcreate -L 800 -n lv0 vg0";
+$cmds{lv0_create_not_ok}{err}="Could not create";
+$cmds{lv0_create_not_ok}{ec}=1;
+
+$cmds{lv0_create_ok}{cmd}="/usr/sbin/lvcreate -L 800 -n lv0 vg0";
+$cmds{lv0_create_ok}{out}="Created";
+$cmds{lv0_create_ok}{ec}=0;
+
+$cmds{lv0_not_present}{cmd}="/usr/sbin/lvdisplay vg0/lv0";
+$cmds{lv0_not_present}{err}="Failed to find logical volume";
+$cmds{lv0_not_present}{ec}=5;
+
+$cmds{lvCold_not_present}{cmd}="/usr/sbin/lvdisplay vg1/lvCold";
+$cmds{lvCold_not_present}{err}="Failed to find logical volume";
+$cmds{lvCold_not_present}{ec}=5;
+
+$cmds{lvCache_not_present}{cmd}="/usr/sbin/lvdisplay vg1/lvCache";
+$cmds{lvCache_not_present}{err}="Failed to find logical volume";
+$cmds{lvCache_not_present}{ec}=5;
+
+1;

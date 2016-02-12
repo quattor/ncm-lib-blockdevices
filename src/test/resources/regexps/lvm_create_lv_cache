@@ -1,0 +1,53 @@
+lvm_create_lv_cache
+---
+---
+^if ! lvm lvdisplay vg1/lvCold > /dev/null$
+^then$
+^if \[ ! -e /dev/vg1 \]$
+^then$
+^\s{4}lvm pvcreate  /dev/sdc$
+^\s{4}sed -i '\\:/dev/sdc\$:d' /tmp/created_partitions$
+^\s{4}lvm pvcreate  /dev/sdd$
+^\s{4}sed -i '\\:/dev/sdd\$:d' /tmp/created_partitions$
+^\s{4}lvm vgcreate vg1 /dev/sdc /dev/sdd$
+^\s{4}echo /dev/vg1 >> /tmp/created_partitions$
+^fi$
+^\s{4}sed -i '\\:/dev/vg1\$:d' /tmp/created_partitions$
+^$
+^\s{4}lvm lvcreate  -n lvCold \\$
+^\s{8} \\$
+^\s{8}vg1 \\$
+^\s{8}-L 1000M \\$
+^\s{8} \\$
+^\s{8}/dev/sdc$
+^\s{8}echo /dev/vg1/lvCold >> /tmp/created_partitions$
+^$
+^if ! lvm lvdisplay vg1/lvCache > /dev/null$
+^then$
+^if \[ ! -e /dev/vg1 \]$
+^then$
+^\s{4}lvm pvcreate  /dev/sdc$
+^\s{4}sed -i '\\:/dev/sdc\$:d' /tmp/created_partitions$
+^\s{4}lvm pvcreate  /dev/sdd$
+^\s{4}sed -i '\\:/dev/sdd\$:d' /tmp/created_partitions$
+^\s{4}lvm vgcreate vg1 /dev/sdc /dev/sdd$
+^\s{4}echo /dev/vg1 >> /tmp/created_partitions$
+^fi$
+^\s{4}sed -i '\\:/dev/vg1\$:d' /tmp/created_partitions$
+^$
+^\s{4}lvm lvcreate  -n lvCache \\$
+^\s{8}--type cache-pool \\$
+^\s{8}vg1 \\$
+^\s{8}-L 100M \\$
+^\s{8} \\$
+^\s{8}/dev/sdd$
+^\s{8}echo /dev/vg1/lvCache >> /tmp/created_partitions$
+^$
+^fi$
+^\s{4}lvm lvs vg1/lvCold \| awk '\{ print \$5 \}' \| grep lvCache > /dev/null$
+^\s{4}if \[ "\$\?" -ne 0 \]$
+^\s{4}then$
+^\s{8}/usr/sbin/lvconvert --type cache --cachepool vg1/lvCache vg1/lvCold$
+^\s{4}fi$
+^fi$
+
