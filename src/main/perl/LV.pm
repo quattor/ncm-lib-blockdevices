@@ -30,6 +30,8 @@ use constant LVS      => "logical_volumes/";
 
 use constant {
     LVCACHEPOOL => '--cachepool',
+    LVCACHEMODE => '--cachemode',
+    LVCHUNKSIZE => '--chunksize',
     LVCONVERT  => '/usr/sbin/lvconvert',
     LVCREATE   => '/usr/sbin/lvcreate',
     LVLVS      => '/usr/sbin/lvs',
@@ -67,8 +69,10 @@ sub _initialize
     $self->{volume_group} = NCM::LVM->new(BASEPATH . VGS . $st->{volume_group}, $config);
     $self->{size}         = $st->{size};
     $self->{stripe_size}  = $st->{stripe_size} if exists $st->{stripe_size};
+    $self->{chunksize}  = $st->{chunksize} if exists $st->{chunksize};
     if ($st->{cache}) {
         $self->{cache} = $st->{cache};
+        $self->{cachemode} = $self->{cache}->{cachemode} if exists $self->{cache}->{cachemode};
         $self->{cache_lv} = NCM::LV->new (BASEPATH . LVS . $self->{cache}->{cache_lv}, $config);
     }
     if ($st->{devices}) {
@@ -132,7 +136,11 @@ Returns cache lv convert command
 sub _gen_convert_command
 {
     my $self= shift;
-    my $command = [LVCONVERT, LVTYPE, 'cache', LVCACHEPOOL,
+    my @opts = ();
+    if ($self->{cachemode}){
+        @opts = (LVCACHEMODE, $self->{cachemode});
+    }    
+    my $command = [LVCONVERT, LVTYPE, 'cache', @opts, LVCACHEPOOL,
         "$self->{volume_group}->{devname}/$self->{cache_lv}->{devname}", "$self->{volume_group}->{devname}/$self->{devname}"];
     return $command;
 }
@@ -249,7 +257,11 @@ sub create
     if ($self->{type}) {
         @type_opts = (LVTYPE, $self->{type});
     }
-    my $command = [LVCREATE, @type_opts, $szflag, $sz, LVNAME, $self->{devname},
+    my @chunk_opts = ();
+    if ($self->{chunksize}) {
+        @chunk_opts = (LVCHUNKSIZE, $self->{chunksize});
+    }
+    my $command = [LVCREATE, @type_opts, @chunk_opts, $szflag, $sz, LVNAME, $self->{devname},
                 $self->{volume_group}->{devname}, @stopt, @devices];
 
     CAF::Process->new($command, log => $this_app)->execute();
@@ -433,6 +445,11 @@ sub create_ks
     if ($self->{type}) {
         @type_opts = (LVTYPE, $self->{type});
     }
+    my @chunk_opts = (); 
+    if ($self->{chunksize}) {
+        @chunk_opts = (LVCHUNKSIZE, $self->{chunksize});
+    }   
+
 
     print <<EOC;
 if ! lvm lvdisplay $self->{volume_group}->{devname}/$self->{devname} > /dev/null
@@ -458,6 +475,7 @@ EOF
         @type_opts \\
         $self->{volume_group}->{devname} \\
         $size \\
+        @chunk_opts \\
         @stopts \\
         @devices
         echo @{[$self->devpath]} >> @{[PART_FILE]}
