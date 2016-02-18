@@ -6,7 +6,7 @@
   <artifactId>blockdevices</artifactId>
 
   <packaging>pom</packaging>
-  <version>16.2.0-rc3</version>
+  <version>16.2.0-rc4-SNAPSHOT</version>
   <name>build-profile</name>
   <url>http://quattor.org/cfg-modules/</url>
 
