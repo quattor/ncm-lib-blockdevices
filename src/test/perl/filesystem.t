@@ -339,6 +339,13 @@ like($fhfs_vol1_cre_force, qr{^\s+lvm pvcreate --force /dev/sdb1}m, "Add partiti
 like($fhfs_vol1_cre_force, qr{^\s+lvm vgcreate vg0}m, "Add VG vg0 (no --force)");
 like($fhfs_vol1_cre_force, qr{^\s+lvm lvcreate -W y -n lv1}m, "Add LV lv1 to VG vg0 (-W for wipesignatures)");
 
+# softraid test with useexisting for EL7
+my $fhfs_md2 = CAF::FileWriter->new("target/test/ksfs_md2");
+my $fs_md2 = NCM::Filesystem->new ("/system/filesystems/9", $cfg);
+select($fhfs_md2);
+ok(exists($fs_md2->{useexisting_md}), 'useexisting_md defined');
+$fs_md2->print_ks;
+is("$fhfs_md2", "raid /Lagoon --device=myname --noformat --useexisting \n", "useexisting ok");
 
 # restore FH for DESTROY
 select($origfh);
