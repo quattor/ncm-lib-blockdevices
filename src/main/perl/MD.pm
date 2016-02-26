@@ -285,10 +285,10 @@ sub print_ks
 
     return unless $self->should_print_ks;
 
-    my $exist = '';
+    my $useexisting = '';
     if ($fs->{useexisting_md}) {
         $this_app->debug(5, 'useexisting flag enabled');
-        $exist = USEEXISTING;
+        $useexisting = USEEXISTING;
     }
     if (scalar (@_) == 2) {
         (my $naming = $self->{devname}) =~ s!^md/!!;
@@ -298,7 +298,7 @@ sub print_ks
                    $fs->{mountpoint},
                    "--device=$naming",
                    $self->ksfsformat($fs),
-                   $exist,
+                   $useexisting,
                    "\n");
     }
 }
