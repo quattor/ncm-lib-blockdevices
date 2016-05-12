@@ -1,21 +1,16 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
-
   <modelVersion>4.0.0</modelVersion>
-
   <groupId>org.quattor.maven</groupId>
   <artifactId>blockdevices</artifactId>
-
   <packaging>pom</packaging>
   <version>16.2.1-SNAPSHOT</version>
-  <name>build-profile</name>
-  <url>http://quattor.org/cfg-modules/</url>
-
+  <name>Node Configuration Manager Library for Block Devices and File Systems</name>
+  <url>https://github.com/quattor/ncm-lib-blockdevices</url>
   <parent>
     <groupId>org.quattor.maven</groupId>
     <artifactId>build-profile</artifactId>
-    <version>1.48</version>
+    <version>1.49</version>
   </parent>
-
   <licenses>
     <license>
       <name>Apache 2 License</name>
@@ -23,165 +18,123 @@
       <comments>Copyright (c) Responsible Organization</comments>
     </license>
   </licenses>
-
- <scm>
-   <connection>scm:git:git://github.com/quattor/ncm-lib-blockdevices.git</connection>
-   <developerConnection>scm:git:git@github.com:quattor/ncm-lib-blockdevices.git</developerConnection>
-   <url>https://github.com/quattor/ncm-lib-blockdevices</url>
- </scm>
-
+  <scm>
+    <connection>scm:git:git://github.com/quattor/ncm-lib-blockdevices.git</connection>
+    <developerConnection>scm:git:git@github.com:quattor/ncm-lib-blockdevices.git</developerConnection>
+    <url>https://github.com/quattor/ncm-lib-blockdevices</url>
+  </scm>
   <developers>
     <developer>
       <name>Luis Fernando Muñoz Mejías</name>
       <email>Luis.Munoz@UGent.be</email>
     </developer>
   </developers>
-
   <contributors>
-      <contributor>
-	  <name>Gabor Gombas</name>
-	  <email>gabor.gombas@morganstanley.com</email>
-      </contributor>
+    <contributor>
+      <name>Gabor Gombas</name>
+      <email>gabor.gombas@morganstanley.com</email>
+    </contributor>
   </contributors>
-
   <build>
     <plugins>
-
       <plugin>
-
-	<groupId>org.apache.maven.plugins</groupId>
-	<artifactId>maven-resources-plugin</artifactId>
-
-	<executions>
-
-	  <execution>
-	    <id>filter-perl-sources</id>
-	    <phase>process-sources</phase>
-	    <goals>
-	      <goal>copy-resources</goal>
-	    </goals>
-	    <configuration>
-	      <outputDirectory>${project.build.directory}/lib/perl/NCM</outputDirectory>
-	      <resources>
-		<resource>
-		  <directory>src/main/perl</directory>
-		  <filtering>true</filtering>
-		  <includes>
-		    <include>**/*.pm</include>
-		  </includes>
-		</resource>
-	      </resources>
-	    </configuration>
-	  </execution>
-
-	  <execution>
-	    <id>filter-pod-sources</id>
-	    <phase>process-sources</phase>
-	    <configuration>
-	      <outputDirectory>${project.build.directory}/doc/pod/NCM</outputDirectory>
-	      <resources>
-		<resource>
-		  <directory>src/main/perl</directory>
-		  <filtering>true</filtering>
-		  <includes>
-		    <include>**/*.pod</include>
-		  </includes>
-		</resource>
-	      </resources>
-	    </configuration>
-	  </execution>
-
-	</executions>
-
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <executions>
+          <execution>
+            <id>filter-perl-sources</id>
+            <phase>process-sources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.directory}/lib/perl/NCM</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/main/perl</directory>
+                  <filtering>true</filtering>
+                  <includes>
+                    <include>**/*.pm</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+          <execution>
+            <id>filter-pod-sources</id>
+            <phase>process-sources</phase>
+            <configuration>
+              <outputDirectory>${project.build.directory}/doc/pod/NCM</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>src/main/perl</directory>
+                  <filtering>true</filtering>
+                  <includes>
+                    <include>**/*.pod</include>
+                  </includes>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
-
       <plugin>
-	<artifactId>maven-assembly-plugin</artifactId>
-	<extensions>true</extensions>
-
-	<executions>
-
-	  <execution>
-	    <id>tarballs</id>
-	    <configuration combine.self="override">
-	      <descriptors>
-		<descriptor>target/dependency/assemblies/bin.xml</descriptor>
-	      </descriptors>
-	    </configuration>
-	  </execution>
-
-	</executions>
-
+        <artifactId>maven-assembly-plugin</artifactId>
+        <extensions>true</extensions>
+        <executions>
+          <execution>
+            <id>tarballs</id>
+            <configuration combine.self="override">
+              <descriptors>
+                <descriptor>target/dependency/assemblies/bin.xml</descriptor>
+              </descriptors>
+            </configuration>
+          </execution>
+        </executions>
       </plugin>
-
       <plugin>
-	<groupId>org.codehaus.mojo</groupId>
-	<artifactId>rpm-maven-plugin</artifactId>
-
-	<configuration>
-	  <name>ncm-lib-${project.artifactId}</name>
-	  <summary>ncm-lib-${project.artifactId}</summary>
-	  <provides>
-	    <provide>ncm-lib-${project.artifactId}</provide>
-	  </provides>
-	  <requires>
-	    <require>ncm-ncd</require>
-	  </requires>
-
-	  <mappings>
-
-	    <mapping>
-	      <directory>/usr/lib</directory>
-	      <filemode>755</filemode>
-	      <username>root</username>
-	      <groupname>root</groupname>
-	      <directoryIncluded>false</directoryIncluded>
-	      <sources>
-		<source>
-		  <location>target/lib</location>
-		</source>
-	      </sources>
-	    </mapping>
-
-	    <mapping>
-	      <directory>/usr/share/doc/ncm-lib-${project.artifactId}-${project.version}</directory>
-	      <filemode>644</filemode>
-	      <username>root</username>
-	      <groupname>root</groupname>
-	      <documentation>true</documentation>
-	      <directoryIncluded>false</directoryIncluded>
-	      <sources>
-		<source>
-		  <location>${basedir}</location>
-		  <includes>
-		    <include>ChangeLog</include>
-		  </includes>
-		</source>
-	      </sources>
-	    </mapping>
-
-
-	    <mapping>
-	      <directory>/usr/share/man</directory>
-	      <filemode>644</filemode>
-	      <username>root</username>
-	      <groupname>root</groupname>
-	      <documentation>true</documentation>
-	      <directoryIncluded>false</directoryIncluded>
-	      <sources>
-		<source>
-		  <location>target/doc/man</location>
-		</source>
-	      </sources>
-	    </mapping>
-
-	  </mappings>
-	</configuration>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>rpm-maven-plugin</artifactId>
+        <configuration>
+          <name>ncm-lib-${project.artifactId}</name>
+          <summary>Node Configuration Manager Library for Block Devices and File Systems</summary>
+          <url>https://github.com/quattor/ncm-lib-blockdevices/tree/master</url>
+          <mappings>
+            <mapping>
+              <directory>/usr/lib</directory>
+              <directoryIncluded>false</directoryIncluded>
+              <sources>
+                <source>
+                  <location>target/lib</location>
+                </source>
+              </sources>
+            </mapping>
+            <mapping>
+              <directory>/usr/share/doc/ncm-lib-${project.artifactId}-${project.version}</directory>
+              <documentation>true</documentation>
+              <directoryIncluded>false</directoryIncluded>
+              <sources>
+                <source>
+                  <location>${basedir}</location>
+                  <includes>
+                    <include>ChangeLog</include>
+                  </includes>
+                </source>
+              </sources>
+            </mapping>
+            <mapping>
+              <directory>/usr/share/man</directory>
+              <documentation>true</documentation>
+              <directoryIncluded>false</directoryIncluded>
+              <sources>
+                <source>
+                  <location>target/doc/man</location>
+                </source>
+              </sources>
+            </mapping>
+          </mappings>
+        </configuration>
       </plugin>
-
     </plugins>
-
   </build>
-
-
 </project>
