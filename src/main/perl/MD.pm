@@ -42,6 +42,7 @@ use constant MDREMOVE	=> qw (/sbin/mdadm --remove);
 use constant MDQUERY	=> qw (/sbin/mdadm --detail);
 use constant MDQRY	=> qw (/sbin/mdadm -Q);
 use constant PARTED     => qw (/sbin/parted -s --);
+use constant USEEXISTING    => "--useexisting";
 
 our %mds = ();
 
@@ -284,6 +285,11 @@ sub print_ks
 
     return unless $self->should_print_ks;
 
+    my $useexisting = '';
+    if ($fs->{useexisting_md}) {
+        $this_app->debug(5, 'useexisting flag enabled');
+        $useexisting = USEEXISTING;
+    }
     if (scalar (@_) == 2) {
         (my $naming = $self->{devname}) =~ s!^md/!!;
         $_->print_ks foreach (@{$self->{device_list}});
@@ -292,6 +298,7 @@ sub print_ks
                    $fs->{mountpoint},
                    "--device=$naming",
                    $self->ksfsformat($fs),
+                   $useexisting,
                    "\n");
     }
 }

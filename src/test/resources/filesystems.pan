@@ -47,5 +47,11 @@ unique template filesystems;
     fs["preserve"] = false;
     append(fs);
 
+    # append md test with useexisting
+    fs=value("/system/filesystems/0");
+    fs["block_device"]=format("md/%s", escape("md/myname"));    
+    fs["useexisting_md"] = true;
+    append(fs);
+
 };
 
