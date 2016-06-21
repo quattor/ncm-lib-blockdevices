@@ -29,11 +29,12 @@ prefix '/system/blockdevices';
         "devices" , list("physical_devs/sdc"),
         "cache", dict(
             "cache_lv", "lvCache",
-            "cachemode" , "writethrough"
+            "cachemode" , "writeback"
         ),
     ),
     "lvCache", nlist (
         "size", 100,
+        "chunksize", 128,
         "volume_group", "vg1",
         "devices" , list("physical_devs/sdd"),
         "type", "cache-pool"

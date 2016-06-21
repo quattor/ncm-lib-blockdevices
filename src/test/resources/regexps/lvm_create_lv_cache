@@ -39,6 +39,7 @@ lvm_create_lv_cache
 ^\s{8}--type cache-pool \\$
 ^\s{8}vg1 \\$
 ^\s{8}-L 100M \\$
+^\s{8}--chunksize 128 \\$
 ^\s{8} \\$
 ^\s{8}/dev/sdd$
 ^\s{8}echo /dev/vg1/lvCache >> /tmp/created_partitions$
@@ -47,7 +48,7 @@ lvm_create_lv_cache
 ^\s{4}lvm lvs vg1/lvCold \| awk '\{ print \$5 \}' \| grep lvCache > /dev/null$
 ^\s{4}if \[ "\$\?" -ne 0 \]$
 ^\s{4}then$
-^\s{8}/usr/sbin/lvconvert --type cache --cachepool vg1/lvCache vg1/lvCold$
+^\s{8}/usr/sbin/lvconvert --type cache --cachemode writeback --cachepool vg1/lvCache vg1/lvCold$
 ^\s{4}fi$
 ^fi$
 
