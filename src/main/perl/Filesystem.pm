@@ -72,25 +72,29 @@ Arguments: $_[1] the line on /etc/fstab specifying the filesystem.
 
 sub new_from_fstab
 {
-    my ($class, $line, $config) = @_;
+    my ($class, $line, $config, %opts) = @_;
+
+    my $log = $opts{log} || $reporter;
     $line =~ m{^(\S+)\s+(\S+)\s};
     my ($dev, $mountp) = ($1, $2);
     my $p = CAF::Process->new ([MOUNT, $mountp],
-                               log => $self)->run();
+                               log => $log)->run();
 
     if ($dev =~ m/^(LABEL|UUID)=/) {
-        my $fh = CAF::FileReader->new(MTAB, log => $self);
+        my $fh = CAF::FileReader->new(MTAB, log => $log);
         my @mtd = grep (m{^\S+\s+$mountp/?\s}, split("\n", "$fh"));
         $fh->close();
         $dev = $mtd[0];
         $dev =~ s{^(\S+)\s.*}{$1};
     }
-    my $bd = build_from_dev ($dev, $config);
-    my $self = {preserve    => 0,
-                format        => 1,
-                block_device    => $bd,
-                mountpoint    => $mountp
-                };
+    my $bd = build_from_dev ($dev, $config, %opts);
+    my $self = {
+        preserve => 0,
+        format => 1,
+        block_device => $bd,
+        mountpoint => $mountp,
+        log => $log,
+    };
     return bless ($self, $class);
 }
 
@@ -336,12 +340,13 @@ success, -1 in case of error.
 
 =cut
 
+# TODO remove, see issue 
 sub mkmountpoint
 {
     my $mp = shift;
     eval { mkpath ([$mp], 0, MOUNTPOINTPERMS) };
     if ($@) {
-        $self->error ("Failed to create mount point $mp: $@");
+        $reporter->error ("Failed to create mount point $mp: $@");
         return -1;
     }
     return 0;

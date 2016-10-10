@@ -40,66 +40,63 @@ Returns the object describing the block device passed as an argument.
 
 sub build
 {
-    my ($config, $dev) = @_;
+    my ($config, $dev, %opts) = @_;
 
+    my @args = (BASEPATH . $dev, $config, %opts);
     if ($dev =~ m!^volume_groups/!) {
-        return NCM::LVM->new (BASEPATH . $dev, $config);
+        return NCM::LVM->new (@args);
     }
     elsif ($dev =~ m!^md/!) {
-        return NCM::MD->new (BASEPATH . $dev, $config);
+        return NCM::MD->new (@args);
     }
     elsif ($dev =~ m!^partitions/!) {
-        return NCM::Partition->new (BASEPATH . $dev, $config);
+        return NCM::Partition->new (@args);
     }
     elsif ($dev =~ m!^physical_devs/!) {
-        return NCM::Disk->new (BASEPATH . $dev, $config);
+        return NCM::Disk->new (@args);
     }
     elsif ($dev =~ m!^files/!) {
-        return NCM::File->new (BASEPATH . $dev, $config);
+        return NCM::File->new (@args);
     }
     elsif ($dev =~ m!^logical_volumes/!) {
-        return NCM::LV->new (BASEPATH . $dev, $config);
+        return NCM::LV->new (@args);
     }
     elsif ($dev eq "tmpfs") {
-        return NCM::Tmpfs->new(BASEPATH . $dev, $config);
+        return NCM::Tmpfs->new(@args);
     }
     elsif ($dev =~ m!^vxvm/!) {
-        return NCM::VXVM->new(BASEPATH . $dev, $config);
+        return NCM::VXVM->new(@args);
     }
 
-    $self->error("Unable to find block device implementation for device $dev");
+    ($opts{log} || $reporter)->error("Unable to find block device implementation for device $dev");
 
     return undef;
 }
 
 sub build_from_dev
 {
-    my ($dev, $config) = @_;
+    my ($dev, $config, %opts) = @_;
 
-    $self->debug (5, "Creating block device structure for $dev device");
+    my @args = ($dev, $config, %opts);
+    ($opts{log} || $reporter)->debug (5, "Creating block device structure for $dev device");
     if ($dev =~ m{^/dev/md\d+$}) {
-        return NCM::MD->new_from_system ($dev, $config);
-    }
-    elsif (($dev =~ m{^/dev/mapper/}) ||
-           (-l $dev && (my $rd = readlink ($dev)) =~ m{^/dev/mapper})) {
+        return NCM::MD->new_from_system (@args);
+    } elsif (($dev =~ m{^/dev/mapper/}) || (-l $dev && (my $rd = readlink ($dev)) =~ m{^/dev/mapper})) {
         # Check this one out!!
-        return NCM::LV->new_from_system (defined $rd? $rd:$dev, $config);
-    }
-    elsif ($dev =~ m{^/dev/}) {
+        $args[0] = defined ($rd) ? $rd : $dev;
+        return NCM::LV->new_from_system (@args);
+    } elsif ($dev =~ m{^/dev/}) {
         # This is the most generic way I can think of deciding
-        # whether a path refers to a full disk or to a
-        # partition.
+        # whether a path refers to a full disk or to a partition.
         # TODO why output and not execute?
-        CAF::Process->new([PARTED, $dev, PARTEDEXTRA, PARTEDP], log => $self)->output();
+        CAF::Process->new([PARTED, $dev, PARTEDEXTRA, PARTEDP], log => ($opts{log} || $reporter))->output();
         if ($?) {
-            return NCM::Disk->new_from_system ($dev, $config);
+            return NCM::Disk->new_from_system (@args);
+        } else {
+            return NCM::Partition->new_from_system (@args);
         }
-        else {
-            return NCM::Partition->new_from_system ($dev, $config);
-        }
-    }
-    else {
-        return NCM::File->new_from_system ($dev, $config);
+    } else {
+        return NCM::File->new_from_system (@args);
     }
 }
 

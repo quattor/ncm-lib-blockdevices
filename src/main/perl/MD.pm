@@ -56,7 +56,7 @@ Where the object is actually created.
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
     $self->{log} = $reporter;
     my $st = $config->getElement($path)->getTree;
@@ -67,7 +67,7 @@ sub _initialize
     $self->{stripe_size} = $st->{stripe_size};
     $self->{metadata} = $st->{metadata} || "0.90";
     foreach my $devpath (@{$st->{device_list}}) {
-        my $dev = NCM::BlockdevFactory::build ($config, $devpath);
+        my $dev = NCM::BlockdevFactory::build ($config, $devpath, %opts);
         push (@{$self->{device_list}}, $dev);
     }
     # TODO: compute the alignment from the properties of the component devices
@@ -234,11 +234,16 @@ sub devpath
 
 sub new_from_system
 {
-    my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg, %opts) = @_;
 
     $dev =~ m{/dev/(md.*)$};
-
     my $devname = $1;
+
+    my $self = {
+        devname => $devname,
+        log => ($opts{log} || $reporter),
+};
+    bless ($self, $class);
 
     my $lines =  CAF::Process->new([MDQUERY, $dev],
                                     log => $self)->output();
@@ -246,12 +251,11 @@ sub new_from_system
     $lines =~ m{Raid Level : (\w+)$}omg;
     my $level = uc ($1);
     while ($lines =~ m{\w\s+(/dev.*)$}omg) {
-        push (@devlist, NCM::BlockdevFactory::build_from_dev ($1, $cfg));
+        push (@devlist, NCM::BlockdevFactory::build_from_dev ($1, $cfg, %opts));
     }
-    my $self = {raid_level	=> $level,
-                device_list=> \@devlist,
-                devname	=> $devname};
-    return bless ($self, $class);
+    $self->{raid_level} = $level;
+    $self->{device_list} = \@devlist;
+    return $self;
 }
 
 =pod

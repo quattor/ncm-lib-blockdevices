@@ -164,7 +164,7 @@ sub remove
 
 sub new_from_system
 {
-    my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg, %opts) = @_;
 
     $dev =~ m{dev/mapper/(.*)};
     my $devname = $1;
@@ -174,11 +174,12 @@ sub new_from_system
     my $pvs = output(PVS);
     my @pv;
     while ($pvs =~ m{^\s*(\S+)\s+$devname$}omgc) {
-        push(@pv, build_from_dev($1, $cfg));
+        push(@pv, build_from_dev($1, $cfg, %opts));
     }
     my $self = {
         devname     => $devname,
-        device_list => \@pv
+        device_list => \@pv,
+        log => ($opts{log} || $reporter),
     };
     return bless($self, $class);
 }

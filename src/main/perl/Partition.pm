@@ -111,21 +111,22 @@ Creates a partition object from its path on the disk.
 
 sub new_from_system
 {
-    my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg, %opts) = @_;
 
     $dev =~ m{/dev/(.*)};
     my $devname = $1;
     my $disk;
     if ($dev =~ m{(/dev/ciss/c\d+d\+)p\d+}) {
         $disk = $1;
-    }
-    else {
+    } else {
         $dev =~ m{(/dev/.*\D)\d+$};
         $disk = $1;
     }
-    my $self = {devname	=> $devname,
-                holding_dev	=> NCM::Disk->new_from_system ($disk, $cfg)
-                };
+    my $self = {
+        devname	=> $devname,
+        holding_dev	=> NCM::Disk->new_from_system ($disk, $cfg, %opts),
+        log => ($opts{log} || $reporter),
+    };
     return bless ($self, $class);
 }
 

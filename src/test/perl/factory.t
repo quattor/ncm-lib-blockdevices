@@ -37,6 +37,6 @@ is (ref ($o), "NCM::VXVM", "VXVM correctly instantiated");
 
 $o = build ($cfg, "unknown/unknown");
 ok(! defined($o), 'build returns undef with unknown blockdevice');
-is($self->{ERROR}, 1, "Errors for an unknown blockdevice");
+is($reporter->{ERROR}, 1, "Errors for an unknown blockdevice");
 
 done_testing();

@@ -39,7 +39,7 @@ sub get_cache_key {
 
 sub _initialize
 {
-    $self = shift;
+    my $self = shift;
     $self->{log} = $reporter;
 	return $_[0];
 }

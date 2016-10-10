@@ -144,9 +144,12 @@ sub devpath
 
 sub new_from_system
 {
-	my ($class, $dev, $cfg) = @_;
+	my ($class, $dev, $cfg, %opts) = @_;
 
-	my $self = { devname => $dev };
+	my $self = { 
+        devname => $dev, 
+        log => ($opts{log} || $reporter),
+};
 	return bless ($self, $class);
 }
 

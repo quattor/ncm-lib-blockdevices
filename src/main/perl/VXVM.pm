@@ -40,6 +40,7 @@ sub _initialize
 
 sub create
 {
+    my $self = shift;
     $self->verbose("create not supported");
     return 0;
 }

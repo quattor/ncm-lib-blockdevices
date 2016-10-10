@@ -157,17 +157,19 @@ sub _initialize
 
 sub new_from_system
 {
-    my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg, %opts) = @_;
 
     my ($devname) = $dev =~ m{/dev/(.*)};
 
     my $cache_key = $class->get_cache_key("/system/blockdevices/physical_devs/" . $devname, $cfg);
     return $disks{$cache_key} if exists $disks{$cache_key};
 
-    my $self = {devname    => $devname,
-                label            => 'none',
-                _cache_key    => $cache_key
-                };
+    my $self = {
+        devname => $devname,
+        label => 'none',
+        _cache_key => $cache_key,
+        log => ($opts{log} || $reporter),
+    };
     return bless ($self, $class);
 }
 

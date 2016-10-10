@@ -112,15 +112,16 @@ rest of the class can understand.
 
 sub new_from_system
 {
-    my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg, %opts) = @_;
 
     $dev =~ m{(/dev/.*[^-]+)-([^-].*)$};
     my ($vgname, $devname) = ($1, $2);
     $devname =~ s/-{2}/-/g;
-    my $vg = NCM::LVM->new_from_system($vgname, $cfg);
+    my $vg = NCM::LVM->new_from_system($vgname, $cfg, %opts);
     my $self = {
         devname      => $devname,
-        volume_group => $vg
+        volume_group => $vg,
+        log => ($opts{log} || $reporter),
     };
     return bless($self, $class);
 }
