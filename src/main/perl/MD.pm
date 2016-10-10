@@ -58,7 +58,7 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $reporter;
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
     $path=~m!/([^/]+)$!;
     $self->{devname} = unescape($1);
@@ -88,9 +88,9 @@ software RAID device.
 
 sub new
 {
-    my ($class, $path, $config) = @_;
+    my ($class, $path, $config, %opts) = @_;
     my $cache_key = $class->get_cache_key($path, $config);
-    return (exists $mds{$cache_key}) ? $mds{$cache_key} : $class->SUPER::new ($path, $config);
+    return (exists $mds{$cache_key}) ? $mds{$cache_key} : $class->SUPER::new ($path, $config, %opts);
 }
 
 =pod

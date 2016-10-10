@@ -26,9 +26,9 @@ our $reporter = $main::this_app;
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $reporter;
+    $self->{log} = $opts{log} || $reporter;
     if ($path =~ m!/([^/]+)$!) {
         $self->{devname} = unescape($1);
     } else {

@@ -100,16 +100,16 @@ sub new_from_fstab
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
         
-    $self->{log} = $reporter;
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
 
     while (my ($key, $val) = each (%$st)) {
         $self->{$key} = $val;
     }
 
-    $self->{block_device} = build ($config, $self->{block_device});
+    $self->{block_device} = build ($config, $self->{block_device}, %opts);
     return $self;
 }
 

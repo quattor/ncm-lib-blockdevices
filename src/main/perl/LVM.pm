@@ -194,9 +194,9 @@ Where the object creation is actually done
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $reporter;
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
     if ($config->elementExists(VOLGROUP_REQUIRED_PATH)) {
         $self->{_volgroup_required} = $config->getElement(VOLGROUP_REQUIRED_PATH)->getTree();
@@ -206,7 +206,7 @@ sub _initialize
     $path =~ m!/([^/]+)$!;
     $self->{devname} = $1;
     foreach my $devpath (@{$st->{device_list}}) {
-        my $dev = NCM::BlockdevFactory::build($config, $devpath);
+        my $dev = NCM::BlockdevFactory::build($config, $devpath, %opts);
         push(@{$self->{device_list}}, $dev);
     }
 

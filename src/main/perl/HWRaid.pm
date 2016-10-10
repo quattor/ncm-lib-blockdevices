@@ -77,9 +77,9 @@ The disk object on top of this RAID array.
 
 sub _initialize
 {
-    my ($self, $path, $config, $parent) = @_;
+    my ($self, $path, $config, $parent, %opts) = @_;
 
-    $self->{log} = $reporter;
+    $self->{log} = $opts{log} || $reporter;
 
     $path =~ m{^([^/]*)};
     $self->{unit} = $1;

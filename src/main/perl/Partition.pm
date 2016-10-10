@@ -141,9 +141,9 @@ the profile for the device and the configuration object.
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $reporter;
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
     # The block device is indexed by disk name
     $path =~ m!([^/]+)$!;

@@ -33,9 +33,9 @@ use constant OUT	=> 'of=';
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $reporter;
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
 
     $path =~ m!/([^/]+)$!;
@@ -149,7 +149,7 @@ sub new_from_system
 	my $self = { 
         devname => $dev, 
         log => ($opts{log} || $reporter),
-};
+    };
 	return bless ($self, $class);
 }
 

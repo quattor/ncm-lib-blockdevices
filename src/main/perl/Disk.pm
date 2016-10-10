@@ -108,9 +108,9 @@ Where the object creation is actually done.
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $reporter;
+    $self->{log} = $opts{log} || $reporter;
 
     my $st = $config->getElement($path)->getTree;
     $path =~ m(.*/([^/]+));

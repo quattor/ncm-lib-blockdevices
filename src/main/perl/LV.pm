@@ -61,9 +61,9 @@ Where the object creation is actually done.
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $reporter;
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
     $path =~ m!/([^/]+)$!;
     $self->{devname}      = $1;
@@ -79,7 +79,7 @@ sub _initialize
     if ($st->{devices}) {
         $self->{devices} = [];
         foreach my $devpath (@{$st->{devices}}) {
-            my $dev = NCM::BlockdevFactory::build($config, $devpath);
+            my $dev = NCM::BlockdevFactory::build($config, $devpath, %opts);
             if (!$dev){
                 $self->error("Something went wrong building device for $devpath");
                 return;

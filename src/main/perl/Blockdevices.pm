@@ -39,8 +39,8 @@ sub get_cache_key {
 
 sub _initialize
 {
-    my $self = shift;
-    $self->{log} = $reporter;
+    my ($self, %opts) = @_;
+    $self->{log} = $opts{log} || $reporter;
 	return $_[0];
 }
 
