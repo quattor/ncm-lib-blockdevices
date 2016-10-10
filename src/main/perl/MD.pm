@@ -41,7 +41,7 @@ use constant MDFAIL	=> qw (/sbin/mdadm --fail);
 use constant MDREMOVE	=> qw (/sbin/mdadm --remove);
 use constant MDQUERY	=> qw (/sbin/mdadm --detail);
 use constant MDQRY	=> qw (/sbin/mdadm -Q);
-use constant PARTED     => qw (/sbin/parted -s --);
+use constant PARTED     => qw (parted -s --);
 use constant USEEXISTING    => "--useexisting";
 
 our %mds = ();
@@ -327,7 +327,7 @@ sub create_ks
     my @devnames = ();
     my $path = $self->devpath;
     print <<EOC;
-
+export PATH=/usr/local/sbin:/usr/bin:/bin:/usr/sbin:/sbin
 if  ! grep -q $self->{devname} /proc/mdstat
 then
 EOC
