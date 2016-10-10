@@ -22,7 +22,7 @@ use EDG::WP4::CCM::Element qw(unescape);
 use EDG::WP4::CCM::Configuration;
 use CAF::FileReader;
 use CAF::Process;
-use NCM::Blockdevices qw ($this_app PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 our @ISA = qw (NCM::Blockdevices);
 
@@ -58,6 +58,7 @@ sub _initialize
 {
     my ($self, $path, $config) = @_;
 
+    $self->{log} = $reporter;
     my $st = $config->getElement($path)->getTree;
     $path=~m!/([^/]+)$!;
     $self->{devname} = unescape($1);
@@ -111,7 +112,7 @@ sub create
     my @devnames;
 
     if ($self->devexists) {
-        $this_app->debug (5, "Device ", $self->devpath, " already exists.",
+        $self->debug (5, "Device ", $self->devpath, " already exists.",
 			              " Leaving.");
         return 0;
     }
@@ -122,9 +123,9 @@ sub create
     CAF::Process->new([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
                        MDSTRIPE.$self->{stripe_size}, MDMETADATA.$self->{metadata},
                        MDDEVS.scalar(@{$self->{device_list}}), @devnames],
-                       log => $this_app
+                       log => $self
                        )->execute();
-    $? && $this_app->error ("Couldn't create ", $self->devpath);
+    $? && $self->error ("Couldn't create ", $self->devpath);
     return $?;
 }
 
@@ -144,14 +145,14 @@ sub remove
 
     return 1 if (! $self->is_correct_device);
 
-    CAF::Process->new([MDSTOP, $self->devpath], log => $this_app)->execute();
+    CAF::Process->new([MDSTOP, $self->devpath], log => $self)->execute();
     foreach my $dev (@{$self->{device_list}}) {
         CAF::Process->new([MDZERO, $dev->devpath],
-                          log => $this_app)->execute();
+                          log => $self)->execute();
         $dev->remove==0 or return $?;
     }
     delete $mds{$self->{_cache_key}} if exists $self->{_cache_key};
-    $? && $this_app->error ("Couldn't destroy ", $self->devpath);
+    $? && $self->error ("Couldn't destroy ", $self->devpath);
     return $?;
 }
 
@@ -173,13 +174,13 @@ sub devexists
     }
 
     CAF::Process->new([MDASSEMBLE, $self->devpath, @devnames],
-                       log => $this_app
+                       log => $self
                        )->execute();
     CAF::Process->new([MDQRY, $self->devpath],
-                       log => $this_app
+                       log => $self
                        )->execute();
     my $ec=$?;
-    $this_app->debug(3, "querying $self->{devname} returned $ec");
+    $self->debug(3, "querying $self->{devname} returned $ec");
     return ($ec == 0);
 }
 
@@ -203,7 +204,7 @@ sub is_correct_device
 
     foreach my $dev (@{$self->{device_list}}) {
         if (! $dev->is_correct_device) {
-            $this_app->error("$dev->{devname} from device_list is not correct device.");
+            $self->error("$dev->{devname} from device_list is not correct device.");
             return 0;
         }
     }
@@ -240,7 +241,7 @@ sub new_from_system
     my $devname = $1;
 
     my $lines =  CAF::Process->new([MDQUERY, $dev],
-                                    log => $this_app)->output();
+                                    log => $self)->output();
     my @devlist;
     $lines =~ m{Raid Level : (\w+)$}omg;
     my $level = uc ($1);
@@ -287,7 +288,7 @@ sub print_ks
 
     my $useexisting = '';
     if ($fs->{useexisting_md}) {
-        $this_app->debug(5, 'useexisting flag enabled');
+        $self->debug(5, 'useexisting flag enabled');
         $useexisting = USEEXISTING;
     }
     if (scalar (@_) == 2) {

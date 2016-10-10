@@ -22,7 +22,7 @@ use warnings;
 use EDG::WP4::CCM::Element qw (unescape);
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw (execute output);
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($reporter);
 our @ISA = qw (NCM::Blockdevices);
 
 use constant BASEPATH	=> "/system/blockdevices/";
@@ -35,6 +35,7 @@ sub _initialize
 {
     my ($self, $path, $config) = @_;
 
+    $self->{log} = $reporter;
     my $st = $config->getElement($path)->getTree;
 
     $path =~ m!/([^/]+)$!;
@@ -71,7 +72,7 @@ sub create
 
 	execute ([DD, SIZE.$self->{size}, OUT.$self->devpath]);
 	if ($?) {
-		$this_app->error ("Couldn't create file: ", $self->devpath);
+		$self->error ("Couldn't create file: ", $self->devpath);
 	} else {
 		chmod ($self->{permissions}, $self->devpath);
 		chown ($self->{owner}, $self->{group}, $self->devpath);

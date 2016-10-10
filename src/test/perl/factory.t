@@ -12,7 +12,7 @@ use Test::More;
 use Test::Quattor qw(factory);
 use helper;
 
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($reporter);
 use NCM::BlockdevFactory qw (build);
 use CAF::Object;
 
@@ -37,6 +37,6 @@ is (ref ($o), "NCM::VXVM", "VXVM correctly instantiated");
 
 $o = build ($cfg, "unknown/unknown");
 ok(! defined($o), 'build returns undef with unknown blockdevice');
-is($this_app->{ERROR}, 1, "Errors for an unknown blockdevice");
+is($self->{ERROR}, 1, "Errors for an unknown blockdevice");
 
 done_testing();

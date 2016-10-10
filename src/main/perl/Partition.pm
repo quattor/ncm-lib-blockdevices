@@ -56,7 +56,7 @@ use warnings;
 
 use EDG::WP4::CCM::Element qw (unescape);
 use EDG::WP4::CCM::Configuration;
-use NCM::Blockdevices qw ($this_app PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::Disk;
 use CAF::Process;
 our @ISA = qw (NCM::Blockdevices Exporter);
@@ -141,6 +141,8 @@ the profile for the device and the configuration object.
 sub _initialize
 {
     my ($self, $path, $config) = @_;
+
+    $self->{log} = $reporter;
     my $st = $config->getElement($path)->getTree;
     # The block device is indexed by disk name
     $path =~ m!([^/]+)$!;
@@ -173,7 +175,7 @@ sub set_flags
     my $self = shift;
 
     if(! $self->{flags}) {
-        $this_app->debug (5, "No flags for $self->{devname}");
+        $self->debug (5, "No flags for $self->{devname}");
         return 0;
     }
 
@@ -184,12 +186,12 @@ sub set_flags
     foreach my $flag (sort keys %{$self->{flags}})  {
         my $value = $self->{flags}->{$flag} ? "on" : "off";
         my $msg = "flag $flag to $value for $self->{devname}";
-        $this_app->debug (5, "Set $msg");
+        $self->debug (5, "Set $msg");
         my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, 'set', $num, $flag, $value);
 
-        CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
+        CAF::Process->new(\@partedcmdlist, log => $self)->execute();
         if ($?) { 
-            $this_app->error ("Failed to set $msg (exitcode $?)");
+            $self->error ("Failed to set $msg (exitcode $?)");
             $ec = $?; # returning ec is from from last failure  
         }  
     }
@@ -219,17 +221,17 @@ sub create
 
     # Check the device doesn't exist already.
     if ($self->devexists) {
-        $this_app->debug (5, "Partition $self->{devname} already exists: ",
+        $self->debug (5, "Partition $self->{devname} already exists: ",
                              "leaving");
         return 0
     }
 
     my $hdname =  "/dev/" . $self->{holding_dev}->{devname};
-    $this_app->debug (5, "Partition $self->{devname}: ",
+    $self->debug (5, "Partition $self->{devname}: ",
                          "creating holding device ",$hdname );
     my $err = $self->{holding_dev}->create;
     return $err if $err;
-    $this_app->debug (5, "Partition $self->{devname}: ",
+    $self->debug (5, "Partition $self->{devname}: ",
                          "creating" );
     # TODO: deal with type/name/nothing
     #   type is only type on msdos, becomes name on gpt
@@ -244,14 +246,14 @@ sub create
                        $self->{type}, $self->begin, $self->end);
     if ( $self->{holding_dev}->{label} eq "msdos" &&
         $self->{size} >= 2200000 ) {
-        $this_app->warn("Partition $self->{devname}: partition larger than 2.2TB defined on msdos partition table");
+        $self->warn("Partition $self->{devname}: partition larger than 2.2TB defined on msdos partition table");
     }
 
-    CAF::Process->new(\@partedcmdlist, log => $this_app)->execute();
+    CAF::Process->new(\@partedcmdlist, log => $self)->execute();
     
     my $ec = $?; 
     if ($ec) {
-        $this_app->error("Failed to create $self->{devname}");
+        $self->error("Failed to create $self->{devname}");
     } else {
         $ec = $self->set_flags();
     }
@@ -277,16 +279,16 @@ sub remove
 
     return 1 if (! $self->is_correct_device);
 
-    $this_app->debug (5, "Removing $self->{devname}");
+    $self->debug (5, "Removing $self->{devname}");
     my $num = $self->partition_number;
     $self->{begin} = undef;
 
     if ($self->devexists) {
         CAF::Process->new([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
                            PARTEDEXTRA, DELETE, $num],
-                           log => $this_app)->execute();
+                           log => $self)->execute();
         if ($?) {
-            $this_app->error ("Couldn't remove partition ",
+            $self->error ("Couldn't remove partition ",
                               $self->{devname});
             return $?;
         }
@@ -314,7 +316,7 @@ sub is_correct_device
     my $self = shift;
 
     if(! $self->{holding_dev}->is_correct_device) {
-        $this_app->error("partition holding_device ", $self->{holding_dev}->{devname}, 
+        $self->error("partition holding_device ", $self->{holding_dev}->{devname}, 
                          " is not the correct device");
         return 0;
     }
@@ -389,7 +391,7 @@ sub begin
     my $npart = $self->partition_number;
     my $out = CAF::Process->new([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
                                  PARTEDEXTRA, PARTEDP],
-                                 log => $this_app)->output();
+                                 log => $self)->output();
     my @lines = split /\n/, $out;
     @lines = grep (m{^\s*\d+\s}, @lines);
     my $st = 0;
@@ -427,10 +429,10 @@ sub begin
     $self->{begin} = $st;
     if (exists $self->{offset}) {
         $self->{begin} += $self->{offset};
-        $this_app->debug (5, "Partition $self->{devname} offset $self->{offset}",
+        $self->debug (5, "Partition $self->{devname} offset $self->{offset}",
                              " shifts start from $st to $self->{begin}");
     }
-    $this_app->debug (5, "Partition ",$self->{devname}," begins at ", $self->{begin});
+    $self->debug (5, "Partition ",$self->{devname}," begins at ", $self->{begin});
     return $self->{begin};
 }
 
@@ -465,7 +467,7 @@ sub devexists
     local $ENV{LANG} = 'C';
     my $line = CAF::Process->new([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
                                   PARTEDEXTRA, PARTEDP],
-                                  log => $this_app)->output();
+                                  log => $self)->output();
     my $n = $self->partition_number;
     return $line =~ m/^\s*$n\s/m &&
         $line !~ m/^(?:Disk label type|Partition Table): loop/m;

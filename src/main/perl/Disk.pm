@@ -34,7 +34,7 @@ package NCM::Disk;
 
 use strict;
 use warnings;
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($reporter);
 use CAF::Process;
 use CAF::FileEditor;
 use EDG::WP4::CCM::Element qw (unescape);
@@ -109,6 +109,9 @@ Where the object creation is actually done.
 sub _initialize
 {
     my ($self, $path, $config) = @_;
+
+    $self->{log} = $reporter;
+
     my $st = $config->getElement($path)->getTree;
     $path =~ m(.*/([^/]+));
 
@@ -122,7 +125,7 @@ sub _initialize
     # It is a bug in the templates if this happens
     my $host = $config->getElement (HOSTNAME)->getValue;
     my $domain = $config->getElement (DOMAINNAME)->getValue;
-    $this_app->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
+    $self->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
 
     if (exists $st->{size} ) {
         $self->{size} = $st->{size} ;
@@ -177,7 +180,7 @@ sub partitions_in_disk
     local $ENV{LANG} = 'C';
 
     my $line =  CAF::Process->new([PARTED, $self->devpath, PARTEDEXTRA, PARTEDP], 
-                                  log => $this_app)->output();
+                                  log => $self)->output();
 
     my @n = $line=~m/^\s*\d\s/mg;
     unless ($line =~ m/^(?:Disk label type|Partition Table): (\w+)/m) {
@@ -196,7 +199,7 @@ sub set_readahead
     my $re = join (" ", SETRA) . ".*", $self->devpath;
     my $okcmd = join (" ", SETRA, $self->{readahead}, $self->devpath);
     
-    my $fh = CAF::FileEditor->open (RCLOCAL, log => $this_app);
+    my $fh = CAF::FileEditor->open (RCLOCAL, log => $self);
                                             
     $fh->add_or_replace_lines ($re,
                                $okcmd,
@@ -240,16 +243,16 @@ sub create
         $self->remove;
 
         if ($self->{label} ne NOPART) {
-            $this_app->debug (5, "Initialising block device ",$self->devpath);
+            $self->debug (5, "Initialising block device ",$self->devpath);
             CAF::Process->new([PARTED, $self->devpath,
                                CREATE, $self->{label}],
-                              log => $this_app)->execute();
+                              log => $self)->execute();
             sleep (SLEEPTIME);
         }
         else {
-            $this_app->debug (5, "Disk ", $self->devpath,": create (zeroing partition table)");
-            my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();
-            $this_app->debug (5, "dd output:\n", $buffout);
+            $self->debug (5, "Disk ", $self->devpath,": create (zeroing partition table)");
+            my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $self)->output();
+            $self->debug (5, "dd output:\n", $buffout);
         }
         return $?;
     }
@@ -274,9 +277,9 @@ sub remove
     return 1 if (! $self->is_correct_device);
 
     unless ($self->partitions_in_disk) {
-        $this_app->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
-        my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $this_app)->output();
-        $this_app->debug (5, "dd output:\n", $buffout);
+        $self->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
+        my $buffout = CAF::Process->new([DD, DDARGS, "of=".$self->devpath], log => $self)->output();
+        $self->debug (5, "dd output:\n", $buffout);
     }
     return 0;
 }
@@ -300,7 +303,7 @@ sub is_correct_device
     my $self = shift;
     
     if (!$self->devexists) {
-        $this_app->error("is_correct_size no disk found for $self->{devname}.");
+        $self->error("is_correct_size no disk found for $self->{devname}.");
         return 0;
     }
     
@@ -309,7 +312,7 @@ sub is_correct_device
         if (! $correct_size) {
             # undef here due to e.g. missing size, non-existing device,...
             # is treated as failure
-            $this_app->error("is_correct_size failed for $self->{devname}");
+            $self->error("is_correct_size failed for $self->{devname}");
             return 0;
         };
     }

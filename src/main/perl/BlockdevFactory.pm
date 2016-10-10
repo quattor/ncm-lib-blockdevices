@@ -12,7 +12,7 @@ use warnings;
 use EDG::WP4::CCM::Configuration;
 use EDG::WP4::CCM::Element;
 use CAF::Process;
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($reporter);
 use NCM::MD;
 use NCM::LVM;
 use NCM::LV;
@@ -67,7 +67,7 @@ sub build
         return NCM::VXVM->new(BASEPATH . $dev, $config);
     }
 
-    $this_app->error("Unable to find block device implementation for device $dev");
+    $self->error("Unable to find block device implementation for device $dev");
 
     return undef;
 }
@@ -76,7 +76,7 @@ sub build_from_dev
 {
     my ($dev, $config) = @_;
 
-    $this_app->debug (5, "Creating block device structure for $dev device");
+    $self->debug (5, "Creating block device structure for $dev device");
     if ($dev =~ m{^/dev/md\d+$}) {
         return NCM::MD->new_from_system ($dev, $config);
     }
@@ -90,7 +90,7 @@ sub build_from_dev
         # whether a path refers to a full disk or to a
         # partition.
         # TODO why output and not execute?
-        CAF::Process->new([PARTED, $dev, PARTEDEXTRA, PARTEDP], log => $this_app)->output();
+        CAF::Process->new([PARTED, $dev, PARTEDEXTRA, PARTEDP], log => $self)->output();
         if ($?) {
             return NCM::Disk->new_from_system ($dev, $config);
         }
