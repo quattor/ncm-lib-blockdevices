@@ -40,7 +40,7 @@ use CAF::Process;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw(execute output);
-use NCM::Blockdevices qw($this_app PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::BlockdevFactory qw(build build_from_dev);
 our @ISA = qw(NCM::Blockdevices);
 
@@ -102,7 +102,7 @@ sub create
     return 1 if (!$self->is_correct_device);
 
     if ($self->devexists) {
-        $this_app->debug(5, "Volume group $self->{devname} already ", " exists. Leaving");
+        $self->debug(5, "Volume group $self->{devname} already ", " exists. Leaving");
         return 0;
     }
     foreach my $dev (@{$self->{device_list}}) {
@@ -113,7 +113,7 @@ sub create
         push(@devnames, $dev->devpath);
     }
     execute([VGCREATE, $self->{devname}, VGCOPTS, @devnames]);
-    $this_app->error("Failed to create volume group $self->{devname}")
+    $self->error("Failed to create volume group $self->{devname}")
         if $?;
     return $?;
 }
@@ -141,7 +141,7 @@ sub remove
     # Remove the VG only if it has no logical volumes left.
     my @n = split /:/, output((VGDISPLAY, $self->{devname}));
     if ($n[EXISTS]) {
-        $this_app->debug(
+        $self->debug(
             5, "Volume group $self->{devname} ",
             "has ", $n[EXISTS],
             " logical volumes left.",
@@ -155,7 +155,7 @@ sub remove
     }
     foreach my $dev (@{$self->{device_list}}) {
         execute([PVREMOVE, $dev->devpath]);
-        $this_app->error("Failed to remove labels on PV", $dev->devpath) if $?;
+        $self->error("Failed to remove labels on PV", $dev->devpath) if $?;
         $dev->remove == 0 or last;
     }
     delete $vgs{$self->{_cache_key}} if exists $self->{_cache_key};
@@ -164,7 +164,7 @@ sub remove
 
 sub new_from_system
 {
-    my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg, %opts) = @_;
 
     $dev =~ m{dev/mapper/(.*)};
     my $devname = $1;
@@ -174,11 +174,12 @@ sub new_from_system
     my $pvs = output(PVS);
     my @pv;
     while ($pvs =~ m{^\s*(\S+)\s+$devname$}omgc) {
-        push(@pv, build_from_dev($1, $cfg));
+        push(@pv, build_from_dev($1, $cfg, %opts));
     }
     my $self = {
         devname     => $devname,
-        device_list => \@pv
+        device_list => \@pv,
+        log => ($opts{log} || $reporter),
     };
     return bless($self, $class);
 }
@@ -193,7 +194,9 @@ Where the object creation is actually done
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
+
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
     if ($config->elementExists(VOLGROUP_REQUIRED_PATH)) {
         $self->{_volgroup_required} = $config->getElement(VOLGROUP_REQUIRED_PATH)->getTree();
@@ -203,7 +206,7 @@ sub _initialize
     $path =~ m!/([^/]+)$!;
     $self->{devname} = $1;
     foreach my $devpath (@{$st->{device_list}}) {
-        my $dev = NCM::BlockdevFactory::build($config, $devpath);
+        my $dev = NCM::BlockdevFactory::build($config, $devpath, %opts);
         push(@{$self->{device_list}}, $dev);
     }
 
@@ -282,7 +285,7 @@ sub devexists
     # Ugly hack because SL's vgdisplay sucks: the volume exists if
     # vgdisplay has any output
     # -> Is this still valid? In >= sl6, exitcode can be used
-    my $output = CAF::Process->new([VGDISPLAY, $self->{devname}], log => $this_app)->output();
+    my $output = CAF::Process->new([VGDISPLAY, $self->{devname}], log => $self)->output();
     my @lines = split /:/, $output;
     return scalar(@lines) > 1;
 }

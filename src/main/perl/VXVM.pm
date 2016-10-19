@@ -22,16 +22,17 @@ use EDG::WP4::CCM::Element qw (unescape);
 
 our @ISA = qw{NCM::Blockdevices};
 
-our $this_app = $main::this_app;
+our $reporter = $main::this_app;
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
+    $self->{log} = $opts{log} || $reporter;
     if ($path =~ m!/([^/]+)$!) {
         $self->{devname} = unescape($1);
     } else {
-        $this_app->error("cannot determine devname from $path");
+        $self->error("cannot determine devname from $path");
     }
 
     return $self;
@@ -39,7 +40,8 @@ sub _initialize
 
 sub create
 {
-    $this_app->verbose("create not supported");
+    my $self = shift;
+    $self->verbose("create not supported");
     return 0;
 }
 

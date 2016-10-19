@@ -22,7 +22,7 @@ use EDG::WP4::CCM::Element qw(unescape);
 use EDG::WP4::CCM::Configuration;
 use CAF::FileReader;
 use CAF::Process;
-use NCM::Blockdevices qw ($this_app PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 our @ISA = qw (NCM::Blockdevices);
 
@@ -56,8 +56,9 @@ Where the object is actually created.
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
     $path=~m!/([^/]+)$!;
     $self->{devname} = unescape($1);
@@ -66,7 +67,7 @@ sub _initialize
     $self->{stripe_size} = $st->{stripe_size};
     $self->{metadata} = $st->{metadata} || "0.90";
     foreach my $devpath (@{$st->{device_list}}) {
-        my $dev = NCM::BlockdevFactory::build ($config, $devpath);
+        my $dev = NCM::BlockdevFactory::build ($config, $devpath, %opts);
         push (@{$self->{device_list}}, $dev);
     }
     # TODO: compute the alignment from the properties of the component devices
@@ -87,9 +88,9 @@ software RAID device.
 
 sub new
 {
-    my ($class, $path, $config) = @_;
+    my ($class, $path, $config, %opts) = @_;
     my $cache_key = $class->get_cache_key($path, $config);
-    return (exists $mds{$cache_key}) ? $mds{$cache_key} : $class->SUPER::new ($path, $config);
+    return (exists $mds{$cache_key}) ? $mds{$cache_key} : $class->SUPER::new ($path, $config, %opts);
 }
 
 =pod
@@ -111,7 +112,7 @@ sub create
     my @devnames;
 
     if ($self->devexists) {
-        $this_app->debug (5, "Device ", $self->devpath, " already exists.",
+        $self->debug (5, "Device ", $self->devpath, " already exists.",
 			              " Leaving.");
         return 0;
     }
@@ -122,9 +123,9 @@ sub create
     CAF::Process->new([MDCREATE, $self->devpath, MDLEVEL.$self->{raid_level},
                        MDSTRIPE.$self->{stripe_size}, MDMETADATA.$self->{metadata},
                        MDDEVS.scalar(@{$self->{device_list}}), @devnames],
-                       log => $this_app
+                       log => $self
                        )->execute();
-    $? && $this_app->error ("Couldn't create ", $self->devpath);
+    $? && $self->error ("Couldn't create ", $self->devpath);
     return $?;
 }
 
@@ -144,14 +145,14 @@ sub remove
 
     return 1 if (! $self->is_correct_device);
 
-    CAF::Process->new([MDSTOP, $self->devpath], log => $this_app)->execute();
+    CAF::Process->new([MDSTOP, $self->devpath], log => $self)->execute();
     foreach my $dev (@{$self->{device_list}}) {
         CAF::Process->new([MDZERO, $dev->devpath],
-                          log => $this_app)->execute();
+                          log => $self)->execute();
         $dev->remove==0 or return $?;
     }
     delete $mds{$self->{_cache_key}} if exists $self->{_cache_key};
-    $? && $this_app->error ("Couldn't destroy ", $self->devpath);
+    $? && $self->error ("Couldn't destroy ", $self->devpath);
     return $?;
 }
 
@@ -173,13 +174,13 @@ sub devexists
     }
 
     CAF::Process->new([MDASSEMBLE, $self->devpath, @devnames],
-                       log => $this_app
+                       log => $self
                        )->execute();
     CAF::Process->new([MDQRY, $self->devpath],
-                       log => $this_app
+                       log => $self
                        )->execute();
     my $ec=$?;
-    $this_app->debug(3, "querying $self->{devname} returned $ec");
+    $self->debug(3, "querying $self->{devname} returned $ec");
     return ($ec == 0);
 }
 
@@ -203,7 +204,7 @@ sub is_correct_device
 
     foreach my $dev (@{$self->{device_list}}) {
         if (! $dev->is_correct_device) {
-            $this_app->error("$dev->{devname} from device_list is not correct device.");
+            $self->error("$dev->{devname} from device_list is not correct device.");
             return 0;
         }
     }
@@ -233,24 +234,28 @@ sub devpath
 
 sub new_from_system
 {
-    my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg, %opts) = @_;
 
     $dev =~ m{/dev/(md.*)$};
-
     my $devname = $1;
 
+    my $self = {
+        devname => $devname,
+        log => ($opts{log} || $reporter),
+};
+    bless ($self, $class);
+
     my $lines =  CAF::Process->new([MDQUERY, $dev],
-                                    log => $this_app)->output();
+                                    log => $self)->output();
     my @devlist;
     $lines =~ m{Raid Level : (\w+)$}omg;
     my $level = uc ($1);
     while ($lines =~ m{\w\s+(/dev.*)$}omg) {
-        push (@devlist, NCM::BlockdevFactory::build_from_dev ($1, $cfg));
+        push (@devlist, NCM::BlockdevFactory::build_from_dev ($1, $cfg, %opts));
     }
-    my $self = {raid_level	=> $level,
-                device_list=> \@devlist,
-                devname	=> $devname};
-    return bless ($self, $class);
+    $self->{raid_level} = $level;
+    $self->{device_list} = \@devlist;
+    return $self;
 }
 
 =pod
@@ -287,7 +292,7 @@ sub print_ks
 
     my $useexisting = '';
     if ($fs->{useexisting_md}) {
-        $this_app->debug(5, 'useexisting flag enabled');
+        $self->debug(5, 'useexisting flag enabled');
         $useexisting = USEEXISTING;
     }
     if (scalar (@_) == 2) {

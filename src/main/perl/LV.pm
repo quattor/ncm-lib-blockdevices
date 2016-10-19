@@ -20,7 +20,7 @@ use CAF::Process;
 use EDG::WP4::CCM::Element;
 use EDG::WP4::CCM::Configuration;
 use LC::Process qw(execute output);
-use NCM::Blockdevices qw($this_app PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::LVM;
 our @ISA = qw(NCM::Blockdevices);
 
@@ -61,8 +61,9 @@ Where the object creation is actually done.
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
 
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
     $path =~ m!/([^/]+)$!;
     $self->{devname}      = $1;
@@ -78,9 +79,9 @@ sub _initialize
     if ($st->{devices}) {
         $self->{devices} = [];
         foreach my $devpath (@{$st->{devices}}) {
-            my $dev = NCM::BlockdevFactory::build($config, $devpath);
+            my $dev = NCM::BlockdevFactory::build($config, $devpath, %opts);
             if (!$dev){
-                $this_app->error("Something went wrong building device for $devpath");
+                $self->error("Something went wrong building device for $devpath");
                 return;
             }
             push(@{$self->{devices}}, $dev);
@@ -111,15 +112,16 @@ rest of the class can understand.
 
 sub new_from_system
 {
-    my ($class, $dev, $cfg) = @_;
+    my ($class, $dev, $cfg, %opts) = @_;
 
     $dev =~ m{(/dev/.*[^-]+)-([^-].*)$};
     my ($vgname, $devname) = ($1, $2);
     $devname =~ s/-{2}/-/g;
-    my $vg = NCM::LVM->new_from_system($vgname, $cfg);
+    my $vg = NCM::LVM->new_from_system($vgname, $cfg, %opts);
     my $self = {
         devname      => $devname,
-        volume_group => $vg
+        volume_group => $vg,
+        log => ($opts{log} || $reporter),
     };
     return bless($self, $class);
 }
@@ -192,13 +194,13 @@ sub create_cache
     my $output = CAF::Process->new([LVLVS, "$self->{volume_group}->{devname}/$self->{devname}"])->output();
     my @lines = split(/\n/, $output);
     if ($lines[1] && $lines[1] =~ /\s\[$self->{cache_lv}->{devname}\]\s/){
-        $this_app->debug(5, "Cache $self->{cache_lv}->{devname} on logical volume $self->devpath already exists. Leaving"); 
+        $self->debug(5, "Cache $self->{cache_lv}->{devname} on logical volume $self->devpath already exists. Leaving"); 
         return 0;
     }
     my $command = $self->_gen_convert_command();
-    CAF::Process->new($command, log => $this_app)->execute();
+    CAF::Process->new($command, log => $self)->execute();
     if ($?) {
-        $this_app->error("Failed to make cache $self->{cache_lv}->{devname} on $self->{devname}");
+        $self->error("Failed to make cache $self->{cache_lv}->{devname} on $self->{devname}");
     }
     return $?; 
 }
@@ -227,7 +229,7 @@ sub create
         if ($self->{cache}) {
             return $self->create_cache();
         } else {  
-            $this_app->debug(5, "Logical volume ", $self->devpath, " already exists. Leaving");
+            $self->debug(5, "Logical volume ", $self->devpath, " already exists. Leaving");
             return 0;
         }
     }
@@ -264,9 +266,9 @@ sub create
     my $command = [LVCREATE, @type_opts, @chunk_opts, $szflag, $sz, LVNAME, $self->{devname},
                 $self->{volume_group}->{devname}, @stopt, @devices];
 
-    CAF::Process->new($command, log => $this_app)->execute();
+    CAF::Process->new($command, log => $self)->execute();
     if ($?) {
-        $this_app->error("Failed to create logical volume", $self->devpath);
+        $self->error("Failed to create logical volume", $self->devpath);
         return $?;
     }
     if ($self->{cache}) {
@@ -295,7 +297,7 @@ sub remove
     if ($self->devexists) {
         execute([LVREMOVE, LVRMARGS, $self->{volume_group}->devpath . "/$self->{devname}"]);
         if ($?) {
-            $this_app->error("Failed to remove logical volume ", $self->devpath);
+            $self->error("Failed to remove logical volume ", $self->devpath);
             return $?;
         }
     }
@@ -316,7 +318,7 @@ Returns true if the device already exists in the system.
 sub devexists
 {
     my $self = shift;
-    CAF::Process->new([LVDISP, "$self->{volume_group}->{devname}/$self->{devname}"],  log => $this_app)->execute();
+    CAF::Process->new([LVDISP, "$self->{volume_group}->{devname}/$self->{devname}"],  log => $self)->execute();
     return !$?;
 }
 

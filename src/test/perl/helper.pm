@@ -31,12 +31,12 @@ use Test::Quattor;
 use CAF::Object;
 $CAF::Object::NoAction = 1;
 
-# force this_app, so most log => $this_app works
+# force reporter, so most log => $self works
 # in particular, this is not mocked in FileWriter/FileEditor
 use NCM::Component;
 my $cmp=NCM::Component->new("dummy");
 use NCM::Blockdevices;
-$NCM::Blockdevices::this_app = $cmp;
+$NCM::Blockdevices::reporter = $cmp;
 
 use cmddata;
 sub set_output {

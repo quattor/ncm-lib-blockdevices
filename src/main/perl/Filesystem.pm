@@ -14,7 +14,7 @@ use EDG::WP4::CCM::Configuration;
 use CAF::Process;
 use CAF::FileEditor;
 use CAF::FileReader;
-use NCM::Blockdevices qw ($this_app PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
 use File::Basename;
@@ -72,38 +72,44 @@ Arguments: $_[1] the line on /etc/fstab specifying the filesystem.
 
 sub new_from_fstab
 {
-    my ($class, $line, $config) = @_;
+    my ($class, $line, $config, %opts) = @_;
+
+    my $log = $opts{log} || $reporter;
     $line =~ m{^(\S+)\s+(\S+)\s};
     my ($dev, $mountp) = ($1, $2);
     my $p = CAF::Process->new ([MOUNT, $mountp],
-                               log => $this_app)->run();
+                               log => $log)->run();
 
     if ($dev =~ m/^(LABEL|UUID)=/) {
-        my $fh = CAF::FileReader->new(MTAB, log => $this_app);
+        my $fh = CAF::FileReader->new(MTAB, log => $log);
         my @mtd = grep (m{^\S+\s+$mountp/?\s}, split("\n", "$fh"));
         $fh->close();
         $dev = $mtd[0];
         $dev =~ s{^(\S+)\s.*}{$1};
     }
-    my $bd = build_from_dev ($dev, $config);
-    my $self = {preserve    => 0,
-                format        => 1,
-                block_device    => $bd,
-                mountpoint    => $mountp
-                };
+    my $bd = build_from_dev ($dev, $config, %opts);
+    my $self = {
+        preserve => 0,
+        format => 1,
+        block_device => $bd,
+        mountpoint => $mountp,
+        log => $log,
+    };
     return bless ($self, $class);
 }
 
 sub _initialize
 {
-    my ($self, $path, $config) = @_;
+    my ($self, $path, $config, %opts) = @_;
+        
+    $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
 
     while (my ($key, $val) = each (%$st)) {
         $self->{$key} = $val;
     }
 
-    $self->{block_device} = build ($config, $self->{block_device});
+    $self->{block_device} = build ($config, $self->{block_device}, %opts);
     return $self;
 }
 
@@ -118,7 +124,7 @@ Returns whether the filesystem is mounted
 sub mounted
 {
     my $self = shift;
-    my $fh = CAF::FileReader->new(MTAB, log => $this_app);
+    my $fh = CAF::FileReader->new(MTAB, log => $self);
     return $fh =~ m!^\S+\s+$self->{mountpoint}/?\s!m;
 }
 
@@ -136,21 +142,21 @@ sub remove_if_needed
     my $self = shift;
 
     if ($self->{preserve} || !$self->{format}) {
-        $this_app->debug (5, "Filesystem ", $self->{mountpoint},
+        $self->debug (5, "Filesystem ", $self->{mountpoint},
               " shouldn't be destroyed according to profile.");
         return 0;
     }
-    $this_app->info ("Destroying filesystem on $self->{mountpoint}");
+    $self->info ("Destroying filesystem on $self->{mountpoint}");
     if ($self->mounted) {
         CAF::Process->new ([UMOUNT, $self->{mountpoint}],
-                  log => $this_app)->run();
+                  log => $self)->run();
         return $? if $?;
     }
     $self->{block_device}->remove==0 or return $?;
-    my $fh = CAF::FileEditor->new (FSTAB, log => $this_app);
+    my $fh = CAF::FileEditor->new (FSTAB, log => $self);
     $fh->remove_lines(qr/\s$self->{mountpoint}\s/, qr/^$/); # goodre ^$ (empty string) should never match  
     $fh->close();
-    $this_app->debug (5, "Removing filesystem mountpoint", $self->{mountpoint});
+    $self->debug (5, "Removing filesystem mountpoint", $self->{mountpoint});
     rmdir ($self->{mountpoint});
     return $?;
 }
@@ -183,11 +189,11 @@ sub check_in_fstab
             my ($type_uuid, $fstab_uuid) = ($1 || '' , $2);
             my $prof_uuid = $self->{block_device}->get_uuid($type_uuid);
             if (!$prof_uuid) {
-                $this_app->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
+                $self->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
                     "in profile could not be found");
                 next;
             } elsif ($prof_uuid ne $fstab_uuid) {
-                $this_app->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
+                $self->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
                     "in profile is different from that in the fstab file!");
             }
             $ndevice = "${type_uuid}UUID=$prof_uuid";
@@ -202,10 +208,10 @@ sub check_in_fstab
         }
     } else {
         if ($protected && $protected->{mounts}->{$self->{mountpoint}}){
-            $this_app->verbose("Mount $self->{mountpoint} is protected and will not be changed");
+            $self->verbose("Mount $self->{mountpoint} is protected and will not be changed");
             $ndevice = undef;
         } elsif ($protected && $protected->{fs_types}->{$otype}){
-            $this_app->verbose("Mount $self->{mountpoint} is of protected type $otype and will not be changed");
+            $self->verbose("Mount $self->{mountpoint} is of protected type $otype and will not be changed");
             $ndevice = undef;
         } elsif (exists $self->{label}) {
             $ndevice = "LABEL=$self->{label}"; # Always use label if in template
@@ -236,10 +242,10 @@ sub update_fstab
     if(ref($fh) eq 'CAF::FileEditor') {
         # TODO check if not closed?
         $close_fh = 0;
-        $this_app->debug(3, "A CAF::FileEditor instance was passed. ",
+        $self->debug(3, "A CAF::FileEditor instance was passed. ",
                            "It will not be closed at end of this method.");
     } else {
-        $fh = CAF::FileEditor->new (FSTAB, log => $this_app, backup => '.old');
+        $fh = CAF::FileEditor->new (FSTAB, log => $self, backup => '.old');
     };
 
     my $ok_device = $self->check_in_fstab($fh, $pstrict);
@@ -279,7 +285,7 @@ sub formatfs
     my $self = shift;
 
     if (! $self->{block_device}->is_correct_device) {
-        $this_app->error("Filesystem mountpoint $self->{mountpoint}",
+        $self->error("Filesystem mountpoint $self->{mountpoint}",
                           " not correct blockdev ", $self->{block_device}->devpath);
         $? = 1;
         return 1;
@@ -299,27 +305,27 @@ sub formatfs
     # the block device has a filesystem. Don't destroy the data.
     my $has_filesystem = 1;
     if ($self->{type} eq 'none') {
-        $this_app->debug(3, "type 'none', no format.");
+        $self->debug(3, "type 'none', no format.");
         $has_filesystem = 1;
     } elsif(defined($self->{force_filesystemtype}) && $self->{force_filesystemtype}) {
         $has_filesystem = $self->{block_device}->has_filesystem($self->{type});
-        $this_app->debug(3, "force_filesystemtype with type $self->{type}",
+        $self->debug(3, "force_filesystemtype with type $self->{type}",
                             " has_filesystem $has_filesystem");
     } else {
         $has_filesystem = $self->{block_device}->has_filesystem;
-        $this_app->debug(3, "any supported filesystem",
+        $self->debug(3, "any supported filesystem",
                             " has_filesystem $has_filesystem");
     };
     
     if (!$has_filesystem) {
-        $this_app->debug (5, "Formatting to get $self->{mountpoint}");
+        $self->debug (5, "Formatting to get $self->{mountpoint}");
         CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
                             $self->{block_device}->devpath],
-                            log => $this_app)->run();
+                            log => $self)->run();
         return $? if $?;
         CAF::Process->new ([$tunecmd, split ('\s+', $self->{tuneopts}),
                             $self->{block_device}->devpath],
-                            log => $this_app)->run()
+                            log => $self)->run()
                 if exists $self->{tuneopts} && defined $tunecmd;
     }
     return $?;
@@ -334,12 +340,13 @@ success, -1 in case of error.
 
 =cut
 
+# TODO remove, see issue 
 sub mkmountpoint
 {
     my $mp = shift;
     eval { mkpath ([$mp], 0, MOUNTPOINTPERMS) };
     if ($@) {
-        $this_app->error ("Failed to create mount point $mp: $@");
+        $reporter->error ("Failed to create mount point $mp: $@");
         return -1;
     }
     return 0;
@@ -357,7 +364,7 @@ sub mountpoint_in_fstab
 {
     my $self = shift;
 
-    my $fh = CAF::FileReader->new(FSTAB, log => $this_app);
+    my $fh = CAF::FileReader->new(FSTAB, log => $self);
     return $fh =~ m!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
 }
 
@@ -388,7 +395,7 @@ sub is_create_needed
         $ret=0;
     }
 
-    $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
+    $self->debug (5, "Filesystem mountpoint $self->{mountpoint}",
                       " is_create_needed $ret: $msg");
     
     return $ret;
@@ -408,11 +415,11 @@ sub create_if_needed
 {
     my $self = shift;
 
-    $this_app->debug (5, "Filesystem mountpoint $self->{mountpoint}",
+    $self->debug (5, "Filesystem mountpoint $self->{mountpoint}",
                       " blockdev ", $self->{block_device}->devpath);
 
     if (! $self->{block_device}->is_correct_device) {
-        $this_app->error("Filesystem mountpoint $self->{mountpoint}",
+        $self->error("Filesystem mountpoint $self->{mountpoint}",
                           " not correct blockdev ", $self->{block_device}->devpath);
         $? = 1;
         return 1;
@@ -421,7 +428,7 @@ sub create_if_needed
     if($self->is_create_needed) {
         $self->{block_device}->create && return $?;
         $self->formatfs && return $?;
-        $this_app->info("Filesystem on $self->{mountpoint} successfully created");
+        $self->info("Filesystem on $self->{mountpoint} successfully created");
     };
     return 0;
 }
@@ -461,7 +468,7 @@ sub format_if_needed
     my ($self, %protected) = @_;
 
     if (! $self->{block_device}->is_correct_device) {
-        $this_app->error("Filesystem mountpoint $self->{mountpoint}",
+        $self->error("Filesystem mountpoint $self->{mountpoint}",
                           " not correct blockdev ", $self->{block_device}->devpath);
 		$? = 1;
         return 1;
@@ -469,9 +476,9 @@ sub format_if_needed
 
     $self->can_be_formatted(%protected) or return 0;
     my $r;
-    CAF::Process->new ([UMOUNT, $self->{mountpoint}], log => $this_app)->run();
+    CAF::Process->new ([UMOUNT, $self->{mountpoint}], log => $self)->run();
     $r = $self->formatfs;
-    CAF::Process->new ([MOUNT, $self->{mountpoint}], log => $this_app)->run()
+    CAF::Process->new ([MOUNT, $self->{mountpoint}], log => $self)->run()
         if $self->{mount};
     return $r;
 }

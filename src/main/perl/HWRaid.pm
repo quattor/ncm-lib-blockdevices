@@ -20,7 +20,7 @@ package NCM::HWRaid;
 
 use strict;
 use warnings;
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($reporter);
 use EDG::WP4::CCM::Element;
 # TODO: convert all modules to use CAF::Process
 use CAF::Process;
@@ -77,7 +77,9 @@ The disk object on top of this RAID array.
 
 sub _initialize
 {
-    my ($self, $path, $config, $parent) = @_;
+    my ($self, $path, $config, $parent, %opts) = @_;
+
+    $self->{log} = $opts{log} || $reporter;
 
     $path =~ m{^([^/]*)};
     $self->{unit} = $1;
@@ -85,7 +87,7 @@ sub _initialize
     $path = RAIDPATH . $path;
 
     unless ($config->elementExists ($path)) {
-	$this_app->error ("RAID array on $path doesn't exist");
+	$self->error ("RAID array on $path doesn't exist");
 	return undef;
     }
 
@@ -96,7 +98,7 @@ sub _initialize
 
     foreach my $dev (@{$t->{device_list}}) {
 	unless ($dev =~ m{^raid/_\d+/ports/_(\d+).*}) {
-	    $this_app->error ("This device is not a RAID port, leaving");
+	    $self->error ("This device is not a RAID port, leaving");
 	    return undef;
 	}
 	push (@dl, $1);
@@ -110,7 +112,7 @@ sub _initialize
     $t->{device_list}->[0] =~ m{^raid/_(\d+)};
     $self->{controller} = "c$1";
     unless ($config->elementExists (HWPATH . "_$1" . VENDORSTRING)) {
-	$this_app->error ("No vendor defined for the RAID controller on ",
+	$self->error ("No vendor defined for the RAID controller on ",
 			  HWPATH, "_$1", VENDORSTRING,
 			  " Leaving");
 	return undef;
@@ -151,7 +153,7 @@ sub create
     my $self = shift;
 
     unless ($self->is_consistent) {
-	$this_app->error ("The RAID status and the profile are inconsistent. ",
+	$self->error ("The RAID status and the profile are inconsistent. ",
 			  "Fix your profile or manually adjust your RAID.");
 	return -1;
     }
@@ -182,7 +184,7 @@ sub is_consistent
     $self->debug (5, "Checking consistency for RAID on controller: ",
 		  "$self->{controller}, expected on device ",
 		  $self->{parent}->devpath);
-    my $proc = CAF::Process->new ([HWRAIDINFO], log => $this_app);
+    my $proc = CAF::Process->new ([HWRAIDINFO], log => $self);
 
     $raid_status = $proc->output;
     return 0 if $?;
@@ -195,12 +197,12 @@ sub is_consistent
     }
     if ($raid_status =~ m{^(.*$self->{parent}->{devname})}m) {
 	@fields = split (/,/, $1);
-	$this_app->error ("Wrong vendor specified for unit $self->{unit}")
+	$self->error ("Wrong vendor specified for unit $self->{unit}")
 	    if exists $self->{vendor} &&
 	      $fields[VENDOR] ne (lc $self->{vendor});
-	$this_app->error ("Wrong controller specified for unit $self->{unit}")
+	$self->error ("Wrong controller specified for unit $self->{unit}")
 	    if $fields[CONTROLLER] ne $self->{controller};
-	$this_app->error ("Disk ", $self->{parent}->devpath,
+	$self->error ("Disk ", $self->{parent}->devpath,
 			  " exists, but is associated to a different ",
 			  "RAID unit. Expected: $self->{unit}")
 	    if $fields[UNIT] ne $self->{unit};
@@ -210,7 +212,7 @@ sub is_consistent
 				   $self->{unit}.*)}xmi) {
 	@fields = split (/,/, $1);
 	if ($fields[OSDISK] ne NODISK) {
-	    $this_app->error ("The selected RAID array holds ",
+	    $self->error ("The selected RAID array holds ",
 			      "a different device: $fields[OSDISK]");
 	    return 0;
 	}
@@ -234,7 +236,7 @@ Returns 0 if succeeds, -1 in case of errors.
 sub destroy_if_needed
 {
     my $self = shift;
-    my $proc = CAF::Process->new ([HWRAIDINFO], log => $this_app);
+    my $proc = CAF::Process->new ([HWRAIDINFO], log => $self);
 
     my $raid_status = $proc->output;
     my @candidates = grep (m{$self->{controller}}, split (/\n/, $raid_status));
@@ -251,7 +253,7 @@ sub destroy_if_needed
 	    return $self->do_destroy ($l[0]);
 	}
     }
-    $this_app->debug (5, "Didn't have to destroy array $self->{unit}");
+    $self->debug (5, "Didn't have to destroy array $self->{unit}");
     return 0;
 }
 
@@ -265,8 +267,8 @@ will be fed, as is, to hwraidman.
 sub do_destroy
 {
     my ($self, $raidinfo) = @_;
-    $this_app->debug (5, "Must destroy array $self->{unit}");
-    my $proc = CAF::Process->new ([HWRAIDDESTROY], log => $this_app,
+    $self->debug (5, "Must destroy array $self->{unit}");
+    my $proc = CAF::Process->new ([HWRAIDDESTROY], log => $self,
 				  stdin => "$raidinfo\n");
     my $err = $proc->execute();
     return $?
@@ -284,11 +286,11 @@ Returns 0 if it succeeds, something different in case of errors.
 sub create_if_needed
 {
     my $self = shift;
-    my $proc = CAF::Process->new ([HWRAIDINFO], log => $this_app);
+    my $proc = CAF::Process->new ([HWRAIDINFO], log => $self);
     my $raid_status = $proc->output;
     my @raidline;
     return 0 if $raid_status =~ m{$self->{unit}};
-    $this_app->debug (5, "Array $self->{unit} doesn't exist. Creating it.");
+    $self->debug (5, "Array $self->{unit} doesn't exist. Creating it.");
     my $disklist = join (DISKSEP, "", @{$self->{device_list}});
     $raidline[VENDOR] = lc ($self->{vendor});
     $raidline[CONTROLLER] = $self->{controller};
@@ -300,7 +302,7 @@ sub create_if_needed
     $raidline[OSDISK] = $self->{parent}->{devname};
     $raidline[RAIDSTATUS] = EMPTY;
 
-    $proc = CAF::Process->new ([HWRAIDCREATE], log => $this_app,
+    $proc = CAF::Process->new ([HWRAIDCREATE], log => $self,
 			       stdin => join (JOINER, @raidline) . "\n");
     $proc->execute;
     return $?;

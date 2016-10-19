@@ -7,7 +7,7 @@ package NCM::Tmpfs;
 use strict;
 use warnings;
 
-use NCM::Blockdevices qw ($this_app);
+use NCM::Blockdevices qw ($reporter);
 
 our @ISA = qw{NCM::Blockdevices};
 
@@ -43,7 +43,7 @@ sub should_create_ks
 sub _size_in_byte
 {
     my $self = shift;
-    $this_app->error ("_size_in_byte method not defined for this class");
+    $self->error ("_size_in_byte method not defined for this class");
 }
 
 __END__

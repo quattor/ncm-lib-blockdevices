@@ -26,9 +26,9 @@ use constant GET_SIZE_BYTES  => qw (/sbin/blockdev --getsize64);
 
 our @ISA = qw/CAF::Object Exporter/;
 
-our $this_app = $main::this_app;
+our $reporter = $main::this_app;
 
-our @EXPORT_OK = qw ($this_app PART_FILE);
+our @EXPORT_OK = qw ($reporter PART_FILE);
 
 sub get_cache_key {
      my ($self, $path, $config) = @_;
@@ -39,6 +39,8 @@ sub get_cache_key {
 
 sub _initialize
 {
+    my ($self, %opts) = @_;
+    $self->{log} = $opts{log} || $reporter;
 	return $_[0];
 }
 
@@ -56,53 +58,53 @@ sub _set_alignment
 sub create
 {
 	my $self = shift;
-	$this_app->error ("create method not defined for this class");
+	$self->error ("create method not defined for this class");
 }
 
 sub remove
 {
 	my $self = shift;
-	$this_app->error ("remove method not defined for this class");
+	$self->error ("remove method not defined for this class");
 
 }
 
 sub grow
 {
 	my $self = shift;
-	$this_app->error ("grow method not defined for this class");
+	$self->error ("grow method not defined for this class");
 
 }
 
 sub shrink
 {
 	my $self = shift;
-	$this_app->error ("shrink method not defined for this class");
+	$self->error ("shrink method not defined for this class");
 
 }
 
 sub decide
 {
 	my $self = shift;
-	$this_app->error ("decide method not defined for this class");
+	$self->error ("decide method not defined for this class");
 }
 
 sub devexists
 {
 	my $self = shift;
-	$this_app->error ("devexists method not defined for this class");
+	$self->error ("devexists method not defined for this class");
 }
 
 
 sub should_print_ks
 {
 	my $self = shift;
-	$this_app->error ("should_print_ks method not defined for this class");
+	$self->error ("should_print_ks method not defined for this class");
 }
 
 sub should_create_ks
 {
 	my $self = shift;
-	$this_app->error ("should_create_ks method not defined for this class");
+	$self->error ("should_create_ks method not defined for this class");
 }
 
 # Return the size of metadata to wipe in MB
@@ -134,7 +136,7 @@ sub is_correct_device
 {
     my $self = shift;
     # Legacy behaviour is no checking; always assuming correct device.
-    $this_app->verbose ("is_correct_device method not defined. Returning true for legacy behaviour.");
+    $self->verbose ("is_correct_device method not defined. Returning true for legacy behaviour.");
     return 1;
 }
 
@@ -143,7 +145,7 @@ sub is_correct_device
 sub _size_in_byte
 {
     my $self = shift;
-    my $size = CAF::Process->new([GET_SIZE_BYTES, $self->devpath], log => $this_app)->output();
+    my $size = CAF::Process->new([GET_SIZE_BYTES, $self->devpath], log => $self)->output();
     chomp($size);
     return $size;
 }
@@ -164,9 +166,9 @@ sub size
     if ($self->devexists) {
         my $bytes = $self->_size_in_byte();
         $size = $bytes / (1024 * 1024);
-        $this_app->verbose("Device $self->{devname}, has size $size MiB ($bytes byte)");
+        $self->verbose("Device $self->{devname}, has size $size MiB ($bytes byte)");
     } else {
-        $this_app->verbose("No size for device $self->{devname}, devpath ",
+        $self->verbose("No size for device $self->{devname}, devpath ",
                            $self->devpath, " doesn't exist");
     }
     return $size;
@@ -201,7 +203,7 @@ sub correct_size_interval
     my $self = shift;
 
     my @conds = sort keys %{$self->{correct}->{size}};
-    $this_app->verbose("Going to use ", scalar @conds, " conditions: ", join(", ", @conds));    
+    $self->verbose("Going to use ", scalar @conds, " conditions: ", join(", ", @conds));    
 
     my ($min, $max);
 
@@ -224,25 +226,25 @@ sub correct_size_interval
         if ($cond eq "diff") {
             my $diff =  $self->{correct}->{size}->{diff};
             $update_min_max->($self->{size} - $diff, $self->{size} + $diff);
-            $this_app->verbose("Diff defined $diff, updated min/max $min / $max");
+            $self->verbose("Diff defined $diff, updated min/max $min / $max");
         } elsif ($cond eq "fraction") {
             my $frac = $self->{correct}->{size}->{fraction};
             $update_min_max->((1-$frac) * $self->{size}, (1+$frac) * $self->{size});
-            $this_app->verbose("Fraction defined $frac, updated min/max $min / $max");
+            $self->verbose("Fraction defined $frac, updated min/max $min / $max");
         } else {
-            $this_app->error("is_correct_size unknown condition $cond");
+            $self->error("is_correct_size unknown condition $cond");
             return;
         }
     };
 
 
     if(!defined($min)) {
-        $this_app->info("Minimum undefined after the conditions, using expected size $self->{size}");
+        $self->info("Minimum undefined after the conditions, using expected size $self->{size}");
         $min = $self->{size};
     }
     
     if(!defined($max)) {
-        $this_app->info("Maximum undefined after the conditions, using expected size $self->{size}");
+        $self->info("Maximum undefined after the conditions, using expected size $self->{size}");
         $max = $self->{size};
     }
 
@@ -250,7 +252,7 @@ sub correct_size_interval
     $max = 0 if ($max < 0);
 
     if($min > $max) {
-        $this_app->error("is_correct_size minimum $min larger then maximum $max");
+        $self->error("is_correct_size minimum $min larger then maximum $max");
         return;
     }
 
@@ -277,13 +279,13 @@ sub is_correct_size
     my $self = shift;
     
     if(! defined($self->{size})) {
-        $this_app->error("Attribute 'size' not found in profile");
+        $self->error("Attribute 'size' not found in profile");
         # considered failed. don't specify "correct/size" if you don't want this to run?
         return 0;
     }
 
     if(! $self->{correct}->{size}) {
-        $this_app->error("Sub-path 'correct/size' not found in profile");
+        $self->error("Sub-path 'correct/size' not found in profile");
         # considered failed. the code calling this method should check the existance 
         return 0;
     }
@@ -294,10 +296,10 @@ sub is_correct_size
 
     if($self->{size} == 0) {
         if ($self->{size} == $size) {
-            $this_app->verbose("expected size 0 matches found size");
+            $self->verbose("expected size 0 matches found size");
             return 1;
         } else {            
-            $this_app->error("expected size 0 not supported");
+            $self->error("expected size 0 not supported");
             # considered failed. don't specify "correct/size" if you don't want this to run?
             return 0;
         }
@@ -305,14 +307,14 @@ sub is_correct_size
     
     my $diff = abs($self->{size} - $size);
     my $msg = "found size $size MiB and expected size $self->{size} MiB";
-    $this_app->verbose("Size difference of $diff MiB between $msg");    
+    $self->verbose("Size difference of $diff MiB between $msg");    
 
     my ($min, $max) = $self->correct_size_interval();
 
     if($size >= $min && $size <= $max) {
-        $this_app->verbose("Found size $size in allowed interval [$min,$max] MiB");
+        $self->verbose("Found size $size in allowed interval [$min,$max] MiB");
     } else {
-        $this_app->error("Found size $size outside allowed interval [$min,$max] MiB");
+        $self->error("Found size $size outside allowed interval [$min,$max] MiB");
         return 0;
     }
     return 1;
@@ -330,7 +332,7 @@ the device is the correct device or not.
 sub ks_is_correct_device
 {
     my $self = shift;
-    $this_app->verbose ("ks_is_correct_device method not defined. Not printing anything for legacy behaviour.");
+    $self->verbose ("ks_is_correct_device method not defined. Not printing anything for legacy behaviour.");
     return 1;
 }
 
@@ -348,19 +350,19 @@ sub ks_pre_is_correct_size
     my $self = shift;
     
     if(! defined($self->{size})) {
-        $this_app->error("Attribute 'size' not found in profile");
+        $self->error("Attribute 'size' not found in profile");
         # considered failed. don't specify "correct/size" if you don't want this to run?
         return;
     }
 
     if(! $self->{correct}->{size}) {
-        $this_app->error("Sub-path 'correct/size' not found in profile");
+        $self->error("Sub-path 'correct/size' not found in profile");
         # considered failed. the code calling this method should check the existance 
         return;
     }
 
     if($self->{size} == 0) {
-        $this_app->error("Expected size 0 not supported in kickstart");
+        $self->error("Expected size 0 not supported in kickstart");
         # considered failed. don't specify "correct/size" if you don't want this to run?
         return;
     }
@@ -414,7 +416,7 @@ sub ksfsformat
                 push(@format, "--fsoptions='$fs->{mountopts}'");
             }
             if (exists($fs->{mkfsopts})) {
-                $this_app->warn("mkfsopts $fs->{mkfsopts} set for mountpoint $fs->{mountpoint}",
+                $self->warn("mkfsopts $fs->{mkfsopts} set for mountpoint $fs->{mountpoint}",
                                 "This is not supported in ksfsformat and ignored here");
             }            
     } else {
@@ -462,7 +464,7 @@ sub has_filesystem
         # a supported fs?                                                                                                                                                                
         # case sensitive, should be enforced via schema
         if ($fs !~ m{^$all_fs_regex$}) {
-            $this_app->warn("Requested filesystem $fs is not supported.",
+            $self->warn("Requested filesystem $fs is not supported.",
                             " Fallback to default supported filesystems.");
         } else {
             $fsregex = $fs;
@@ -470,9 +472,9 @@ sub has_filesystem
     };
 
     my $p = abs_path($self->devpath);
-    my $f =  CAF::Process->new([FILES, $p], log => $this_app)->output();
+    my $f =  CAF::Process->new([FILES, $p], log => $self)->output();
 
-    $this_app->debug(4, "Checking for filesystem on device $p",
+    $self->debug(4, "Checking for filesystem on device $p",
                         " with regexp '$fsregex' in output $f.");
     
     # case insensitive match 
@@ -494,14 +496,14 @@ sub get_uuid
     my ($self, $part) = @_;
     my $device = $self->devpath; 
     my $uuid;
-    my $output = CAF::Process->new([BLKID, $device], log => $this_app)->output();
+    my $output = CAF::Process->new([BLKID, $device], log => $self)->output();
     $part = $part ? 'PART' : '';
     my $re = qr!\s${part}UUID="(\S+)"!m ;
     if($output && $output =~ m/$re/m){
         $uuid = $1;
     }
     if (!defined($uuid)){
-        $this_app->warn("${part}UUID of device $device could not be found");
+        $self->warn("${part}UUID of device $device could not be found");
     }
     return $uuid;
 }
