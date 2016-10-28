@@ -50,7 +50,8 @@ use constant MKFSCMDS	=> { xfs	=> '/sbin/mkfs.xfs',
                  jfs	=> '/sbin/mkfs.jfs',
                  swap	=> '/sbin/mkswap',
                  tmpfs	=> '/bin/true',
-               };
+                 vfat   => '/sbin/mkfs.vfat',
+             };
 # Use this instead of Perl's built-in mkdir to create everything in
 # one go.
 #use constant MKDIR	=> qw (/bin/mkdir -p);
