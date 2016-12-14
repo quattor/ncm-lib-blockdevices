@@ -15,6 +15,8 @@ use EDG::WP4::CCM::Configuration;
 use CAF::Object;
 use CAF::Process;
 use Exporter;
+use POSIX qw(ceil floor);
+
 use constant BLKID => "/sbin/blkid";
 use constant FILES => qw (file -s);
 
@@ -369,6 +371,10 @@ sub ks_pre_is_correct_size
     
     my $devpath = $self->devpath;
     my ($min, $max) = $self->correct_size_interval();
+    # require integer for bash comparison
+    # use ceil(min) and floor(max) so min > real min and max < real max
+    $min = ceil($min);
+    $max = floor($max);
 
     # TODO: %pre --erroronfail to avoid boot loop 
     #  (but then requires console access/power control to get past)
