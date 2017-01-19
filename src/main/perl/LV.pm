@@ -142,7 +142,7 @@ sub _gen_convert_command
     if ($self->{cachemode}){
         @opts = (LVCACHEMODE, $self->{cachemode});
     }    
-    my $command = [LVCONVERT, LVTYPE, 'cache', @opts, LVCACHEPOOL,
+    my $command = [LVCONVERT, '-y', LVTYPE, 'cache', @opts, LVCACHEPOOL,
         "$self->{volume_group}->{devname}/$self->{cache_lv}->{devname}", "$self->{volume_group}->{devname}/$self->{devname}"];
     return $command;
 }

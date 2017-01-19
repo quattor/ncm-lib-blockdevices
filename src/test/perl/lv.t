@@ -61,7 +61,7 @@ my $cold_create = get_command('/usr/sbin/lvcreate -L 1000 -n lvCold vg1 /dev/sdc
 ok(defined($cold_create), 'cold lv created');
 my $cache_create = get_command('/usr/sbin/lvcreate --type cache-pool --chunksize 128 -L 100 -n lvCache vg1 /dev/sdd');
 ok(defined($cache_create), 'cache lv created');
-my $convert = get_command('/usr/sbin/lvconvert --type cache --cachemode writeback --cachepool vg1/lvCache vg1/lvCold');
+my $convert = get_command('/usr/sbin/lvconvert -y --type cache --cachemode writeback --cachepool vg1/lvCache vg1/lvCold');
 ok(!defined($convert), 'cache already existed');
 
 set_desired_output("/usr/sbin/lvs vg1/lvCold", "  LV    VG     Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert\n  lvCold vg1 -wi-a----- 100.00g");
@@ -69,7 +69,7 @@ set_desired_output("/usr/sbin/lvs vg1/lvCold", "  LV    VG     Attr       LSize 
 $out = $lv->create;
 ok(!$out, "Create ok");
 
-$convert = get_command('/usr/sbin/lvconvert --type cache --cachemode writeback --cachepool vg1/lvCache vg1/lvCold');
+$convert = get_command('/usr/sbin/lvconvert -y --type cache --cachemode writeback --cachepool vg1/lvCache vg1/lvCold');
 ok(defined($convert), 'convert to cache');
 
 # test some ks functions, those just print to default FH

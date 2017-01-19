@@ -48,7 +48,7 @@ lvm_create_lv_cache
 ^\s{4}lvm lvs vg1/lvCold \| awk '\{ print \$5 \}' \| grep lvCache > /dev/null$
 ^\s{4}if \[ "\$\?" -ne 0 \]$
 ^\s{4}then$
-^\s{8}/usr/sbin/lvconvert --type cache --cachemode writeback --cachepool vg1/lvCache vg1/lvCold$
+^\s{8}/usr/sbin/lvconvert -y --type cache --cachemode writeback --cachepool vg1/lvCache vg1/lvCold$
 ^\s{4}fi$
 ^fi$
 
