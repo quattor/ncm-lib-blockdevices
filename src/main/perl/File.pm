@@ -1,12 +1,10 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-################################################################################
+#${PMpre} NCM::File${PMpost}
 
 =pod
 
-=head1 File
+=head1 NAME
+
+NCM::File
 
 This class defines a file that can be used later as a pseudo-block
 device that holds another filesystem. It is part of the blockdevices
@@ -14,16 +12,10 @@ framework.
 
 =cut
 
-package NCM::File;
-
-use strict;
-use warnings;
-
-use EDG::WP4::CCM::Element qw (unescape);
-use EDG::WP4::CCM::Configuration;
-use LC::Process qw (execute output);
+use EDG::WP4::CCM::Path qw (unescape);
+use CAF::Process;
 use NCM::Blockdevices qw ($reporter);
-our @ISA = qw (NCM::Blockdevices);
+use parent qw(NCM::Blockdevices);
 
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant DD		=> qw (/bin/dd if=/dev/zero bs=1M);
@@ -70,7 +62,7 @@ sub create
 	# attacks!
 	return 0 if (-e $self->devpath);
 
-	execute ([DD, SIZE.$self->{size}, OUT.$self->devpath]);
+	CAF::Process->new([DD, SIZE.$self->{size}, OUT.$self->devpath], log => $self)->execute();
 	if ($?) {
 		$self->error ("Couldn't create file: ", $self->devpath);
 	} else {

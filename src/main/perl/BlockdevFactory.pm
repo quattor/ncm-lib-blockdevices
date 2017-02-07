@@ -1,17 +1,11 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-################################################################################
+#${PMpre} NCM::BlockdevFactory${PMpost}
 
-package NCM::BlockdevFactory;
+=head1 NAME
 
-use strict;
-use warnings;
+NCM::BlockdevFactory
 
-use EDG::WP4::CCM::Configuration;
-use EDG::WP4::CCM::Element;
-use CAF::Process;
+=cut
+
 use NCM::Blockdevices qw ($reporter);
 use NCM::MD;
 use NCM::LVM;
@@ -21,12 +15,15 @@ use NCM::Partition;
 use NCM::File;
 use NCM::Tmpfs;
 use NCM::VXVM;
-use constant BASEPATH	=> "/system/blockdevices/";
+
+use CAF::Process;
+
+use constant BASEPATH => "/system/blockdevices/";
 use constant PARTED	=> qw (/sbin/parted -s --);
 use constant PARTEDEXTRA => qw (u MiB);
 use constant PARTEDP	=> 'print';
 
-our @ISA = qw (Exporter);
+use parent qw(Exporter);
 
 our @EXPORT_OK = qw (build build_from_dev);
 
@@ -43,6 +40,7 @@ sub build
     my ($config, $dev, %opts) = @_;
 
     my @args = (BASEPATH . $dev, $config, %opts);
+
     if ($dev =~ m!^volume_groups/!) {
         return NCM::LVM->new (@args);
     }
@@ -70,7 +68,7 @@ sub build
 
     ($opts{log} || $reporter)->error("Unable to find block device implementation for device $dev");
 
-    return undef;
+    return;
 }
 
 sub build_from_dev

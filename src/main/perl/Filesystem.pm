@@ -1,19 +1,17 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-################################################################################
+#${PMpre} NCM::Filesystem${PMpost}
 
-package NCM::Filesystem;
+=pod
 
-use strict;
-use warnings;
+=head1 NAME
 
-use EDG::WP4::CCM::Element;
-use EDG::WP4::CCM::Configuration;
+NCM::Filesystem
+
+=cut
+
 use CAF::Process;
 use CAF::FileEditor;
 use CAF::FileReader;
+
 use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use FileHandle;
@@ -22,7 +20,7 @@ use File::Path;
 use Fcntl qw(SEEK_END);
 use Cwd qw(abs_path);
 
-use constant MOUNTPOINTPERMS => 0755;
+use constant MOUNTPOINTPERMS => oct(755);
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant DISK	=> "physical_devs/";
 use constant UMOUNT	=> "/bin/umount";
@@ -36,27 +34,26 @@ use constant SWAPON	=> '/sbin/swapon';
 use constant TUNE2FS	=> '/sbin/tune2fs';
 use constant TUNEXFS	=> '/usr/sbin/xfs_admin';
 use constant REISERTUNE	=> '/usr/sbin/reiserfstune';
-use constant TUNECMDS	=> { xfs	=> TUNEXFS,
-                 ext2	=> TUNE2FS,
-                 ext3	=> TUNE2FS,
-                 reiserfs	=> REISERTUNE
-               };
-use constant MKFSCMDS	=> { xfs	=> '/sbin/mkfs.xfs',
-                 ext2	=> '/sbin/mkfs.ext2',
-                 ext3	=> '/sbin/mkfs.ext3',
-                 ext4	=> '/sbin/mkfs.ext4',
-                 reiserfs	=> '/sbin/mkfs.reiserfs',
-                 reiser4	=> '/sbin/mkfs.reiser4',
-                 jfs	=> '/sbin/mkfs.jfs',
-                 swap	=> '/sbin/mkswap',
-                 tmpfs	=> '/bin/true',
-                 vfat   => '/sbin/mkfs.vfat',
-             };
-# Use this instead of Perl's built-in mkdir to create everything in
-# one go.
-#use constant MKDIR	=> qw (/bin/mkdir -p);
+use constant TUNECMDS	=> {
+    xfs	=> TUNEXFS,
+    ext2	=> TUNE2FS,
+    ext3	=> TUNE2FS,
+    reiserfs	=> REISERTUNE
+};
+use constant MKFSCMDS	=> {
+    xfs	=> '/sbin/mkfs.xfs',
+    ext2	=> '/sbin/mkfs.ext2',
+    ext3	=> '/sbin/mkfs.ext3',
+    ext4	=> '/sbin/mkfs.ext4',
+    reiserfs	=> '/sbin/mkfs.reiserfs',
+    reiser4	=> '/sbin/mkfs.reiser4',
+    jfs	=> '/sbin/mkfs.jfs',
+    swap	=> '/sbin/mkswap',
+    tmpfs	=> '/bin/true',
+    vfat   => '/sbin/mkfs.vfat',
+};
 
-our @ISA = qw(CAF::Object);
+use parent qw(CAF::Object);
 
 =pod
 
@@ -102,7 +99,7 @@ sub new_from_fstab
 sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
-        
+
     $self->{log} = $opts{log} || $reporter;
     my $st = $config->getElement($path)->getTree;
 
@@ -150,12 +147,12 @@ sub remove_if_needed
     $self->info ("Destroying filesystem on $self->{mountpoint}");
     if ($self->mounted) {
         CAF::Process->new ([UMOUNT, $self->{mountpoint}],
-                  log => $self)->run();
+                           log => $self)->run();
         return $? if $?;
     }
     $self->{block_device}->remove==0 or return $?;
     my $fh = CAF::FileEditor->new (FSTAB, log => $self);
-    $fh->remove_lines(qr/\s$self->{mountpoint}\s/, qr/^$/); # goodre ^$ (empty string) should never match  
+    $fh->remove_lines(qr/\s$self->{mountpoint}\s/, qr/^$/); # goodre ^$ (empty string) should never match
     $fh->close();
     $self->debug (5, "Removing filesystem mountpoint", $self->{mountpoint});
     rmdir ($self->{mountpoint});
@@ -167,7 +164,7 @@ sub remove_if_needed
 =head2 check_in_fstab
 
 Parse the $fh instance for the C<$self> filesystem. When a (PART)UUID is found,
-this is used instead of the device name or label. 
+this is used instead of the device name or label.
 If it concerns a protected (i.e. 'static') mountpoint or filesystem type,
 it will add it, but changes will not be allowed.
 When the entry should be added or inserted, this sub will return the device name to use,
@@ -190,15 +187,15 @@ sub check_in_fstab
             my ($type_uuid, $fstab_uuid) = ($1 || '' , $2);
             my $prof_uuid = $self->{block_device}->get_uuid($type_uuid);
             if (!$prof_uuid) {
-                $self->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
+                $self->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ",
                     "in profile could not be found");
                 next;
             } elsif ($prof_uuid ne $fstab_uuid) {
-                $self->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ", 
+                $self->warn("${type_uuid}UUID of device $devpath for $self->{mountpoint} ",
                     "in profile is different from that in the fstab file!");
             }
             $ndevice = "${type_uuid}UUID=$prof_uuid";
-        } 
+        }
     }
     if ($add) {
         if ($self->{label}){
@@ -218,7 +215,7 @@ sub check_in_fstab
             $ndevice = "LABEL=$self->{label}"; # Always use label if in template
         } elsif (!$ndevice) {
             $ndevice = $devpath;
-        }   
+        }
     }
     return $ndevice;
 }
@@ -259,7 +256,7 @@ sub update_fstab
                             (!$self->{mount} ? ",noauto":""),
                         $self->{freq},
                         $self->{pass});
-    
+
         $entry .= "\n"; # add trailing newline
         my $re = qr!^\s*[^#]\S+\s+$self->{mountpoint}/?\s!m;
         $fh->add_or_replace_lines ($re,
@@ -267,16 +264,16 @@ sub update_fstab
                                $entry,
                                ENDING_OF_FILE);
 
-    } 
+    }
     $fh->close() if $close_fh;
-    
+
 }
 
 =pod
 
 =head2 format
 
-Formats the filesystem, if the blockdevice has no supported filesystem or 
+Formats the filesystem, if the blockdevice has no supported filesystem or
 if force_filesystem is true.
 
 =cut
@@ -317,7 +314,7 @@ sub formatfs
         $self->debug(3, "any supported filesystem",
                             " has_filesystem $has_filesystem");
     };
-    
+
     if (!$has_filesystem) {
         $self->debug (5, "Formatting to get $self->{mountpoint}");
         CAF::Process->new ([MKFSCMDS->{$self->{type}}, @opts,
@@ -341,7 +338,7 @@ success, -1 in case of error.
 
 =cut
 
-# TODO remove, see issue 
+# TODO remove, see issue
 sub mkmountpoint
 {
     my $mp = shift;
@@ -357,7 +354,7 @@ sub mkmountpoint
 
 =head2 mountpoint_in_fstab
 
-Returns the number of valid (i.e. mountable) entries in /etc/fstab 
+Returns the number of valid (i.e. mountable) entries in /etc/fstab
 
 =cut
 
@@ -373,7 +370,7 @@ sub mountpoint_in_fstab
 
 =head2 is_create_needed
 
-Test if fs->blockdev->create is needed 
+Test if fs->blockdev->create is needed
 
 =cut
 
@@ -383,7 +380,7 @@ sub is_create_needed
 
     my $ret=1; # default: create is needed
     my $msg = 'Default create is needed.';
-    
+
     if($self->mounted()) {
         $msg="Filesystem MOUNTED";
         $ret=0;
@@ -397,8 +394,8 @@ sub is_create_needed
     }
 
     $self->debug (5, "Filesystem mountpoint $self->{mountpoint}",
-                      " is_create_needed $ret: $msg");
-    
+                  " is_create_needed $ret: $msg");
+
     return $ret;
 }
 
@@ -470,15 +467,15 @@ sub format_if_needed
 
     if (! $self->{block_device}->is_correct_device) {
         $self->error("Filesystem mountpoint $self->{mountpoint}",
-                          " not correct blockdev ", $self->{block_device}->devpath);
+                     " not correct blockdev ", $self->{block_device}->devpath);
 		$? = 1;
         return 1;
     };
 
     $self->can_be_formatted(%protected) or return 0;
-    my $r;
+
     CAF::Process->new ([UMOUNT, $self->{mountpoint}], log => $self)->run();
-    $r = $self->formatfs;
+    my $r = $self->formatfs;
     CAF::Process->new ([MOUNT, $self->{mountpoint}], log => $self)->run()
         if $self->{mount};
     return $r;
@@ -592,7 +589,7 @@ sub format_ks
     $self->{block_device}->ks_is_correct_device;
 
     print join (" ", "grep", "-q", "'" . $self->{block_device}->devpath . "\$'",
-            PART_FILE, "&&", "")
+                PART_FILE, "&&", "")
         unless $self->{format};
     $self->do_format_ks;
 
@@ -623,7 +620,7 @@ sub do_format_ks
                 $self->{block_device}->devpath,
                 exists ($self->{label}) ? (MKFSLABEL, $self->{label}) : (),
                 exists ($self->{mkfsopts})? $self->{mkfsopts}:())
-          , "\n";
+        , "\n";
     }
 }
 

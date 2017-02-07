@@ -1,7 +1,4 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} NCM::VXVM${PMpost}
 
 =pod
 
@@ -12,15 +9,8 @@ blockdevices framework.
 
 =cut
 
-package NCM::VXVM;
-
-use strict;
-use warnings;
-
-use NCM::Blockdevices;
-use EDG::WP4::CCM::Element qw (unescape);
-
-our @ISA = qw{NCM::Blockdevices};
+use EDG::WP4::CCM::Path qw(unescape);
+use parent qw(NCM::Blockdevices);
 
 our $reporter = $main::this_app;
 

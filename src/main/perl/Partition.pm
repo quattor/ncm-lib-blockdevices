@@ -1,11 +1,10 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} NCM::Partition${PMpost}
 
 =pod
 
-=head1 Partition
+=head1 NAME
+
+NCM::Partition
 
 This class describes a disk partition. It is part of the blockdevices
 framework.
@@ -20,7 +19,7 @@ Partition's size.
 
 =item * offset : integer
 
-Offset to determine the start of partition relative to the previous partition 
+Offset to determine the start of partition relative to the previous partition
 or beginning of disk.
 
 =item * devname : string
@@ -42,24 +41,18 @@ The exact point where the partition should start.
 =item * flags : hash
 
 A hash with the flag name as key and a boolean as value
-(and the value to be converted to C<on> or C<off>). 
+(and the value to be converted to C<on> or C<off>).
 The flags are set with the parted C<set> command.
 
 =back
 
 =cut
 
-package NCM::Partition;
-
-use strict;
-use warnings;
-
-use EDG::WP4::CCM::Element qw (unescape);
-use EDG::WP4::CCM::Configuration;
+use EDG::WP4::CCM::Path qw (unescape);
 use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::Disk;
 use CAF::Process;
-our @ISA = qw (NCM::Blockdevices Exporter);
+use parent qw(NCM::Blockdevices Exporter);
 
 our @EXPORT_OK = qw (partition_compare);
 
@@ -91,9 +84,10 @@ use constant PARTEDP	=> 'print';
 
 # Returns 1 if $a must be created before $b, -1 if $b must be created
 # before $a, 0 if it doesn't matter. See bug #26137.
-sub partition_compare ($$)
+sub partition_compare
 {
     my ($a, $b) = @_;
+
     $a->devpath =~ m!\D(\d+)$!;
     my $an = $1;
     $b->devpath =~ m!\D(\d+)$!;
@@ -180,23 +174,23 @@ sub set_flags
         return 0;
     }
 
-    my $hdname =  $self->{holding_dev}->devpath();
+    my $hdname = $self->{holding_dev}->devpath();
     my $num = $self->partition_number;
-    
+
     my $ec = 0;
     foreach my $flag (sort keys %{$self->{flags}})  {
         my $value = $self->{flags}->{$flag} ? "on" : "off";
         my $msg = "flag $flag to $value for $self->{devname}";
         $self->debug (5, "Set $msg");
-        my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, 'set', $num, $flag, $value);
+        my @partedcmdlist = (PARTED, PARTEDARGS, $hdname, 'set', $num, $flag, $value);
 
         CAF::Process->new(\@partedcmdlist, log => $self)->execute();
-        if ($?) { 
+        if ($?) {
             $self->error ("Failed to set $msg (exitcode $?)");
-            $ec = $?; # returning ec is from from last failure  
-        }  
+            $ec = $?; # returning ec is from from last failure
+        }
     }
-    
+
     return $ec;
 }
 
@@ -222,43 +216,41 @@ sub create
 
     # Check the device doesn't exist already.
     if ($self->devexists) {
-        $self->debug (5, "Partition $self->{devname} already exists: ",
-                             "leaving");
+        $self->debug (5, "Partition $self->{devname} already exists: leaving");
         return 0
     }
 
     my $hdname =  "/dev/" . $self->{holding_dev}->{devname};
     $self->debug (5, "Partition $self->{devname}: ",
-                         "creating holding device ",$hdname );
+                  "creating holding device ", $hdname);
     my $err = $self->{holding_dev}->create;
     return $err if $err;
-    $self->debug (5, "Partition $self->{devname}: ",
-                         "creating" );
+    $self->debug (5, "Partition $self->{devname}: creating");
     # TODO: deal with type/name/nothing
     #   type is only type on msdos, becomes name on gpt
     # from the parted guide http://www.gnu.org/software/parted/manual/html_node/mkpart.html
     #   mkpart [part-type fs-type name] start end
-    #   ... 
-    #   part-type is one of ‘primary’, ‘extended’ or ‘logical’, and may be specified only with ‘msdos’ or ‘dvh’ partition tables. 
-    #   A name must be specified for a ‘gpt’ partition table. 
-    #   Neither part-type nor name may be used with a ‘sun’ partition table. 
+    #   ...
+    #   part-type is one of ‘primary’, ‘extended’ or ‘logical’, and may be specified only with ‘msdos’ or ‘dvh’ partition tables.
+    #   A name must be specified for a ‘gpt’ partition table.
+    #   Neither part-type nor name may be used with a ‘sun’ partition table.
     #
     my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE,
                        $self->{type}, $self->begin, $self->end);
-    if ( $self->{holding_dev}->{label} eq "msdos" &&
-        $self->{size} >= 2200000 ) {
+    if ($self->{holding_dev}->{label} eq "msdos" &&
+        $self->{size} >= 2200000) {
         $self->warn("Partition $self->{devname}: partition larger than 2.2TB defined on msdos partition table");
     }
 
     CAF::Process->new(\@partedcmdlist, log => $self)->execute();
-    
-    my $ec = $?; 
+
+    my $ec = $?;
     if ($ec) {
         $self->error("Failed to create $self->{devname}");
     } else {
         $ec = $self->set_flags();
     }
-    
+
     sleep (SLEEPTIME);
     return $ec;
 }
@@ -287,10 +279,9 @@ sub remove
     if ($self->devexists) {
         CAF::Process->new([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
                            PARTEDEXTRA, DELETE, $num],
-                           log => $self)->execute();
+                          log => $self)->execute();
         if ($?) {
-            $self->error ("Couldn't remove partition ",
-                              $self->{devname});
+            $self->error ("Couldn't remove partition $self->{devname}");
             return $?;
         }
     }
@@ -303,7 +294,7 @@ sub remove
 
 =head2 is_correct_device
 
-Returns true if this is the device that corresponds with the device 
+Returns true if this is the device that corresponds with the device
 described in the profile.
 
 The method can log an error, as it is more of a sanity check then a test.
@@ -317,15 +308,15 @@ sub is_correct_device
     my $self = shift;
 
     if(! $self->{holding_dev}->is_correct_device) {
-        $self->error("partition holding_device ", $self->{holding_dev}->{devname}, 
-                         " is not the correct device");
+        $self->error("partition holding_device ", $self->{holding_dev}->{devname},
+                     " is not the correct device");
         return 0;
     }
 
     # TODO: Need to find a way to toggle size (or other) checks
     # E.g. when creating or removing a partition, the size check makes no sense
     # but when partitions are used for e.g. MD, the partition size check makes sense
-        
+
     return 1;
 }
 
@@ -392,14 +383,14 @@ sub begin
     my $npart = $self->partition_number;
     my $out = CAF::Process->new([PARTED, PARTEDARGS, $self->{holding_dev}->devpath,
                                  PARTEDEXTRA, PARTEDP],
-                                 log => $self)->output();
+                                log => $self)->output();
     my @lines = split /\n/, $out;
     @lines = grep (m{^\s*\d+\s}, @lines);
     my $st = 0;
     my $re = BEGIN_RE;
-    
+
     my $label = $self->{holding_dev}->{label};
-    
+
     $re .= BEGIN_TAIL_RE if $label eq MSDOS;
     # The new partition starts where the previous one ends, except
     # if the previous one is an extended and the new one a logical
@@ -410,7 +401,7 @@ sub begin
         my ($n, $begin, $end, $type) = ($1, $2, $3, $4);
         if ($npart > $n) {
             if ($label eq MSDOS) {
-                # msdos (and dvh too) 
+                # msdos (and dvh too)
                 if ($self->{type} ne 'logical' || $type eq 'logical') {
                     $st = $end;
                 }
@@ -421,8 +412,7 @@ sub begin
                 # type-field is used as name field in mkpart
                 $st = $end;
             }
-        }
-        else {
+        } else {
             last;
         }
     }
@@ -431,7 +421,7 @@ sub begin
     if (exists $self->{offset}) {
         $self->{begin} += $self->{offset};
         $self->debug (5, "Partition $self->{devname} offset $self->{offset}",
-                             " shifts start from $st to $self->{begin}");
+                      " shifts start from $st to $self->{begin}");
     }
     $self->debug (5, "Partition ",$self->{devname}," begins at ", $self->{begin});
     return $self->{begin};
@@ -591,7 +581,7 @@ sub create_pre_ks
 
     my $n = $self->partition_number;
     my $prev_n = $n - 1;
-    #my $type = substr ($self->{type}, 0, 1);
+
     my $size = exists $self->{size}? "$self->{size}":'100%';
     my $offset = exists $self->{offset}? $self->{offset} : 0;
     my $path = $self->devpath;
@@ -628,7 +618,7 @@ EOF
     if ( ($size eq '100%') || ($size == -1) ) {
         $end_txt = "end=$size";
     } else {
-        $end_txt="let end=\${prev/MiB}+$size";
+        $end_txt = "let end=\${prev/MiB}+$size";
     }
     print <<EOF;
     $end_txt
@@ -663,7 +653,7 @@ EOF
 =head2 ks_is_correct_device
 
 Print the kickstart pre bash code to determine if
-the device is the correct device or not. 
+the device is the correct device or not.
 Currently supports checking the holding_dev.
 
 =cut

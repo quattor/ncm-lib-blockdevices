@@ -1,12 +1,10 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-################################################################################
+#${PMpre} NCM::HWRaid${PMpost}
 
 =pod
 
-=head1 HWRaid
+=head1 NAME
+
+NCM::HWRaid
 
 This class defines a hardware RAID set. It is part of the blockdevices
 framework.
@@ -14,15 +12,17 @@ framework.
 It operates by parsing hwraidman's output and feeding to it. Please
 refer to hwraidtools' documentation for more help.
 
+=head1 LIMITATIONS
+
+This class doesn't support a RAID array spanned on several RAID
+controllers.
+
+Only global spares are supported.
+
 =cut
 
-package NCM::HWRaid;
-
-use strict;
-use warnings;
 use NCM::Blockdevices qw ($reporter);
-use EDG::WP4::CCM::Element;
-# TODO: convert all modules to use CAF::Process
+
 use CAF::Process;
 use LC::Exception;
 
@@ -47,7 +47,7 @@ use constant NODISK	=> EMPTY;
 use constant DISKSEP	=> ':';
 use constant JOINER	=> ',';
 
-our @ISA = qw (NCM::Blockdevices);
+use parent qw(NCM::Blockdevices);
 my $ec = LC::Exception::Context->new->will_store_all;
 
 =head2 _initialize ($path, $config, $parent)
@@ -87,8 +87,8 @@ sub _initialize
     $path = RAIDPATH . $path;
 
     unless ($config->elementExists ($path)) {
-	$self->error ("RAID array on $path doesn't exist");
-	return undef;
+        $self->error ("RAID array on $path doesn't exist");
+        return;
     }
 
     my $t = $config->getElement ($path)->getTree;
@@ -97,11 +97,11 @@ sub _initialize
     my @dl;
 
     foreach my $dev (@{$t->{device_list}}) {
-	unless ($dev =~ m{^raid/_\d+/ports/_(\d+).*}) {
-	    $self->error ("This device is not a RAID port, leaving");
-	    return undef;
-	}
-	push (@dl, $1);
+        unless ($dev =~ m{^raid/_\d+/ports/_(\d+).*}) {
+            $self->error ("This device is not a RAID port, leaving");
+            return;
+        }
+        push (@dl, $1);
     }
     @dl = sort (@dl);
     $self->{device_list} = \@dl;
@@ -112,14 +112,13 @@ sub _initialize
     $t->{device_list}->[0] =~ m{^raid/_(\d+)};
     $self->{controller} = "c$1";
     unless ($config->elementExists (HWPATH . "_$1" . VENDORSTRING)) {
-	$self->error ("No vendor defined for the RAID controller on ",
-			  HWPATH, "_$1", VENDORSTRING,
-			  " Leaving");
-	return undef;
+        $self->error ("No vendor defined for the RAID controller on ",
+                      HWPATH, "_$1", VENDORSTRING, " Leaving");
+        return;
     }
 
     $self->{vendor} = $config->getElement (HWPATH . "_$1" .
-					   VENDORSTRING)->getValue;
+                                           VENDORSTRING)->getValue;
 
     # TODO: compute the alignment from the RAID parameters
     $self->_set_alignment($t, 0, 0);
@@ -153,13 +152,13 @@ sub create
     my $self = shift;
 
     unless ($self->is_consistent) {
-	$self->error ("The RAID status and the profile are inconsistent. ",
-			  "Fix your profile or manually adjust your RAID.");
-	return -1;
+        $self->error ("The RAID status and the profile are inconsistent. ",
+                      "Fix your profile or manually adjust your RAID.");
+        return -1;
     }
 
     if ($self->destroy_if_needed == -1) {
-	return -1;
+        return -1;
     }
 
     return $self->create_if_needed;
@@ -182,40 +181,43 @@ sub is_consistent
     my ($raid_status, @fields);
 
     $self->debug (5, "Checking consistency for RAID on controller: ",
-		  "$self->{controller}, expected on device ",
-		  $self->{parent}->devpath);
+                  "$self->{controller}, expected on device ",
+                  $self->{parent}->devpath);
     my $proc = CAF::Process->new ([HWRAIDINFO], log => $self);
 
     $raid_status = $proc->output;
     return 0 if $?;
 
     if ($raid_status =~ m{$self->{vendor},
-			      $self->{controller},
-			      $self->{unit}, .*,
-			      $self->{parent}->{devname}}xmi) {
-	return 1;
+        $self->{controller},
+        $self->{unit}, .*,
+        $self->{parent}->{devname}}xmi) {
+        return 1;
     }
     if ($raid_status =~ m{^(.*$self->{parent}->{devname})}m) {
-	@fields = split (/,/, $1);
-	$self->error ("Wrong vendor specified for unit $self->{unit}")
-	    if exists $self->{vendor} &&
-	      $fields[VENDOR] ne (lc $self->{vendor});
-	$self->error ("Wrong controller specified for unit $self->{unit}")
-	    if $fields[CONTROLLER] ne $self->{controller};
-	$self->error ("Disk ", $self->{parent}->devpath,
-			  " exists, but is associated to a different ",
-			  "RAID unit. Expected: $self->{unit}")
-	    if $fields[UNIT] ne $self->{unit};
-	return 0;
+        @fields = split (/,/, $1);
+        $self->error ("Wrong vendor specified for unit $self->{unit}")
+            if exists $self->{vendor} &&
+            $fields[VENDOR] ne (lc $self->{vendor});
+
+        $self->error ("Wrong controller specified for unit $self->{unit}")
+            if $fields[CONTROLLER] ne $self->{controller};
+
+        $self->error ("Disk ", $self->{parent}->devpath,
+                      " exists, but is associated to a different ",
+                      "RAID unit. Expected: $self->{unit}")
+            if $fields[UNIT] ne $self->{unit};
+
+        return 0;
     } elsif ($raid_status =~ m{^($self->{vendor},
-				   $self->{controller},
-				   $self->{unit}.*)}xmi) {
-	@fields = split (/,/, $1);
-	if ($fields[OSDISK] ne NODISK) {
-	    $self->error ("The selected RAID array holds ",
-			      "a different device: $fields[OSDISK]");
-	    return 0;
-	}
+             $self->{controller},
+             $self->{unit}.*)}xmi) {
+        @fields = split (/,/, $1);
+        if ($fields[OSDISK] ne NODISK) {
+            $self->error ("The selected RAID array holds ",
+                          "a different device: $fields[OSDISK]");
+            return 0;
+        }
     }
 
     # If there are other differences, we can try to fix them.
@@ -242,16 +244,16 @@ sub destroy_if_needed
     my @candidates = grep (m{$self->{controller}}, split (/\n/, $raid_status));
     my @l = grep (m{$self->{unit}}, @candidates);
     if (@l) {
-	my @fields = split (/,/, $l[0]);
-	my @disks = split (/:/, $fields[DISKLIST]);
-	if ($disks[0] eq "") {
-	    shift (@disks);
-	}
-	if (($fields[RAIDLEVEL] ne $self->{level}) or
-	    ($fields[STRIPESIZE] ne $self->{stripe_size}) or
-	    @disks != @{$self->{device_list}}) {
-	    return $self->do_destroy ($l[0]);
-	}
+        my @fields = split (/,/, $l[0]);
+        my @disks = split (/:/, $fields[DISKLIST]);
+        if ($disks[0] eq "") {
+            shift (@disks);
+        }
+        if (($fields[RAIDLEVEL] ne $self->{level}) or
+            ($fields[STRIPESIZE] ne $self->{stripe_size}) or
+            @disks != @{$self->{device_list}}) {
+            return $self->do_destroy ($l[0]);
+        }
     }
     $self->debug (5, "Didn't have to destroy array $self->{unit}");
     return 0;
@@ -269,7 +271,7 @@ sub do_destroy
     my ($self, $raidinfo) = @_;
     $self->debug (5, "Must destroy array $self->{unit}");
     my $proc = CAF::Process->new ([HWRAIDDESTROY], log => $self,
-				  stdin => "$raidinfo\n");
+                                  stdin => "$raidinfo\n");
     my $err = $proc->execute();
     return $?
 }
@@ -291,6 +293,7 @@ sub create_if_needed
     my @raidline;
     return 0 if $raid_status =~ m{$self->{unit}};
     $self->debug (5, "Array $self->{unit} doesn't exist. Creating it.");
+
     my $disklist = join (DISKSEP, "", @{$self->{device_list}});
     $raidline[VENDOR] = lc ($self->{vendor});
     $raidline[CONTROLLER] = $self->{controller};
@@ -303,7 +306,7 @@ sub create_if_needed
     $raidline[RAIDSTATUS] = EMPTY;
 
     $proc = CAF::Process->new ([HWRAIDCREATE], log => $self,
-			       stdin => join (JOINER, @raidline) . "\n");
+                               stdin => join (JOINER, @raidline) . "\n");
     $proc->execute;
     return $?;
 }
@@ -311,19 +314,3 @@ sub create_if_needed
 
 1;
 
-__END__
-
-=pod
-
-=head1 LIMITATIONS
-
-This class doesn't support a RAID array spanned on several RAID
-controllers.
-
-Only global spares are supported.
-
-=head1 SEE ALSO
-
-L<http://ahorvath.web.cern.ch/ahorvath/hwraidtools/index.html>
-
-=cut

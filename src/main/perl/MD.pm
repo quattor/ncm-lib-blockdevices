@@ -1,30 +1,24 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-################################################################################
+#${PMpre} NCM::MD${PMpost}
 
 =pod
 
-=head1 MD
+=head1 NAME
+
+NCM::MD
 
 This class defines a software RAID device. It is part of the
 blockdevices framework.
 
 =cut
 
-package NCM::MD;
 
-use strict;
-use warnings;
+use EDG::WP4::CCM::Path qw(unescape);
 
-use EDG::WP4::CCM::Element qw(unescape);
-use EDG::WP4::CCM::Configuration;
 use CAF::FileReader;
 use CAF::Process;
 use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::BlockdevFactory qw (build build_from_dev);
-our @ISA = qw (NCM::Blockdevices);
+use parent qw(NCM::Blockdevices);
 
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant MDSTAT => "/proc/mdstat";
@@ -113,7 +107,7 @@ sub create
 
     if ($self->devexists) {
         $self->debug (5, "Device ", $self->devpath, " already exists.",
-			              " Leaving.");
+                      " Leaving.");
         return 0;
     }
     foreach my $dev (@{$self->{device_list}}) {
@@ -174,12 +168,9 @@ sub devexists
     }
 
     CAF::Process->new([MDASSEMBLE, $self->devpath, @devnames],
-                       log => $self
-                       )->execute();
-    CAF::Process->new([MDQRY, $self->devpath],
-                       log => $self
-                       )->execute();
-    my $ec=$?;
+                       log => $self)->execute();
+    CAF::Process->new([MDQRY, $self->devpath], log => $self)->execute();
+    my $ec = $?;
     $self->debug(3, "querying $self->{devname} returned $ec");
     return ($ec == 0);
 }
@@ -189,7 +180,7 @@ sub devexists
 
 =head2 is_correct_device
 
-Returns true if this is the device that corresponds with the device 
+Returns true if this is the device that corresponds with the device
 described in the profile.
 
 The method can log an error, as it is more of a sanity check then a test.
@@ -242,11 +233,11 @@ sub new_from_system
     my $self = {
         devname => $devname,
         log => ($opts{log} || $reporter),
-};
+    };
     bless ($self, $class);
 
     my $lines =  CAF::Process->new([MDQUERY, $dev],
-                                    log => $self)->output();
+                                   log => $self)->output();
     my @devlist;
     $lines =~ m{Raid Level : (\w+)$}omg;
     my $level = uc ($1);
@@ -313,7 +304,7 @@ sub del_pre_ks
     my $self = shift;
 
     $self->ks_is_correct_device;
-    
+
     print join (" ", MDSTOP, $self->devpath), "\n";
     foreach my $dev (@{$self->{device_list}}) {
         print join (" ", MDZERO, $dev->devpath), "\n";
@@ -362,7 +353,7 @@ EOC
 =head2 ks_is_correct_device
 
 Print the kickstart pre bash code to determine if
-the device is the correct device or not. 
+the device is the correct device or not.
 
 Currently supports checking the device_list.
 
@@ -375,7 +366,7 @@ sub ks_is_correct_device
     foreach my $dev (@{$self->{device_list}}) {
         $dev->ks_is_correct_device;
     }
-    
+
 }
 
 1;

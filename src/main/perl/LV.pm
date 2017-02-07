@@ -1,28 +1,20 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} NCM::LV${PMpost}
 
 =pod
 
-=head1 LV
+=head1 NAME
+
+NCM::LV
 
 This class defines a logical volume (LV) for LVM. It is part of the
 blockdevices framework.
 
 =cut
 
-package NCM::LV;
-
-use strict;
-use warnings;
 use CAF::Process;
-use EDG::WP4::CCM::Element;
-use EDG::WP4::CCM::Configuration;
-use LC::Process qw(execute output);
 use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::LVM;
-our @ISA = qw(NCM::Blockdevices);
+use parent qw(NCM::Blockdevices);
 
 use constant BASEPATH => "/system/blockdevices/";
 use constant VGS      => "volume_groups/";
@@ -92,7 +84,7 @@ sub _initialize
     # Defaults to false is not defined in AII
     $self->{ks_lvmforce} = $config->elementExists(AII_LVMFORCE_PATH) ?
          $config->getElement(AII_LVMFORCE_PATH)->getValue : 0;
-    
+
     # TODO: consider the stripe size when computing the alignment
     $self->_set_alignment($st, $self->{volume_group}->{alignment}, 0);
     return $self;
@@ -137,13 +129,14 @@ Returns cache lv convert command
 
 sub _gen_convert_command
 {
-    my $self= shift;
-    my @opts = ();
+    my $self = shift;
+    my @opts;
     if ($self->{cachemode}){
         @opts = (LVCACHEMODE, $self->{cachemode});
-    }    
+    }
     my $command = [LVCONVERT, '-y', LVTYPE, 'cache', @opts, LVCACHEPOOL,
-        "$self->{volume_group}->{devname}/$self->{cache_lv}->{devname}", "$self->{volume_group}->{devname}/$self->{devname}"];
+                   "$self->{volume_group}->{devname}/$self->{cache_lv}->{devname}",
+                   "$self->{volume_group}->{devname}/$self->{devname}"];
     return $command;
 }
 
@@ -162,7 +155,7 @@ sub lvcache_ks
     $self->{cache_lv}->create_ks;
     my $command = join(" ", @{$self->_gen_convert_command()});
 
-    print <<EOC 
+    print <<EOC
     lvm lvs $self->{volume_group}->{devname}/$self->{devname} | awk '{ print \$5 }' | grep $self->{cache_lv}->{devname} > /dev/null
     if [ "\$?" -ne 0 ]
     then
@@ -189,12 +182,12 @@ sub create_cache
     my $self = shift;
     my $ec = $self->{cache_lv}->create;
     if ($ec != 0) {
-        return $?; 
+        return $?;
     }
-    my $output = CAF::Process->new([LVLVS, "$self->{volume_group}->{devname}/$self->{devname}"])->output();
+    my $output = CAF::Process->new([LVLVS, "$self->{volume_group}->{devname}/$self->{devname}"], log => $self)->output();
     my @lines = split(/\n/, $output);
     if ($lines[1] && $lines[1] =~ /\s\[$self->{cache_lv}->{devname}\]\s/){
-        $self->debug(5, "Cache $self->{cache_lv}->{devname} on logical volume $self->devpath already exists. Leaving"); 
+        $self->debug(5, "Cache $self->{cache_lv}->{devname} on logical volume $self->devpath already exists. Leaving");
         return 0;
     }
     my $command = $self->_gen_convert_command();
@@ -202,7 +195,7 @@ sub create_cache
     if ($?) {
         $self->error("Failed to make cache $self->{cache_lv}->{devname} on $self->{devname}");
     }
-    return $?; 
+    return $?;
 }
 
 =pod
@@ -228,7 +221,7 @@ sub create
     if ($self->devexists) {
         if ($self->{cache}) {
             return $self->create_cache();
-        } else {  
+        } else {
             $self->debug(5, "Logical volume ", $self->devpath, " already exists. Leaving");
             return 0;
         }
@@ -264,7 +257,7 @@ sub create
         @chunk_opts = (LVCHUNKSIZE, $self->{chunksize});
     }
     my $command = [LVCREATE, @type_opts, @chunk_opts, $szflag, $sz, LVNAME, $self->{devname},
-                $self->{volume_group}->{devname}, @stopt, @devices];
+                   $self->{volume_group}->{devname}, @stopt, @devices];
 
     CAF::Process->new($command, log => $self)->execute();
     if ($?) {
@@ -275,7 +268,7 @@ sub create
         return $self->create_cache();
     }
     return 0;
-    
+
 }
 
 =pod
@@ -295,7 +288,7 @@ sub remove
     return 1 if (!$self->is_correct_device);
 
     if ($self->devexists) {
-        execute([LVREMOVE, LVRMARGS, $self->{volume_group}->devpath . "/$self->{devname}"]);
+        CAF::Process->new([LVREMOVE, LVRMARGS, $self->{volume_group}->devpath . "/$self->{devname}"], log => $self)->execute();
         if ($?) {
             $self->error("Failed to remove logical volume ", $self->devpath);
             return $?;
@@ -318,7 +311,7 @@ Returns true if the device already exists in the system.
 sub devexists
 {
     my $self = shift;
-    CAF::Process->new([LVDISP, "$self->{volume_group}->{devname}/$self->{devname}"],  log => $self)->execute();
+    CAF::Process->new([LVDISP, "$self->{volume_group}->{devname}/$self->{devname}"], log => $self)->execute();
     return !$?;
 }
 
@@ -410,7 +403,7 @@ sub del_pre_ks
     my $devpath = $self->{volume_group}->devpath . "/$self->{devname}";
 
     my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
-    
+
     print <<EOF;
 wipe_metadata $devpath 1
 lvm lvremove $force $devpath
@@ -436,21 +429,21 @@ sub create_ks
             );
     }
 
-    my @devices = (); 
-    if ($self->{devices}){   
+    my @devices = ();
+    if ($self->{devices}){
         foreach my $dev (@{$self->{devices}}) {
             push (@devices, $dev->devpath);
-        }   
+        }
     }
 
-    my @type_opts = (); 
+    my @type_opts = ();
     if ($self->{type}) {
         @type_opts = (LVTYPE, $self->{type});
     }
-    my @chunk_opts = (); 
+    my @chunk_opts = ();
     if ($self->{chunksize}) {
         @chunk_opts = (LVCHUNKSIZE, $self->{chunksize});
-    }   
+    }
 
 
     print <<EOC;
