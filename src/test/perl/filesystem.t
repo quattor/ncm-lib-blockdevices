@@ -211,7 +211,7 @@ command_history_reset;
 $forcetruefs->formatfs;
 ok(command_history_ok(["mkfs.ext3.*/dev/sdb1"]), 'force true mkfs.ext3 called');
 
-# filesystem is present and it's the correct one
+# filesystem is present and it's the valid one
 #   mkfs not called
 set_output("file_s_sdb1_ext3");
 command_history_reset;

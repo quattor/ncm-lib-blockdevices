@@ -121,7 +121,7 @@ sub get_clear_mb
 
 =pod
 
-=head2 is_correct_device
+=head2 is_valid_device
 
 Returns true if this is the device that corresponds with the device
 described in the profile.
@@ -130,11 +130,11 @@ The method can log an error, as it is more of a sanity check then a test.
 
 =cut
 
-sub is_correct_device
+sub is_valid_device
 {
     my $self = shift;
-    # Legacy behaviour is no checking; always assuming correct device.
-    $self->verbose ("is_correct_device method not defined. Returning true for legacy behaviour.");
+    # Legacy behaviour is no checking; always assuming valid device.
+    $self->verbose ("is_valid_device method not defined. Returning true for legacy behaviour.");
     return 1;
 }
 
@@ -174,7 +174,7 @@ sub size
 
 =pod
 
-=head2 correct_size_interval
+=head2 valid_size_interval
 
 Compute the smallest interval for the expected C<size>
 given the conditions (one or more of):
@@ -196,11 +196,11 @@ C<diff> MiB.
 
 =cut
 
-sub correct_size_interval
+sub valid_size_interval
 {
     my $self = shift;
 
-    my @conds = sort keys %{$self->{correct}->{size}};
+    my @conds = sort keys %{$self->{validate}->{size}};
     $self->verbose("Going to use ", scalar @conds, " conditions: ", join(", ", @conds));
 
     my ($min, $max);
@@ -222,15 +222,15 @@ sub correct_size_interval
 
     foreach my $cond (@conds) {
         if ($cond eq "diff") {
-            my $diff =  $self->{correct}->{size}->{diff};
+            my $diff =  $self->{validate}->{size}->{diff};
             $update_min_max->($self->{size} - $diff, $self->{size} + $diff);
             $self->verbose("Diff defined $diff, updated min/max $min / $max");
         } elsif ($cond eq "fraction") {
-            my $frac = $self->{correct}->{size}->{fraction};
+            my $frac = $self->{validate}->{size}->{fraction};
             $update_min_max->((1-$frac) * $self->{size}, (1+$frac) * $self->{size});
             $self->verbose("Fraction defined $frac, updated min/max $min / $max");
         } else {
-            $self->error("is_correct_size unknown condition $cond");
+            $self->error("is_valid_size unknown condition $cond");
             return;
         }
     };
@@ -250,7 +250,7 @@ sub correct_size_interval
     $max = 0 if ($max < 0);
 
     if($min > $max) {
-        $self->error("is_correct_size minimum $min larger then maximum $max");
+        $self->error("is_valid_size minimum $min larger then maximum $max");
         return;
     }
 
@@ -260,10 +260,10 @@ sub correct_size_interval
 
 =pod
 
-=head2 is_correct_size
+=head2 is_valid_size
 
 Returns true if the size of this device
-lies in the C<correct_size_interval>.
+lies in the C<valid_size_interval>.
 
 Returns undef if device does not exists.
 
@@ -272,18 +272,18 @@ possibly due to incomplete profiles.
 
 =cut
 
-sub is_correct_size
+sub is_valid_size
 {
     my $self = shift;
 
     if(! defined($self->{size})) {
         $self->error("Attribute 'size' not found in profile");
-        # considered failed. don't specify "correct/size" if you don't want this to run?
+        # considered failed. don't specify "validate/size" if you don't want this to run?
         return 0;
     }
 
-    if(! $self->{correct}->{size}) {
-        $self->error("Sub-path 'correct/size' not found in profile");
+    if(! $self->{validate}->{size}) {
+        $self->error("Sub-path 'validate/size' not found in profile");
         # considered failed. the code calling this method should check the existance
         return 0;
     }
@@ -298,7 +298,7 @@ sub is_correct_size
             return 1;
         } else {
             $self->error("expected size 0 not supported");
-            # considered failed. don't specify "correct/size" if you don't want this to run?
+            # considered failed. don't specify "validate/size" if you don't want this to run?
             return 0;
         }
     }
@@ -307,7 +307,7 @@ sub is_correct_size
     my $msg = "found size $size MiB and expected size $self->{size} MiB";
     $self->verbose("Size difference of $diff MiB between $msg");
 
-    my ($min, $max) = $self->correct_size_interval();
+    my ($min, $max) = $self->valid_size_interval();
 
     if($size >= $min && $size <= $max) {
         $self->verbose("Found size $size in allowed interval [$min,$max] MiB");
@@ -320,53 +320,53 @@ sub is_correct_size
 
 =pod
 
-=head2 ks_is_correct_device
+=head2 ks_is_valid_device
 
 Print the kickstart pre bash code to determine if
-the device is the correct device or not.
+the device is the valid device or not.
 
 =cut
 
-sub ks_is_correct_device
+sub ks_is_valid_device
 {
     my $self = shift;
-    $self->verbose ("ks_is_correct_device method not defined. Not printing anything for legacy behaviour.");
+    $self->verbose ("ks_is_valid_device method not defined. Not printing anything for legacy behaviour.");
     return 1;
 }
 
 =pod
 
-=head2 ks_pre_is_correct_size
+=head2 ks_pre_is_valid_size
 
-Kickstart code in pre section to determine if device has correct size.
-Uses the bash function C<correct_disksize_MiB> available in the pre section.
+Kickstart code in pre section to determine if device has valid size.
+Uses the bash function C<valid_disksize_MiB> available in the pre section.
 
 =cut
 
-sub ks_pre_is_correct_size
+sub ks_pre_is_valid_size
 {
     my $self = shift;
 
     if(! defined($self->{size})) {
         $self->error("Attribute 'size' not found in profile");
-        # considered failed. don't specify "correct/size" if you don't want this to run?
+        # considered failed. don't specify "validate/size" if you don't want this to run?
         return;
     }
 
-    if(! $self->{correct}->{size}) {
-        $self->error("Sub-path 'correct/size' not found in profile");
+    if(! $self->{validate}->{size}) {
+        $self->error("Sub-path 'validate/size' not found in profile");
         # considered failed. the code calling this method should check the existance
         return;
     }
 
     if($self->{size} == 0) {
         $self->error("Expected size 0 not supported in kickstart");
-        # considered failed. don't specify "correct/size" if you don't want this to run?
+        # considered failed. don't specify "validate/size" if you don't want this to run?
         return;
     }
 
     my $devpath = $self->devpath;
-    my ($min, $max) = $self->correct_size_interval();
+    my ($min, $max) = $self->valid_size_interval();
     # require integer for bash comparison
     # use ceil(min) and floor(max) so min > real min and max < real max
     $min = ceil($min);
@@ -375,11 +375,11 @@ sub ks_pre_is_correct_size
     # TODO: %pre --erroronfail to avoid boot loop
     #  (but then requires console access/power control to get past)
 
-    # The correct_disksize_MiB also logs/echoes some error messages
+    # The valid_disksize_MiB also logs/echoes some error messages
     print <<"EOF";
-correct_disksize_MiB $devpath $min $max
+valid_disksize_MiB $devpath $min $max
 if [ \$? -ne 0 ]; then
-    echo "[ERROR] Incorrect size for $devpath. Exiting pre with exitcode 1."
+    echo "[ERROR] Invalid size for $devpath. Exiting pre with exitcode 1."
     exit 1
 fi
 EOF
@@ -399,6 +399,7 @@ is a labeled swap filesystem. If C<ksfsformat> is true and C<mkfsopts> are used,
 a warning is issued (as the kickstart commands do not support mkfs options).
 
 =cut
+
 sub ksfsformat
 {
     my ($self, $fs) = @_;

@@ -56,7 +56,7 @@ sub create
 {
 	my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (! $self->is_valid_device);
 
 	# Don't overwrite existing files. Data loss and symlink
 	# attacks!
@@ -86,7 +86,7 @@ sub remove
 {
 	my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (! $self->is_valid_device);
 
 	return unlink ($self->devpath);
 }

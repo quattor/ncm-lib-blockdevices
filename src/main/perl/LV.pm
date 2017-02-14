@@ -214,7 +214,7 @@ sub create
 {
     my $self = shift;
 
-    return 1 if (!$self->is_correct_device);
+    return 1 if (!$self->is_valid_device);
 
     my ($szflag, $sz);
 
@@ -285,7 +285,7 @@ sub remove
 {
     my $self = shift;
 
-    return 1 if (!$self->is_correct_device);
+    return 1 if (!$self->is_valid_device);
 
     if ($self->devexists) {
         CAF::Process->new([LVREMOVE, LVRMARGS, $self->{volume_group}->devpath . "/$self->{devname}"], log => $self)->execute();
@@ -398,7 +398,7 @@ sub del_pre_ks
 {
     my $self = shift;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
     my $devpath = $self->{volume_group}->devpath . "/$self->{devname}";
 
@@ -419,7 +419,7 @@ sub create_ks
 
     return unless $self->should_create_ks;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
     my @stopts = ();
     if (exists $self->{stripe_size}) {

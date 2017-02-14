@@ -4,5 +4,5 @@ object template blockdevices_gpt_partition_size;
 include 'blockdevices';
 
 # size check for holding_dev
-"/system/blockdevices/physical_devs/sdb/correct/size/diff" = 100;
+"/system/blockdevices/physical_devs/sdb/validate/size/diff" = 100;
 

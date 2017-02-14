@@ -150,7 +150,7 @@ sub _initialize
     $self->{holding_dev} = NCM::Disk->new (BASEPATH . DISK .
                                            $st->{holding_dev},
                                            $config);
-    $self->{correct} = $st->{correct} if (exists $self->{correct});
+    $self->{validate} = $st->{validate} if (exists $self->{validate});
 
     $self->_set_alignment($st, 0, 0);
     return $self;
@@ -212,7 +212,7 @@ sub create
 {
     my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (! $self->is_valid_device);
 
     # Check the device doesn't exist already.
     if ($self->devexists) {
@@ -270,7 +270,7 @@ sub remove
 {
     my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (! $self->is_valid_device);
 
     $self->debug (5, "Removing $self->{devname}");
     my $num = $self->partition_number;
@@ -292,24 +292,24 @@ sub remove
 
 =pod
 
-=head2 is_correct_device
+=head2 is_valid_device
 
 Returns true if this is the device that corresponds with the device
 described in the profile.
 
 The method can log an error, as it is more of a sanity check then a test.
 
-Implemented by checking if holding device is correct and size of partition.
+Implemented by checking if holding device is valid and size of partition.
 
 =cut
 
-sub is_correct_device
+sub is_valid_device
 {
     my $self = shift;
 
-    if(! $self->{holding_dev}->is_correct_device) {
+    if(! $self->{holding_dev}->is_valid_device) {
         $self->error("partition holding_device ", $self->{holding_dev}->{devname},
-                     " is not the correct device");
+                     " is not the valid device");
         return 0;
     }
 
@@ -533,7 +533,7 @@ sub del_pre_ks
 {
     my $self = shift;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
     my $n = $self->partition_number;
     my $devpath = $self->{holding_dev}->devpath;
@@ -577,7 +577,7 @@ sub create_pre_ks
 
     return unless $self->should_create_ks;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
     my $n = $self->partition_number;
     my $prev_n = $n - 1;
@@ -650,19 +650,19 @@ EOF
 
 =pod
 
-=head2 ks_is_correct_device
+=head2 ks_is_valid_device
 
 Print the kickstart pre bash code to determine if
-the device is the correct device or not.
+the device is the valid device or not.
 Currently supports checking the holding_dev.
 
 =cut
 
-sub ks_is_correct_device
+sub ks_is_valid_device
 {
     my $self = shift;
 
-    $self->{holding_dev}->ks_is_correct_device;
+    $self->{holding_dev}->ks_is_valid_device;
 
 };
 

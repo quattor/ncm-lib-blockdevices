@@ -282,9 +282,9 @@ sub formatfs
 {
     my $self = shift;
 
-    if (! $self->{block_device}->is_correct_device) {
+    if (! $self->{block_device}->is_valid_device) {
         $self->error("Filesystem mountpoint $self->{mountpoint}",
-                          " not correct blockdev ", $self->{block_device}->devpath);
+                     " not valid blockdev ", $self->{block_device}->devpath);
         $? = 1;
         return 1;
     };
@@ -416,9 +416,9 @@ sub create_if_needed
     $self->debug (5, "Filesystem mountpoint $self->{mountpoint}",
                       " blockdev ", $self->{block_device}->devpath);
 
-    if (! $self->{block_device}->is_correct_device) {
+    if (! $self->{block_device}->is_valid_device) {
         $self->error("Filesystem mountpoint $self->{mountpoint}",
-                          " not correct blockdev ", $self->{block_device}->devpath);
+                     " not valid blockdev ", $self->{block_device}->devpath);
         $? = 1;
         return 1;
     };
@@ -465,9 +465,9 @@ sub format_if_needed
 {
     my ($self, %protected) = @_;
 
-    if (! $self->{block_device}->is_correct_device) {
+    if (! $self->{block_device}->is_valid_device) {
         $self->error("Filesystem mountpoint $self->{mountpoint}",
-                     " not correct blockdev ", $self->{block_device}->devpath);
+                     " not valid blockdev ", $self->{block_device}->devpath);
 		$? = 1;
         return 1;
     };
@@ -586,7 +586,7 @@ sub format_ks
 
     return unless $self->should_create_ks;
 
-    $self->{block_device}->ks_is_correct_device;
+    $self->{block_device}->ks_is_valid_device;
 
     print join (" ", "grep", "-q", "'" . $self->{block_device}->devpath . "\$'",
                 PART_FILE, "&&", "")
