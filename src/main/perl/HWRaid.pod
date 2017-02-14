@@ -1,7 +1,0 @@
-=pod
-
-=head1 NCM::HWRaid
-
-See source code
-
-=cut

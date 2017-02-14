@@ -1,7 +1,0 @@
-=pod
-
-=head1 NCM::Partition
-
-See source code
-
-=cut

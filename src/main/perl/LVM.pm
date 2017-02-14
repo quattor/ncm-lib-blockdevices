@@ -1,11 +1,10 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} NCM::LVM${PMpost}
 
 =pod
 
-=head1 LVM
+=head1 NAME
+
+NCM::LVM
 
 This class defines a volume group (VG) for LVM. It is part of the
 blockdevices framework.
@@ -26,23 +25,13 @@ The devices the volume group consists of.
 
 =cut
 
-package NCM::LVM;
-
-use strict;
-
-# Don't want warnings for this
-no warnings;
-use constant PVS => qw(/usr/sbin/pvs -o name,vg_name);
-
-use warnings;
+use constant PVS => ('/usr/sbin/pvs', '-o', 'name,vg_name');
 
 use CAF::Process;
-use EDG::WP4::CCM::Element;
-use EDG::WP4::CCM::Configuration;
-use LC::Process qw(execute output);
+
 use NCM::Blockdevices qw ($reporter PART_FILE);
 use NCM::BlockdevFactory qw(build build_from_dev);
-our @ISA = qw(NCM::Blockdevices);
+use parent qw(NCM::Blockdevices);
 
 use constant BASEPATH => "/system/blockdevices/";
 use constant DISK     => "physical_devs/";
@@ -107,14 +96,13 @@ sub create
     }
     foreach my $dev (@{$self->{device_list}}) {
         $dev->create == 0 or return $?;
-        execute([PVCREATE, $dev->devpath])
+        CAF::Process->new([PVCREATE, $dev->devpath], log => $self)->execute()
             if !$self->pvexists($dev->devpath);
         return $? if $?;
         push(@devnames, $dev->devpath);
     }
-    execute([VGCREATE, $self->{devname}, VGCOPTS, @devnames]);
-    $self->error("Failed to create volume group $self->{devname}")
-        if $?;
+    CAF::Process->new([VGCREATE, $self->{devname}, VGCOPTS, @devnames], log => $self)->execute();
+    $self->error("Failed to create volume group $self->{devname}") if $?;
     return $?;
 }
 
@@ -139,22 +127,21 @@ sub remove
     return 1 if (!$self->is_correct_device);
 
     # Remove the VG only if it has no logical volumes left.
-    my @n = split /:/, output((VGDISPLAY, $self->{devname}));
+    my $output = CAF::Process->new([VGDISPLAY, $self->{devname}], log => $self)->output();
+    my @n = split /:/, $output;
     if ($n[EXISTS]) {
         $self->debug(
-            5, "Volume group $self->{devname} ",
-            "has ", $n[EXISTS],
-            " logical volumes left.",
-            " Not removing yet"
+            5, "Volume group $self->{devname} has",
+            $n[EXISTS], " logical volumes left. Not removing yet"
         );
         return 0;
     }
     if ($self->devexists) {
-        execute([VGREMOVE, $self->{devname}]);
+        CAF::Process->new([VGREMOVE, $self->{devname}], log => $self)->execute();
         return 0 if $?;
     }
     foreach my $dev (@{$self->{device_list}}) {
-        execute([PVREMOVE, $dev->devpath]);
+        CAF::Process->new([PVREMOVE, $dev->devpath], log => $self)->execute();
         $self->error("Failed to remove labels on PV", $dev->devpath) if $?;
         $dev->remove == 0 or last;
     }
@@ -170,8 +157,10 @@ sub new_from_system
     my $devname = $1;
     $devname =~ s/-{2}/-/g;
 
+    my $log = $opts{log} || $reporter;
+
     # Have to do it this way because of a nasty bug on vgs.
-    my $pvs = output(PVS);
+    my $pvs = CAF::Process->new([PVS], log => $log)->output();
     my @pv;
     while ($pvs =~ m{^\s*(\S+)\s+$devname$}omgc) {
         push(@pv, build_from_dev($1, $cfg, %opts));
@@ -179,7 +168,7 @@ sub new_from_system
     my $self = {
         devname     => $devname,
         device_list => \@pv,
-        log => ($opts{log} || $reporter),
+        log => $log,
     };
     return bless($self, $class);
 }
@@ -235,7 +224,8 @@ sub free_extents
 
     local $ENV{LANG} = 'C';
 
-    my @l = split(":", output(VGDISPLAY, $self->{devname}));
+    my $output = CAF::Process->new([VGDISPLAY, $self->{devname}], log => $self)->output();
+    my @l = split(":", $output);
     return $l[EXTENTS];
 }
 
@@ -254,7 +244,7 @@ sub devpath
     return "/dev/$self->{devname}";
 }
 
-=pod 
+=pod
 
 =head2 pvexists
 
@@ -266,7 +256,8 @@ sub pvexists
 {
     my ($self, $path) = @_;
 
-    output(PVDISPLAY, $path);
+    my $output = CAF::Process->new([PVDISPLAY, $path], log => $self)->output();
+
     return !$?;
 }
 

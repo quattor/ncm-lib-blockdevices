@@ -1,15 +1,23 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-package NCM::Tmpfs;
+#${PMpre} NCM::Tmpfs${PMpost}
 
-use strict;
-use warnings;
+=pod
+
+=head1 NAME
+
+NCM::Tmpfs
+
+=head1 DESCRIPTION
+
+Dummy module, useful, f.i, for tmpfs handling.
+
+These devices won't appear on the Kickstart file, and all operations
+on them always succeed, as nothing is done.
+
+=cut
 
 use NCM::Blockdevices qw ($reporter);
 
-our @ISA = qw{NCM::Blockdevices};
+use parent qw(NCM::Blockdevices);
 
 # Returns 0 on success.
 sub create
@@ -46,23 +54,4 @@ sub _size_in_byte
     $self->error ("_size_in_byte method not defined for this class");
 }
 
-__END__
-
-=pod
-
-=head1 DESCRIPTION
-
-Dummy module, useful, f.i, for tmpfs handling.
-
-These devices won't appear on the Kickstart file, and all operations
-on them always succeed, as nothing is done.
-
-=head1 SEE ALSO
-
-L<NCM::Blockdevices>
-
-=head1 AUTHOR
-
-Luis Fernando Muñoz Mejías <Luis.Fernando.Munoz.Mejias@cern.ch>
-
-=cut
+1;

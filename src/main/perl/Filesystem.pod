@@ -1,7 +1,0 @@
-=pod
-
-=head1 NCM::Filesystem
-
-See source code
-
-=cut

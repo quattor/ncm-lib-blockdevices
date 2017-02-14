@@ -1,23 +1,10 @@
-################################################################################
-# This is 'ncm-lib-blockdevices.pod', a ncm-lib-blockdevices's file
-################################################################################
-#
-# VERSION:    1.0.0, 28/10/10 14:59
-# AUTHOR:     Tim Bell, Andras Horvath and Luis Fernando Muñoz
-# MAINTAINER: Luis Fernando Muñoz
-# LICENSE:    http://cern.ch/eu-datagrid/license.html
-#
-################################################################################
-# Coding style: emulate <TAB> characters with 4 spaces, thanks!
-################################################################################
-
 =pod
 
 =head1 SYNOPSIS
 
 This is the Perl library for handling block devices and filesystems
-from Quattor. It can be resumed in two classes: C<Filesystem> and
-C<Blockdevices>
+from Quattor. It can be resumed in two classes: L<NCM::Filesystem> and
+L<NCM::Blockdevices>
 
 
 This document briefly describes the design and implementation of the
@@ -31,17 +18,17 @@ There are two main classes on this library:
 
 =over 4
 
-=item * C<Filesystem>
+=item * C<NCM::Filesystem>
 
 A class that models and handles a filesystem. This is the only class
 that should care of block device handling. External code just needs to
 instantiate a C<Filesystem> and the resulting object will do all the
 magic.
 
-=item * C<Blockdevices>
+=item * C<NCM::Blockdevices>
 
 An abstract class modelling any possible block device. This should be
-used only by the C<Filesystem> class. If you have a new type of block
+used only by the C<NCM::Filesystem> class. If you have a new type of block
 device, you should inherit from this class and provide the methods
 listed below.
 
@@ -57,7 +44,7 @@ stated, methods don't accept any arguments.
 
 =head2 File systems
 
-The C<Filesystem> class gives the basic interface to physically
+The C<NCM::Filesystem> class gives the basic interface to physically
 creating file systems as well as their underlying block devices, no
 matter how complex they can get.
 

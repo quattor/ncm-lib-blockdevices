@@ -1,20 +1,16 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
+#${PMpre} NCM::Blockdevices${PMpost}
 
-package NCM::Blockdevices;
+=pod
 
-use strict;
-use warnings;
+=head1 NAME
+
+NCM::Blockdevices
+
+=cut
 
 use Cwd qw(abs_path);
 
-use EDG::WP4::CCM::Element;
-use EDG::WP4::CCM::Configuration;
-use CAF::Object;
 use CAF::Process;
-use Exporter;
 use POSIX qw(ceil floor);
 
 use constant BLKID => "/sbin/blkid";
@@ -26,7 +22,7 @@ use constant DOMAINNAME	=> "/system/network/domainname";
 
 use constant GET_SIZE_BYTES  => qw (/sbin/blockdev --getsize64);
 
-our @ISA = qw/CAF::Object Exporter/;
+use parent qw(CAF::Object Exporter);
 
 our $reporter = $main::this_app;
 
@@ -115,7 +111,7 @@ sub get_clear_mb
     my $self = shift;
 
     # Clear two times the alignment, but at least 1MB
-    # TODO: in what unit is/was the aligment? 
+    # TODO: in what unit is/was the aligment?
     # assuming bytes because the align_sect does a /512 (512 bytes in a sect)
     my $align_mb = int($self->{holding_dev}->{alignment} / (1024*1024) );
     my $clear_mb = $align_mb * 2;
@@ -127,7 +123,7 @@ sub get_clear_mb
 
 =head2 is_correct_device
 
-Returns true if this is the device that corresponds with the device 
+Returns true if this is the device that corresponds with the device
 described in the profile.
 
 The method can log an error, as it is more of a sanity check then a test.
@@ -156,7 +152,7 @@ sub _size_in_byte
 
 =head2 size
 
-Returns size in MiB if the device exists in the system. 
+Returns size in MiB if the device exists in the system.
 Returns undef if the device doesn't exist.
 
 =cut
@@ -176,7 +172,7 @@ sub size
     return $size;
 }
 
-=pod 
+=pod
 
 =head2 correct_size_interval
 
@@ -187,13 +183,13 @@ given the conditions (one or more of):
 
 =item fraction : double
 
-The difference between the found and the expected size is at most 
-C<fraction> of the expected size. C<fraction> is a double 
+The difference between the found and the expected size is at most
+C<fraction> of the expected size. C<fraction> is a double
 (e.g. 1 percent is 0.01).
 
 =item diff : long
 
-The difference between the found and the expected size (in MiB) is at most 
+The difference between the found and the expected size (in MiB) is at most
 C<diff> MiB.
 
 =back
@@ -205,7 +201,7 @@ sub correct_size_interval
     my $self = shift;
 
     my @conds = sort keys %{$self->{correct}->{size}};
-    $self->verbose("Going to use ", scalar @conds, " conditions: ", join(", ", @conds));    
+    $self->verbose("Going to use ", scalar @conds, " conditions: ", join(", ", @conds));
 
     my ($min, $max);
 
@@ -244,7 +240,7 @@ sub correct_size_interval
         $self->info("Minimum undefined after the conditions, using expected size $self->{size}");
         $min = $self->{size};
     }
-    
+
     if(!defined($max)) {
         $self->info("Maximum undefined after the conditions, using expected size $self->{size}");
         $max = $self->{size};
@@ -271,7 +267,7 @@ lies in the C<correct_size_interval>.
 
 Returns undef if device does not exists.
 
-Logs error if attributes are missing (like C<size>), 
+Logs error if attributes are missing (like C<size>),
 possibly due to incomplete profiles.
 
 =cut
@@ -279,7 +275,7 @@ possibly due to incomplete profiles.
 sub is_correct_size
 {
     my $self = shift;
-    
+
     if(! defined($self->{size})) {
         $self->error("Attribute 'size' not found in profile");
         # considered failed. don't specify "correct/size" if you don't want this to run?
@@ -288,28 +284,28 @@ sub is_correct_size
 
     if(! $self->{correct}->{size}) {
         $self->error("Sub-path 'correct/size' not found in profile");
-        # considered failed. the code calling this method should check the existance 
+        # considered failed. the code calling this method should check the existance
         return 0;
     }
 
     my $size = $self->size;
-    
+
     return if (!defined($size));
 
     if($self->{size} == 0) {
         if ($self->{size} == $size) {
             $self->verbose("expected size 0 matches found size");
             return 1;
-        } else {            
+        } else {
             $self->error("expected size 0 not supported");
             # considered failed. don't specify "correct/size" if you don't want this to run?
             return 0;
         }
     }
-    
+
     my $diff = abs($self->{size} - $size);
     my $msg = "found size $size MiB and expected size $self->{size} MiB";
-    $self->verbose("Size difference of $diff MiB between $msg");    
+    $self->verbose("Size difference of $diff MiB between $msg");
 
     my ($min, $max) = $self->correct_size_interval();
 
@@ -350,7 +346,7 @@ Uses the bash function C<correct_disksize_MiB> available in the pre section.
 sub ks_pre_is_correct_size
 {
     my $self = shift;
-    
+
     if(! defined($self->{size})) {
         $self->error("Attribute 'size' not found in profile");
         # considered failed. don't specify "correct/size" if you don't want this to run?
@@ -359,7 +355,7 @@ sub ks_pre_is_correct_size
 
     if(! $self->{correct}->{size}) {
         $self->error("Sub-path 'correct/size' not found in profile");
-        # considered failed. the code calling this method should check the existance 
+        # considered failed. the code calling this method should check the existance
         return;
     }
 
@@ -368,7 +364,7 @@ sub ks_pre_is_correct_size
         # considered failed. don't specify "correct/size" if you don't want this to run?
         return;
     }
-    
+
     my $devpath = $self->devpath;
     my ($min, $max) = $self->correct_size_interval();
     # require integer for bash comparison
@@ -376,7 +372,7 @@ sub ks_pre_is_correct_size
     $min = ceil($min);
     $max = floor($max);
 
-    # TODO: %pre --erroronfail to avoid boot loop 
+    # TODO: %pre --erroronfail to avoid boot loop
     #  (but then requires console access/power control to get past)
 
     # The correct_disksize_MiB also logs/echoes some error messages
@@ -394,25 +390,25 @@ EOF
 
 =pod
 
-=head2 ksfsformat 
+=head2 ksfsformat
 
-Given a filesystem instance C<fs>, return the kickstart formatting command 
+Given a filesystem instance C<fs>, return the kickstart formatting command
 to be used in the kickstart commands section.
-It defaults to C<--noformat> unless the C<ksfsformat> boolean is true, or it 
-is a labeled swap filesystem. If C<ksfsformat> is true and C<mkfsopts> are used, 
+It defaults to C<--noformat> unless the C<ksfsformat> boolean is true, or it
+is a labeled swap filesystem. If C<ksfsformat> is true and C<mkfsopts> are used,
 a warning is issued (as the kickstart commands do not support mkfs options).
-                                                                                                                                                                                         
-=cut                                                                                                                                                                                     
-sub ksfsformat 
+
+=cut
+sub ksfsformat
 {
     my ($self, $fs) = @_;
-    
-    my @format; 
-    
+
+    my @format;
+
     # Anaconda doesn't recognize existing SWAP labels, if
     # we want a label on swap, we'll have to re-format the
     # partition and let it set its own label.
-    # (Re)formatting in the kickstart commands section can 
+    # (Re)formatting in the kickstart commands section can
     # also be forced if needed (e.g. EL7 anaconda does not
     # allow to use an existing filesystem as /)
     if (($fs->{type} eq "swap" && exists $fs->{label}) ||
@@ -424,11 +420,11 @@ sub ksfsformat
             if (exists($fs->{mkfsopts})) {
                 $self->warn("mkfsopts $fs->{mkfsopts} set for mountpoint $fs->{mountpoint}",
                                 "This is not supported in ksfsformat and ignored here");
-            }            
+            }
     } else {
         push(@format, "--noformat");
     }
-    
+
     return @format;
 }
 
@@ -450,15 +446,15 @@ sub create_ks
 
 =head2 has_filesystem
 
-Returns true if the block device has been formatted with a supported filesystem.                                                                                                         
-If a second argument is set, returns true if the block device has been formatted                                                                                                         
-with that filesystem (if it is supported). 
-If the filesystem is not supported, print warning and check with all supported 
-filesystems (default behaviour, returning false might lead to removal of data).                                                                                                                                                                           
-                                                                                                                                                                                         
-Current supported filesystems are ext2-4, reiser, jfs, xfs, btrfs and swap.                                                                                                              
-                                                                                                                                                                                         
-=cut                                                                                                                                                                                     
+Returns true if the block device has been formatted with a supported filesystem.
+If a second argument is set, returns true if the block device has been formatted
+with that filesystem (if it is supported).
+If the filesystem is not supported, print warning and check with all supported
+filesystems (default behaviour, returning false might lead to removal of data).
+
+Current supported filesystems are ext2-4, reiser, jfs, xfs, btrfs and swap.
+
+=cut
 sub has_filesystem
 {
     my ($self, $fs) = @_;
@@ -467,7 +463,7 @@ sub has_filesystem
     my $fsregex = $all_fs_regex;
 
     if ($fs) {
-        # a supported fs?                                                                                                                                                                
+        # a supported fs?
         # case sensitive, should be enforced via schema
         if ($fs !~ m{^$all_fs_regex$}) {
             $self->warn("Requested filesystem $fs is not supported.",
@@ -482,8 +478,8 @@ sub has_filesystem
 
     $self->debug(4, "Checking for filesystem on device $p",
                         " with regexp '$fsregex' in output $f.");
-    
-    # case insensitive match 
+
+    # case insensitive match
     # e.g. file -s returns uppercase filesystem for xfs adn btrfs
     return $f =~ m{\s$fsregex\s+file}i;
 }
@@ -500,7 +496,7 @@ If part is true, we use PARTUUID instead of UUID
 sub get_uuid
 {
     my ($self, $part) = @_;
-    my $device = $self->devpath; 
+    my $device = $self->devpath;
     my $uuid;
     my $output = CAF::Process->new([BLKID, $device], log => $self)->output();
     $part = $part ? 'PART' : '';

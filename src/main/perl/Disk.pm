@@ -1,19 +1,17 @@
-# ${license-info}
-# ${developer-info}
-# ${author-info}
-# ${build-info}
-################################################################################
+#${PMpre} NCM::Disk${PMpost}
 
 =pod
 
-=head1 Disk
+=head1 NAME
+
+NCM::Disk
 
 This class describes a disk or a hardware RAID device. It is part of
 the blockdevices framework.
 
 The available fields on this class are:
 
-=over 4
+=over
 
 =item * devname : string
 
@@ -28,22 +26,19 @@ hardware RAID.
 
 Label (type of partition table) to be used on the disk.
 
+=back
+
 =cut
 
-package NCM::Disk;
-
-use strict;
-use warnings;
 use NCM::Blockdevices qw ($reporter);
 use CAF::Process;
 use CAF::FileEditor;
-use EDG::WP4::CCM::Element qw (unescape);
+use EDG::WP4::CCM::Path qw (unescape);
 use LC::Exception;
-#use NCM::HWRaid;
 
 my $ec = LC::Exception::Context->new->will_store_all;
 
-our @ISA = qw (NCM::Blockdevices);
+use parent qw(NCM::Blockdevices);
 
 use constant DD		=> "/bin/dd";
 use constant CREATE	=> "mklabel";
@@ -181,7 +176,7 @@ sub partitions_in_disk
 
     local $ENV{LANG} = 'C';
 
-    my $line =  CAF::Process->new([PARTED, $self->devpath, PARTEDEXTRA, PARTEDP], 
+    my $line =  CAF::Process->new([PARTED, $self->devpath, PARTEDEXTRA, PARTEDP],
                                   log => $self)->output();
 
     my @n = $line=~m/^\s*\d\s/mg;
@@ -192,7 +187,7 @@ sub partitions_in_disk
 }
 
 # Sets the readahead for the device by modifying /etc/rc.local.
-#   It does NOT actually set the readahead (SETRA and RCLOCAL are not run/executed.). 
+#   It does NOT actually set the readahead (SETRA and RCLOCAL are not run/executed.).
 sub set_readahead
 {
     my $self = shift;
@@ -200,9 +195,9 @@ sub set_readahead
     my $comment = " # Readahead set by Disk.pm";
     my $re = join (" ", SETRA) . ".*", $self->devpath;
     my $okcmd = join (" ", SETRA, $self->{readahead}, $self->devpath);
-    
+
     my $fh = CAF::FileEditor->open (RCLOCAL, log => $self);
-                                            
+
     $fh->add_or_replace_lines ($re,
                                $okcmd,
                                $okcmd.$comment, # append comment
@@ -275,7 +270,7 @@ Returns 0 on success.
 sub remove
 {
     my $self = shift;
-    
+
     return 1 if (! $self->is_correct_device);
 
     unless ($self->partitions_in_disk) {
@@ -291,7 +286,7 @@ sub remove
 
 =head2 is_correct_device
 
-Returns true if this is the device that corresponds with the device 
+Returns true if this is the device that corresponds with the device
 described in the profile.
 
 The method can log an error, as it is more of a sanity check then a test.
@@ -303,12 +298,12 @@ Implemented by size check.
 sub is_correct_device
 {
     my $self = shift;
-    
+
     if (!$self->devexists) {
         $self->error("is_correct_size no disk found for $self->{devname}.");
         return 0;
     }
-    
+
     if ($self->{correct}->{size}) {
         my $correct_size = $self->is_correct_size();
         if (! $correct_size) {
@@ -419,9 +414,9 @@ EOF
 sub del_pre_ks
 {
     my $self = shift;
-    
+
     $self->ks_is_correct_device;
-    
+
 }
 
 
@@ -430,7 +425,7 @@ sub del_pre_ks
 =head2 ks_is_correct_device
 
 Print the kickstart pre bash code to determine if
-the device is the correct device or not. 
+the device is the correct device or not.
 Currently supports size conditions.
 
 =cut
@@ -442,7 +437,7 @@ sub ks_is_correct_device
     if ($self->{correct}->{size}) {
         $self->ks_pre_is_correct_size;
     }
-    
+
 }
 
 1;
