@@ -127,7 +127,7 @@ sub _initialize
     } elsif ($hw && exists($hw->{capacity})) {
         $self->{size} = $hw->{capacity} ;
     }
-    $self->{correct} = $st->{correct};
+    $self->{validate} = $st->{validate};
 
     # If the disk is mentioned by the "ignoredisk --drives=..." statement,
     # then partitions/logical volumes/etc. on this disk should also be ignored
@@ -233,7 +233,7 @@ sub create
 {
     my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (! $self->is_valid_device);
 
     if ($self->disk_empty) {
         $self->set_readahead if $self->{readahead};
@@ -271,7 +271,7 @@ sub remove
 {
     my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (! $self->is_valid_device);
 
     unless ($self->partitions_in_disk) {
         $self->debug (5, "Disk ", $self->devpath,": remove (zeroing partition table)");
@@ -284,7 +284,7 @@ sub remove
 
 =pod
 
-=head2 is_correct_device
+=head2 is_valid_device
 
 Returns true if this is the device that corresponds with the device
 described in the profile.
@@ -295,21 +295,21 @@ Implemented by size check.
 
 =cut
 
-sub is_correct_device
+sub is_valid_device
 {
     my $self = shift;
 
     if (!$self->devexists) {
-        $self->error("is_correct_size no disk found for $self->{devname}.");
+        $self->error("is_valid_size no disk found for $self->{devname}.");
         return 0;
     }
 
-    if ($self->{correct}->{size}) {
-        my $correct_size = $self->is_correct_size();
-        if (! $correct_size) {
+    if ($self->{validate}->{size}) {
+        my $valid_size = $self->is_valid_size();
+        if (! $valid_size) {
             # undef here due to e.g. missing size, non-existing device,...
             # is treated as failure
-            $self->error("is_correct_size failed for $self->{devname}");
+            $self->error("is_valid_size failed for $self->{devname}");
             return 0;
         };
     }
@@ -399,7 +399,7 @@ sub clearpart_ks
 
     my $path = $self->devpath;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
     print <<EOF;
 wipe_metadata $path 1
@@ -415,27 +415,27 @@ sub del_pre_ks
 {
     my $self = shift;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
 }
 
 
 =pod
 
-=head2 ks_is_correct_device
+=head2 ks_is_valid_device
 
 Print the kickstart pre bash code to determine if
-the device is the correct device or not.
+the device is the valid device or not.
 Currently supports size conditions.
 
 =cut
 
-sub ks_is_correct_device
+sub ks_is_valid_device
 {
     my $self = shift;
 
-    if ($self->{correct}->{size}) {
-        $self->ks_pre_is_correct_size;
+    if ($self->{validate}->{size}) {
+        $self->ks_pre_is_valid_size;
     }
 
 }

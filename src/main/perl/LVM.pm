@@ -88,7 +88,7 @@ sub create
     my $self = shift;
     my @devnames;
 
-    return 1 if (!$self->is_correct_device);
+    return 1 if (!$self->is_valid_device);
 
     if ($self->devexists) {
         $self->debug(5, "Volume group $self->{devname} already ", " exists. Leaving");
@@ -124,7 +124,7 @@ sub remove
 {
     my $self = shift;
 
-    return 1 if (!$self->is_correct_device);
+    return 1 if (!$self->is_valid_device);
 
     # Remove the VG only if it has no logical volumes left.
     my $output = CAF::Process->new([VGDISPLAY, $self->{devname}], log => $self)->output();
@@ -353,7 +353,7 @@ sub del_pre_ks
 {
     my $self = shift;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
     my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
 
@@ -382,7 +382,7 @@ sub create_ks
 
     return unless $self->should_create_ks;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
     my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
 

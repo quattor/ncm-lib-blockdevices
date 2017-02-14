@@ -101,7 +101,7 @@ sub create
 {
     my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (! $self->is_valid_device);
 
     my @devnames;
 
@@ -137,7 +137,7 @@ sub remove
 {
     my $self = shift;
 
-    return 1 if (! $self->is_correct_device);
+    return 1 if (! $self->is_valid_device);
 
     CAF::Process->new([MDSTOP, $self->devpath], log => $self)->execute();
     foreach my $dev (@{$self->{device_list}}) {
@@ -178,24 +178,24 @@ sub devexists
 
 =pod
 
-=head2 is_correct_device
+=head2 is_valid_device
 
 Returns true if this is the device that corresponds with the device
 described in the profile.
 
 The method can log an error, as it is more of a sanity check then a test.
 
-Implemented by checking if all devices in C<device_list> are correct.
+Implemented by checking if all devices in C<device_list> are valid.
 
 =cut
 
-sub is_correct_device
+sub is_valid_device
 {
     my $self = shift;
 
     foreach my $dev (@{$self->{device_list}}) {
-        if (! $dev->is_correct_device) {
-            $self->error("$dev->{devname} from device_list is not correct device.");
+        if (! $dev->is_valid_device) {
+            $self->error("$dev->{devname} from device_list is not valid device.");
             return 0;
         }
     }
@@ -303,7 +303,7 @@ sub del_pre_ks
 {
     my $self = shift;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
     print join (" ", MDSTOP, $self->devpath), "\n";
     foreach my $dev (@{$self->{device_list}}) {
@@ -318,7 +318,7 @@ sub create_ks
 
     return unless $self->should_create_ks;
 
-    $self->ks_is_correct_device;
+    $self->ks_is_valid_device;
 
     my @devnames = ();
     my $path = $self->devpath;
@@ -350,21 +350,21 @@ EOC
 
 =pod
 
-=head2 ks_is_correct_device
+=head2 ks_is_valid_device
 
 Print the kickstart pre bash code to determine if
-the device is the correct device or not.
+the device is the valid device or not.
 
 Currently supports checking the device_list.
 
 =cut
 
-sub ks_is_correct_device
+sub ks_is_valid_device
 {
     my $self = shift;
 
     foreach my $dev (@{$self->{device_list}}) {
-        $dev->ks_is_correct_device;
+        $dev->ks_is_valid_device;
     }
 
 }
