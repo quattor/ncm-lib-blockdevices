@@ -54,7 +54,7 @@ use NCM::Disk;
 use CAF::Process;
 use parent qw(NCM::Blockdevices Exporter);
 
-our @EXPORT_OK = qw (partition_compare);
+our @EXPORT_OK = qw (partition_sort);
 
 use constant {
     PARTED		=> "/sbin/parted",
@@ -83,16 +83,35 @@ use constant BLOCKDEV	=> qw (/sbin/blockdev --rereadpt --);
 use constant PARTEDP	=> 'print';
 
 # Returns 1 if $a must be created before $b, -1 if $b must be created
-# before $a, 0 if it doesn't matter. See bug #26137.
+# before $a, 0 if it doesn't matter.
+# $a and $b are global package variables for sort
 sub partition_compare
 {
-    my ($a, $b) = @_;
-
     $a->devpath =~ m!\D(\d+)$!;
     my $an = $1;
     $b->devpath =~ m!\D(\d+)$!;
     my $bn = $1;
     return $an <=> $bn;
+}
+
+=pod
+
+=head2 partition_sort
+
+Return sorted C<NCM::Partition> instances (passed as arguments)
+in order of creation.
+
+=cut
+
+# Due to magic of sort global variables, make a function that sorts
+# instead of trying to get the comparison function working properly
+# outside this package
+
+sub partition_sort
+{
+    # Use array variable
+    my @sorted = sort {partition_compare()} @_;
+    return @sorted;
 }
 
 =pod
