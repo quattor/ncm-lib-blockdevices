@@ -4,74 +4,80 @@ unique template blockdevices;
 "/system/network/hostname" = 'x';
 "/system/network/domainname" = 'y';
 
-"/hardware/harddisks/sdb" = nlist(
-    "capacity", 4000, 
+"/hardware/harddisks/sdb" = dict(
+    "capacity", 4000,
 );
 
-"/system/blockdevices" = nlist (
-	"physical_devs", nlist (
-		"sdb", nlist ("label", "gpt")
+"/system/blockdevices" = dict(
+	"physical_devs", dict(
+		"sdb", dict("label", "gpt"),
+        escape("mapper/abcdef123"), dict("label", "gpt"),
 		),
-	"partitions", nlist (
-		"sdb1", nlist (
+	"partitions", dict(
+		"sdb1", dict(
 			"holding_dev", "sdb",
 			"size", 100,
 			"type", "primary", # no defaults !
 			),
-        "sdb2", nlist (
+        "sdb2", dict(
             "holding_dev", "sdb",
             "size", 100,
             "type", "primary", # no defaults !
             ),
-        "sdb3", nlist (
+        "sdb3", dict(
             "holding_dev", "sdb",
             "size", 2500,
             "type", "extended",
             ),
-        "sdb4", nlist (
+        "sdb4", dict(
             "holding_dev", "sdb",
             "type", "logical",
             "size", 1024,
             ),
+        escape("mapper/abcdef123p1"), dict(
+            "holding_dev", escape("mapper/abcdef123"),
+            "type", "logical",
+            "size", 1024,
+            ),
         ),
-	"volume_groups", nlist (
-		"vg0", nlist (
+	"volume_groups", dict(
+		"vg0", dict (
 			"device_list", list ("partitions/sdb1"),
 			)
 		),
-	"md", nlist (
-		"md0", nlist (
-			"device_list", list ("partitions/sdb1", "partitions/sdb2"),
+	"md", dict(
+		"md0", dict(
+			"device_list", list("partitions/sdb1", "partitions/sdb2"),
 			"raid_level", "RAID0",
 			"stripe_size", 64,
 			),
-        escape("md/myname"), nlist (
+        escape("md/myname"), dict(
             "device_list", list ("partitions/sdb3", "partitions/sdb4"),
             "raid_level", "RAID0",
             "stripe_size", 64,
             "metadata", "1.2",
             ),
 		),
-	"files", nlist (
-		escape ("/home/mejias/kk.ext3"), nlist (
+	"files", dict(
+		escape ("/home/mejias/kk.ext3"), dict(
 			"size", 400,
 			"owner", "mejias",
 			"group", "users",
 			"permissions", 0600
 			)
 		),
-	"logical_volumes", nlist (
-		"lv0", nlist (
+	"logical_volumes", dict(
+		"lv0", dict (
 			"size", 800,
 			"volume_group", "vg0"
 			),
-        "lv1", nlist (
+        "lv1", dict (
             "size", 800,
             "volume_group", "vg0"
             ),
         ),
-    "vxvm", nlist (
-        "vcslab.local", nlist("gnr.0", nlist (
+    "vxvm", dict(
+        "vcslab.local", dict("gnr.0", dict(
             "dev_path", "/dev/vx/dsk/vcslab.local/gnr.0",
             "disk_group", "vcslab.local",
             "volume", "gnr.0"
@@ -79,8 +85,8 @@ unique template blockdevices;
 	)
 );
 
-"/system/filesystems" = list (
-    nlist (
+"/system/filesystems" = list(
+    dict(
         "mount", true,
         "mountpoint", "/Lagoon",
         "preserve", true,
@@ -92,4 +98,3 @@ unique template blockdevices;
         "pass", 1
         )
     );
-		

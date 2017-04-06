@@ -5,6 +5,7 @@ use Test::More;
 use Test::Quattor qw(blockdevices_gpt);
 use helper;
 
+use EDG::WP4::CCM::Path qw(escape);
 use NCM::Partition qw(partition_sort);
 
 is(join(' ', NCM::Partition::PARTEDEXTRA), 'u MiB', "Always extra args 'u MiB' for parted");
@@ -22,7 +23,7 @@ set_output("dd_init_1000");
 set_output("parted_init_sdb_gpt");
 set_output("parted_mkpart_sdb_prim1");
 
-set_disks({sdb => 1});
+set_disks({sdb => 1, 'mapper/abcdef123' => 1});
 
 my $sdb1 = NCM::Partition->new ("/system/blockdevices/partitions/sdb1", $cfg);
 is ($sdb1->create, 0, "Partition $sdb1->{devname} on logical partitions test created correctly");
@@ -80,6 +81,12 @@ ok(command_history_ok([
 my @sorted = partition_sort($sdb4, $sdb2, $sdb3, $sdb1);
 is_deeply([map {$_->{devname}} @sorted], [qw(sdb1 sdb2 sdb3 sdb4)],
           "partitions sorted as expected");
+
+
+my $mpath1 = NCM::Partition->new ("/system/blockdevices/partitions/".escape("mapper/abcdef123p1"), $cfg);
+is ($mpath1->create, 0, "Partition $mpath1->{devname} on logical partitions test created correctly");
+is ($mpath1->begin, 0, 'Begin from 0 (no offset) for 1st mpath partition');
+diag explain $mpath1;
 
 
 done_testing();

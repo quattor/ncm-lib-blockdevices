@@ -33,7 +33,7 @@ Label (type of partition table) to be used on the disk.
 use NCM::Blockdevices qw ($reporter);
 use CAF::Process;
 use CAF::FileEditor;
-use EDG::WP4::CCM::Path qw (unescape);
+use EDG::WP4::CCM::Path qw (unescape escape);
 use LC::Exception;
 
 my $ec = LC::Exception::Context->new->will_store_all;
@@ -45,7 +45,7 @@ use constant CREATE	=> "mklabel";
 use constant NOPART	=> "none";
 use constant RCLOCAL	=> "/etc/rc.local";
 
-use constant HWPATH	=> "/hardware/harddisks/";
+use constant HWPATH	=> "/hardware/harddisks";
 use constant HOSTNAME	=> "/system/network/hostname";
 use constant DOMAINNAME	=> "/system/network/domainname";
 use constant IGNOREDISK => "/system/aii/osinstall/ks/ignoredisk";
@@ -115,12 +115,14 @@ sub _initialize
     $self->{label} = $st->{label};
     $self->{readahead} = $st->{readahead};
 
-    my $hw;
-    $hw = $config->getElement(HWPATH . $1)->getTree if $config->elementExists(HWPATH . $1);
-    # It is a bug in the templates if this happens
-    my $host = $config->getElement (HOSTNAME)->getValue;
-    my $domain = $config->getElement (DOMAINNAME)->getValue;
-    $self->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH) unless $hw;
+    my $harddisks = $config->getTree(HWPATH);
+    my $hw = $harddisks->{$1};
+    if (! $hw && $self->{devname} !~ m{^mapper/}) {
+        # Print fqdn for eg AII debugging
+        my $host = $config->getElement (HOSTNAME)->getValue;
+        my $domain = $config->getElement (DOMAINNAME)->getValue;
+        $self->error("Host $host.$domain: disk $self->{devname} is not defined under " . HWPATH);
+    }
 
     if (exists $st->{size} ) {
         $self->{size} = $st->{size} ;
@@ -156,7 +158,7 @@ sub new_from_system
 
     my ($devname) = $dev =~ m{/dev/(.*)};
 
-    my $cache_key = $class->get_cache_key("/system/blockdevices/physical_devs/" . $devname, $cfg);
+    my $cache_key = $class->get_cache_key("/system/blockdevices/physical_devs/" . escape($devname), $cfg);
     return $disks{$cache_key} if exists $disks{$cache_key};
 
     my $self = {
