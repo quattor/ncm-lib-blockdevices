@@ -20,6 +20,8 @@ use NCM::MD;
 #$CAF::Object::NoAction = 1;
 set_disks({sdb => 1});
 
+mkdir('target/test') if ! -d 'target/test';
+
 my $regexpdir= getcwd()."/src/test/resources/regexps";
 my $cfg = get_config_for_profile('raid');
 my $md = NCM::MD->new ("/system/blockdevices/md/md0", $cfg);
