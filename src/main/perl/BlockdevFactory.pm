@@ -8,7 +8,7 @@ NCM::BlockdevFactory
 
 use NCM::Blockdevices qw ($reporter);
 use NCM::MD;
-use NCM::LVM;
+use NCM::VG;
 use NCM::LV;
 use NCM::Disk;
 use NCM::Partition;
@@ -42,7 +42,7 @@ sub build
     my @args = (BASEPATH . $dev, $config, %opts);
 
     if ($dev =~ m!^volume_groups/!) {
-        return NCM::LVM->new (@args);
+        return NCM::VG->new (@args);
     }
     elsif ($dev =~ m!^md/!) {
         return NCM::MD->new (@args);

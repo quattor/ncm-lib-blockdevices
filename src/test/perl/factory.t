@@ -27,7 +27,7 @@ is (ref ($o), "NCM::Disk", "Disk correctly instantiated");
 $o = build ($cfg, "partitions/sdb1");
 is (ref ($o), "NCM::Partition", "Partition correctly instantiated");
 $o = build ($cfg, "volume_groups/vg0");
-is (ref ($o), "NCM::LVM", "LVM correctly instantiated");
+is (ref ($o), "NCM::VG", "VG correctly instantiated");
 $o = build ($cfg, "md/md0");
 is (ref ($o), "NCM::MD", "MD correctly instantiated");
 $o = build ($cfg, "logical_volumes/lv0");

@@ -13,13 +13,13 @@ use Test::Quattor qw(lvm-aii-requires lvm-aii-not-requires);
 
 use helper;
 
-use NCM::LVM;
+use NCM::VG;
 
 =pod
 
 =head1 SYNOPSIS
 
-Tests for the C<NCM::LVM> module.
+Tests for the C<NCM::VG> module.
 
 =head1 TESTS
 
@@ -32,17 +32,17 @@ more details.
 =cut
 
 my $cfg = get_config_for_profile('lvm-aii-requires');
-my $lvm = NCM::LVM->new ("/system/blockdevices/volume_groups/vg0", $cfg);
-isa_ok($lvm, "NCM::LVM", "LVM correctly instantiated");
+my $lvm = NCM::VG->new ("/system/blockdevices/volume_groups/vg0", $cfg);
+isa_ok($lvm, "NCM::VG", "VG correctly instantiated");
 
 ok($lvm->{_volgroup_required}, "True value for volgroup required");
 
 $cfg = get_config_for_profile('lvm-aii-not-requires');
 
 # Clean up the cache. We really want a different object now.
-%NCM::LVM::vgs = ();
+%NCM::VG::vgs = ();
 
-$lvm = NCM::LVM->new("/system/blockdevices/volume_groups/vg0", $cfg);
+$lvm = NCM::VG->new("/system/blockdevices/volume_groups/vg0", $cfg);
 ok(!$lvm->{_volgroup_required}, "False value when volgroup is not required") or
     diag("Weird volgroup_required: $lvm->{_volgroup_required}");
 

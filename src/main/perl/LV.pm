@@ -13,7 +13,7 @@ blockdevices framework.
 
 use CAF::Process;
 use NCM::Blockdevices qw ($reporter PART_FILE);
-use NCM::LVM;
+use NCM::VG;
 use parent qw(NCM::Blockdevices);
 
 use constant BASEPATH => "/system/blockdevices/";
@@ -59,7 +59,7 @@ sub _initialize
     my $st = $config->getElement($path)->getTree;
     $path =~ m!/([^/]+)$!;
     $self->{devname}      = $1;
-    $self->{volume_group} = NCM::LVM->new(BASEPATH . VGS . $st->{volume_group}, $config);
+    $self->{volume_group} = NCM::VG->new(BASEPATH . VGS . $st->{volume_group}, $config);
     $self->{size}         = $st->{size};
     $self->{stripe_size}  = $st->{stripe_size} if exists $st->{stripe_size};
     $self->{chunksize}  = $st->{chunksize} if exists $st->{chunksize};
@@ -109,7 +109,7 @@ sub new_from_system
     $dev =~ m{(/dev/.*[^-]+)-([^-].*)$};
     my ($vgname, $devname) = ($1, $2);
     $devname =~ s/-{2}/-/g;
-    my $vg = NCM::LVM->new_from_system($vgname, $cfg, %opts);
+    my $vg = NCM::VG->new_from_system($vgname, $cfg, %opts);
     my $self = {
         devname      => $devname,
         volume_group => $vg,
