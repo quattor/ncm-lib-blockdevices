@@ -316,9 +316,9 @@ like($fhfs_vol1_cre, qr{^\s+lvm lvcreate\s+-n lv1}m, "Add LV lv1 to VG vg0");
 
 # Check the force options (e.g. required fro EL7)
 
-# reset the LVM vgs cache (these vgs should have new attribute).
-use NCM::LVM;
-NCM::LVM::_reset_cache;
+# reset the VG vgs cache (these vgs should have new attribute).
+use NCM::VG;
+NCM::VG::_reset_cache;
 
 my $cfg_force = get_config_for_profile('filesystem_lvmforce');
 my $fs_vol1_force = NCM::Filesystem->new ("/system/filesystems/8", $cfg_force);

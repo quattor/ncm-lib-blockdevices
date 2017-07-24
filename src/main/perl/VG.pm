@@ -1,4 +1,4 @@
-#${PMpre} NCM::LVM${PMpost}
+#${PMpre} NCM::VG${PMpost}
 
 =pod
 

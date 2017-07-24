@@ -126,19 +126,32 @@ sub new_from_system
 {
     my ($class, $dev, $cfg, %opts) = @_;
 
-    $dev =~ m{/dev/(.*)};
-    my $devname = $1;
+    my $log = ($opts{log} || $reporter);
+
+    my $devname;
+    if ($dev =~ m{/dev/(.*)}) {
+        $devname = $1;
+    } else {
+        $log->error("unsupported device $dev for Partiton new_from_system");
+        $devname = 'UNSUPPORTED_DEV';
+    }
+
     my $disk;
     if ($dev =~ m{(/dev/ciss/c\d+d\+)p\d+}) {
         $disk = $1;
-    } else {
-        $dev =~ m{(/dev/.*\D)\d+$};
+    } elsif ($dev =~ m{(/dev/.*\d+)p\d+$}) {
         $disk = $1;
+    } elsif ($dev =~ m{(/dev/.*\D)\d+$}) {
+        $disk = $1;
+    } else {
+        $log->error("Cannot determine holding_dev disk from $dev for Partiton new_from_system");
+        $disk = 'UNSUPPORTED_DISK';
     }
+
     my $self = {
         devname	=> $devname,
         holding_dev	=> NCM::Disk->new_from_system ($disk, $cfg, %opts),
-        log => ($opts{log} || $reporter),
+        log => $log,
     };
     return bless ($self, $class);
 }

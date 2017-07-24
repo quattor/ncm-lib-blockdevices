@@ -7,27 +7,66 @@ NCM::BlockdevFactory
 =cut
 
 use NCM::Blockdevices qw ($reporter);
-use NCM::MD;
-use NCM::LVM;
-use NCM::LV;
-use NCM::Disk;
-use NCM::Partition;
-use NCM::File;
-use NCM::Tmpfs;
-use NCM::VXVM;
-
+use Module::Load;
 use CAF::Process;
+use Readonly;
 
-use constant BASEPATH => "/system/blockdevices/";
-use constant PARTED	=> qw (/sbin/parted -s --);
-use constant PARTEDEXTRA => qw (u MiB);
-use constant PARTEDP	=> 'print';
+Readonly my $BASEPATH => "/system/blockdevices";
+Readonly my @PARTED	=> qw (/sbin/parted -s --);
+Readonly my @PARTEDEXTRA => qw (u MiB);
+Readonly my $PARTEDPRINT => 'print';
+# if all is put in qw(), perl warns with 'Possible attempt to separate words with commas'
+Readonly my $DMINFO => [qw(dmsetup info -C --noheadings --separator : -o), 'name,subsystem'];
+
+# Pattern or compiled pattern to map the device taken fom the
+# pan path /system/blockdevices/<device> to the NCM:: class
+# If the pattern is a string, it is a partial pattern
+# (actual used one is '^<string>/')
+# Patterns are tried in alphabetical order of the key name,
+# so make sure 2 patterns cannot match the same device
+Readonly my %BUILD_MAP => (
+    Disk => 'physical_devs',
+    File => 'files',
+    LV => 'logical_volumes',
+    MD => 'md',
+    Partition => 'partitions',
+    Tmpfs => qr{^tmpfs$},
+    VG => 'volume_groups',
+    VXVM => 'vxvm',
+);
 
 use parent qw(Exporter);
 
 our @EXPORT_OK = qw (build build_from_dev);
 
-=pod
+
+sub _mk_instance
+{
+    my ($log, $name, $args, $from_system) = @_;
+
+    my $method = $from_system ? 'new_from_system' : 'new';
+
+    local $@;
+    my $pack = "NCM::$name";
+    eval {
+        load $pack;
+    };
+    if ($@) {
+        $log->error("bad Perl code in $pack: $@");
+        return;
+    }
+
+    my $instance;
+    eval {
+        $instance = $pack->$method(@$args);
+    };
+    if ($@) {
+        $log->error("blockdevice $pack instantiation via $method fails: $@");
+        return;
+    }
+
+    return $instance;
+}
 
 =head2 build
 
@@ -39,63 +78,83 @@ sub build
 {
     my ($config, $dev, %opts) = @_;
 
-    my @args = (BASEPATH . $dev, $config, %opts);
+    my $log = $opts{log} || $reporter;
+    my @args = ("$BASEPATH/$dev", $config, %opts);
 
-    if ($dev =~ m!^volume_groups/!) {
-        return NCM::LVM->new (@args);
-    }
-    elsif ($dev =~ m!^md/!) {
-        return NCM::MD->new (@args);
-    }
-    elsif ($dev =~ m!^partitions/!) {
-        return NCM::Partition->new (@args);
-    }
-    elsif ($dev =~ m!^physical_devs/!) {
-        return NCM::Disk->new (@args);
-    }
-    elsif ($dev =~ m!^files/!) {
-        return NCM::File->new (@args);
-    }
-    elsif ($dev =~ m!^logical_volumes/!) {
-        return NCM::LV->new (@args);
-    }
-    elsif ($dev eq "tmpfs") {
-        return NCM::Tmpfs->new(@args);
-    }
-    elsif ($dev =~ m!^vxvm/!) {
-        return NCM::VXVM->new(@args);
+    foreach my $name (sort keys %BUILD_MAP) {
+        my $reg = $BUILD_MAP{$name};
+
+        $reg = qr{^$reg/} if (ref($reg) eq '');
+
+        return _mk_instance($log, $name, \@args, 0) if ($dev =~ m/$reg/);
     }
 
-    ($opts{log} || $reporter)->error("Unable to find block device implementation for device $dev");
-
+    $log->error("Unable to find block device implementation for device $dev");
     return;
+}
+
+# Return the NCM:: class name based on device name
+sub _find_class
+{
+    my ($log, $dev) = @_;
+    my $name = 'File';
+    my $dminfo = CAF::Process->new($DMINFO, log => $log)->output();
+    my %dminfomap = map {$_->[0] => $_->[1]} map {[split(':')]} grep {m/:/} split("\n", $dminfo);
+
+    if (-l $dev) {
+        my $rd = readlink($dev);
+        $dev = $rd if $rd =~ m{^/dev/mapper/}
+    }
+
+    if ($dev =~ m{^/dev/md\d+$}) {
+        $name = 'MD';
+    } elsif ($dev =~ m{^/dev/mapper/(\S+)}) {
+        if (exists($dminfomap{$1})) {
+            my $type = $dminfomap{$1} || ''; # zero gives undef, replace with empty string
+            if ($type eq 'LVM') {
+                $name = 'LV';
+            } elsif ($type =~ m/^part/) {
+                $name = 'Partition';
+            } else {
+                $name = 'Disk'; # eg mpath, zero
+            }
+        } else {
+            # old fallback
+            $name = 'LV';
+        }
+    } elsif ($dev =~ m{^/dev/}) {
+        # This is the most generic way I can think of deciding
+        # whether a path refers to a full disk or to a partition.
+        my $output = CAF::Process->new([@PARTED, $dev, @PARTEDEXTRA, $PARTEDPRINT], log => $log)->output();
+        if ($?) {
+            # no disk label
+            # guess based on name
+            # additional p to indicate partition if the disk device ends with digits
+            if ($dev =~ m/^(\S+)((?<=\d)p)?\d+$/) {
+                CAF::Process->new([@PARTED, $1, @PARTEDEXTRA, $PARTEDPRINT], log => $log)->execute();
+                # is $1 a disk-like device with a partition table?
+                $name = $? ? 'Disk' : 'Partition';
+            } else {
+                $name = 'Disk';
+            }
+        } else {
+            $name = $output =~ m/^Partition\s*Table:\s*loop$/mi ? 'Partition' : 'Disk';
+        }
+    }
+
+    return $name;
 }
 
 sub build_from_dev
 {
     my ($dev, $config, %opts) = @_;
 
+    my $log = $opts{log} || $reporter;
     my @args = ($dev, $config, %opts);
-    ($opts{log} || $reporter)->debug (5, "Creating block device structure for $dev device");
-    if ($dev =~ m{^/dev/md\d+$}) {
-        return NCM::MD->new_from_system (@args);
-    } elsif (($dev =~ m{^/dev/mapper/}) || (-l $dev && (my $rd = readlink ($dev)) =~ m{^/dev/mapper})) {
-        # Check this one out!!
-        $args[0] = defined ($rd) ? $rd : $dev;
-        return NCM::LV->new_from_system (@args);
-    } elsif ($dev =~ m{^/dev/}) {
-        # This is the most generic way I can think of deciding
-        # whether a path refers to a full disk or to a partition.
-        # TODO why output and not execute?
-        CAF::Process->new([PARTED, $dev, PARTEDEXTRA, PARTEDP], log => ($opts{log} || $reporter))->output();
-        if ($?) {
-            return NCM::Disk->new_from_system (@args);
-        } else {
-            return NCM::Partition->new_from_system (@args);
-        }
-    } else {
-        return NCM::File->new_from_system (@args);
-    }
+    $log->debug (5, "Creating block device structure for $dev device");
+
+    my $name = _find_class($log, $dev);
+    return _mk_instance($log, $name, \@args, 1)
 }
 
 1;
