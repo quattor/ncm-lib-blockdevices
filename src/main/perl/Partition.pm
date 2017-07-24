@@ -129,7 +129,7 @@ sub new_from_system
     my $log = ($opts{log} || $reporter);
 
     my $devname;
-    if ($dev =~ m{/dev/(.*)}) {
+    if ($dev =~ m{^/dev/(.*)}) {
         $devname = $1;
     } else {
         $log->error("unsupported device $dev for Partiton new_from_system");
@@ -137,11 +137,9 @@ sub new_from_system
     }
 
     my $disk;
-    if ($dev =~ m{(/dev/ciss/c\d+d\+)p\d+}) {
+    if ($dev =~ m{(^/dev/.*\d)p\d+$}) {
         $disk = $1;
-    } elsif ($dev =~ m{(/dev/.*\d+)p\d+$}) {
-        $disk = $1;
-    } elsif ($dev =~ m{(/dev/.*\D)\d+$}) {
+    } elsif ($dev =~ m{(^/dev/.*\D)\d+$}) {
         $disk = $1;
     } else {
         $log->error("Cannot determine holding_dev disk from $dev for Partiton new_from_system");
