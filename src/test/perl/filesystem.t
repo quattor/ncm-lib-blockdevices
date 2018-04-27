@@ -345,7 +345,15 @@ my $fs_md2 = NCM::Filesystem->new ("/system/filesystems/9", $cfg);
 select($fhfs_md2);
 ok(exists($fs_md2->{useexisting_md}), 'useexisting_md defined');
 $fs_md2->print_ks;
-is("$fhfs_md2", "raid /Lagoon --device=myname --noformat --useexisting \n", "useexisting ok");
+is("$fhfs_md2", "raid /Lagoon --device=myname --noformat --useexisting \n", "useexisting ok for MD");
+
+# lv test with useexisting for EL7
+my $fhfs_lv2 = CAF::FileWriter->new("target/test/ksfs_lv2");
+my $fs_lv2 = NCM::Filesystem->new ("/system/filesystems/10", $cfg);
+select($fhfs_lv2);
+ok(exists($fs_lv2->{useexisting_lv}), 'useexisting_lv defined');
+$fs_lv2->print_ks;
+is("$fhfs_lv2", "\nlogvol /Lagoon --vgname=vg0 --name=lv2 --noformat --useexisting \n", "useexisting ok for LV");
 
 # restore FH for DESTROY
 select($origfh);

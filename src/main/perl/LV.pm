@@ -39,6 +39,7 @@ use constant {
     LVM        => 'lvm',
     LVMFORCE   => '--force',
     AII_LVMFORCE_PATH => '/system/aii/osinstall/ks/lvmforce',
+    USEEXISTING       => '--useexisting',
 };
 
 use constant LVMWIPESIGNATURE => qw(-W y);
@@ -380,9 +381,20 @@ sub print_ks
     $self->{volume_group}->print_ks;
     print "\n";
 
+    my $useexisting = '';
+    # The useexisting_lv can be set by AII in ks.pm
+    if ($fs->{useexisting_lv}) {
+        $self->debug(5, 'useexisting flag enabled');
+        $useexisting = USEEXISTING;
+    }
+
     print join(" ",
-        "logvol", $fs->{mountpoint}, "--vgname=$self->{volume_group}->{devname}",
-        "--name=$self->{devname}", $self->ksfsformat($fs), "\n");
+               "logvol", $fs->{mountpoint},
+               "--vgname=$self->{volume_group}->{devname}",
+               "--name=$self->{devname}",
+               $self->ksfsformat($fs),
+               $useexisting,
+               "\n");
 }
 
 =pod

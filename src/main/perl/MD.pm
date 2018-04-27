@@ -282,6 +282,7 @@ sub print_ks
     return unless $self->should_print_ks;
 
     my $useexisting = '';
+    # The useexisting_md can be set by AII in ks.pm
     if ($fs->{useexisting_md}) {
         $self->debug(5, 'useexisting flag enabled');
         $useexisting = USEEXISTING;
