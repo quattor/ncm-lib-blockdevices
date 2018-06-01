@@ -499,7 +499,7 @@ sub get_uuid
     my ($self, $part) = @_;
     my $device = $self->devpath;
     my $uuid;
-    my $output = CAF::Process->new([BLKID, $device], log => $self)->output();
+    my $output = CAF::Process->new([BLKID, $device], log => $self, keeps_state => 1)->output();
     $part = $part ? 'PART' : '';
     my $re = qr!\s${part}UUID="(\S+)"!m ;
     if($output && $output =~ m/$re/m){
