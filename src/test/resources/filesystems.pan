@@ -5,53 +5,57 @@ unique template filesystems;
     # always make a copy
 
     # apppend formattable/unpreserved fs
-    fs=value("/system/filesystems/0");
+    fs = value("/system/filesystems/0");
     fs["format"] = true;
     fs["preserve"] = false;
     append(fs);
 
     # append none type
-    fs=value("/system/filesystems/0");
-    fs["type"]="none";    
+    fs = value("/system/filesystems/0");
+    fs["type"]="none";
     append(fs);
 
     # append force_filesystem false
-    fs=value("/system/filesystems/0");
-    fs["force_filesystemtype"]=false;    
+    fs = value("/system/filesystems/0");
+    fs["force_filesystemtype"] = false;
     append(fs);
 
     # append force_filesystem true
-    fs=value("/system/filesystems/0");
-    fs["force_filesystemtype"]=true;    
+    fs = value("/system/filesystems/0");
+    fs["force_filesystemtype"] = true;
     append(fs);
 
     # append ksfsformat test
-    fs=value("/system/filesystems/0");
-    fs["ksfsformat"]=true;    
-    fs["mountopts"]="oneoption anotheroption";    
+    fs = value("/system/filesystems/0");
+    fs["ksfsformat"] = true;
+    fs["mountopts"] = "oneoption anotheroption";
     append(fs);
 
     # append md0 test
-    fs=value("/system/filesystems/0");
-    fs["block_device"]="md/md0";    
+    fs = value("/system/filesystems/0");
+    fs["block_device"] = "md/md0";
     append(fs);
 
     # append logvol test
-    fs=value("/system/filesystems/0");
-    fs["block_device"]="logical_volumes/lv0";    
+    fs = value("/system/filesystems/0");
+    fs["block_device"] = "logical_volumes/lv0";
     append(fs);
 
-    fs=value("/system/filesystems/0");
-    fs["block_device"]="logical_volumes/lv1";    
+    fs = value("/system/filesystems/0");
+    fs["block_device"] = "logical_volumes/lv1";
     fs["format"] = true;
     fs["preserve"] = false;
     append(fs);
 
     # append md test with useexisting
-    fs=value("/system/filesystems/0");
-    fs["block_device"]=format("md/%s", escape("md/myname"));    
+    fs = value("/system/filesystems/0");
+    fs["block_device"] = format("md/%s", escape("md/myname"));
     fs["useexisting_md"] = true;
     append(fs);
 
+    # append lv test with useexisting
+    fs = value("/system/filesystems/0");
+    fs["block_device"] = "logical_volumes/lv2";
+    fs["useexisting_lv"] = true;
+    append(fs);
 };
-

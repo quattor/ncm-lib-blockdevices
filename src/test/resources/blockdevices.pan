@@ -75,6 +75,10 @@ unique template blockdevices;
             "size", 800,
             "volume_group", "vg0"
             ),
+        "lv2", dict (
+            "size", 800,
+            "volume_group", "vg0"
+            ),
         ),
     "vxvm", dict(
         "vcslab.local", dict("gnr.0", dict(
