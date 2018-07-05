@@ -49,7 +49,7 @@ The flags are set with the parted C<set> command.
 =cut
 
 use EDG::WP4::CCM::Path qw (unescape);
-use NCM::Blockdevices qw ($reporter PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE ANACONDA_VERSION_EL_7_0);
 use NCM::Disk;
 use CAF::Process;
 use parent qw(NCM::Blockdevices Exporter);
@@ -167,7 +167,8 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
+
     my $st = $config->getElement($path)->getTree;
     # The block device is indexed by disk name
     $path =~ m!([^/]+)$!;
@@ -528,6 +529,26 @@ sub should_create_ks
     return $self->{holding_dev}->should_create_ks;
 }
 
+=head2 ksfsformat
+
+Given a filesystem instance C<fs>, return the kickstart formatting command
+to be used in the kickstart commands section.
+
+=cut
+
+sub ksfsformat
+{
+    my ($self, $fs) = @_;
+
+    my @format = $self->SUPER::ksfsformat($fs);
+
+    if (exists $fs->{label}) {
+        push @format, "--label", '"' . $fs->{label} . '"';
+    }
+
+    return @format;
+}
+
 =head2 print_ks
 
 If the partition must be printed, it prints the related Kickstart
@@ -545,16 +566,10 @@ sub print_ks
 
     return unless $fs;
 
-    my @format = $self->ksfsformat($fs);
-
-    if (exists $fs->{label}) {
-        push @format, "--label", '"' . $fs->{label} . '"';
-    }
-
     print join (" ",
                 "part", $fs->{mountpoint}, "--onpart",
                 $self->{devname},
-                @format,
+                $self->ksfsformat($fs),
                 "\n");
 }
 

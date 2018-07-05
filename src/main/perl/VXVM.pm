@@ -18,7 +18,8 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
+
     if ($path =~ m!/([^/]+)$!) {
         $self->{devname} = unescape($1);
     } else {

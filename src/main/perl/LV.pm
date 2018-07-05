@@ -12,7 +12,7 @@ blockdevices framework.
 =cut
 
 use CAF::Process;
-use NCM::Blockdevices qw ($reporter PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE ANACONDA_VERSION_EL_7_0);
 use NCM::VG;
 use parent qw(NCM::Blockdevices);
 
@@ -56,7 +56,8 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
+
     my $st = $config->getElement($path)->getTree;
     $path =~ m!/([^/]+)$!;
     $self->{devname}      = $1;
@@ -365,6 +366,38 @@ sub should_create_ks
 
 =pod
 
+=head2 ksfsformat
+
+Given a filesystem instance C<fs>, return the kickstart formatting command
+to be used in the kickstart commands section.
+
+=cut
+
+sub ksfsformat
+{
+    my ($self, $fs) = @_;
+
+    my @format = $self->SUPER::ksfsformat($fs);
+
+    if ($self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0) {
+        push @format, USEEXISTING;
+
+        if (exists $fs->{label}) {
+            push @format, "--label", '"' . $fs->{label} . '"';
+        }
+    }
+
+    # The useexisting_lv can be set by AII in ks.pm
+    # TODO: Remove once aii-ks passes anaconda_version
+    if ($fs->{useexisting_lv}) {
+        $self->debug(5, 'useexisting flag enabled');
+        push @format, USEEXISTING;
+    }
+
+    return @format;
+}
+
+
 =head2 print_ks
 
 If the logical volume must be printed, it prints the appropriate
@@ -381,19 +414,11 @@ sub print_ks
     $self->{volume_group}->print_ks;
     print "\n";
 
-    my $useexisting = '';
-    # The useexisting_lv can be set by AII in ks.pm
-    if ($fs->{useexisting_lv}) {
-        $self->debug(5, 'useexisting flag enabled');
-        $useexisting = USEEXISTING;
-    }
-
     print join(" ",
                "logvol", $fs->{mountpoint},
                "--vgname=$self->{volume_group}->{devname}",
                "--name=$self->{devname}",
                $self->ksfsformat($fs),
-               $useexisting,
                "\n");
 }
 

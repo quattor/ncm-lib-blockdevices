@@ -79,7 +79,7 @@ sub _initialize
 {
     my ($self, $path, $config, $parent, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
 
     $path =~ m{^([^/]*)};
     $self->{unit} = $1;

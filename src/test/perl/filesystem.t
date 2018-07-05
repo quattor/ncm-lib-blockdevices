@@ -355,6 +355,23 @@ ok(exists($fs_lv2->{useexisting_lv}), 'useexisting_lv defined');
 $fs_lv2->print_ks;
 is("$fhfs_lv2", "\nlogvol /Lagoon --vgname=vg0 --name=lv2 --noformat --useexisting \n", "useexisting ok for LV");
 
+use NCM::MD;
+NCM::MD::_reset_cache;
+
+# softraid test with useexisting autoguess for EL7
+my $fhfs_md2_auto = CAF::FileWriter->new("target/test/ksfs_md2_auto");
+my $fs_md2_auto = NCM::Filesystem->new ("/system/filesystems/11", $cfg, anaconda_version => version->new("19.31"));
+select($fhfs_md2_auto);
+$fs_md2_auto->print_ks;
+is("$fhfs_md2_auto", "raid /Lagoon --device=myname --noformat --useexisting \n", "useexisting autoguess ok for MD");
+
+# lv test with useexisting autoguess for EL7
+my $fhfs_lv2_auto = CAF::FileWriter->new("target/test/ksfs_lv2_auto");
+my $fs_lv2_auto = NCM::Filesystem->new ("/system/filesystems/12", $cfg, anaconda_version => version->new("19.31"));
+select($fhfs_lv2_auto);
+$fs_lv2_auto->print_ks;
+is("$fhfs_lv2_auto", "\nlogvol /Lagoon --vgname=vg0 --name=lv2 --noformat --useexisting \n", "useexisting autoguess ok for LV");
+
 # restore FH for DESTROY
 select($origfh);
 
