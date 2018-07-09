@@ -52,17 +52,6 @@ sub _initialize
     return $_[0];
 }
 
-# Set the alignment from either the profile or the given defaults
-sub _set_alignment
-{
-	my ($self, $cfg, $align, $offset) = @_;
-
-	$self->{alignment} = ($cfg && exists $cfg->{alignment}) ?
-		$cfg->{alignment} : $align;
-	$self->{alignment_offset} = ($cfg && exists $cfg->{alignment_offset}) ?
-		$cfg->{alignment_offset} : $offset;
-}
-
 sub create
 {
 	my $self = shift;
@@ -120,13 +109,7 @@ sub get_clear_mb
 {
     my $self = shift;
 
-    # Clear two times the alignment, but at least 1MB
-    # TODO: in what unit is/was the aligment?
-    # assuming bytes because the align_sect does a /512 (512 bytes in a sect)
-    my $align_mb = int($self->{holding_dev}->{alignment} / (1024*1024) );
-    my $clear_mb = $align_mb * 2;
-    $clear_mb = 1 if $clear_mb < 1;
-    return $clear_mb;
+    return 1;
 }
 
 =pod

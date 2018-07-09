@@ -204,8 +204,6 @@ sub _initialize
     $self->{ks_lvmforce} = $config->elementExists(AII_LVMFORCE_PATH) ?
          $config->getElement(AII_LVMFORCE_PATH)->getValue : 0;
 
-    # TODO: check the requirements of the component devices
-    $self->_set_alignment($st, 0, 0);
     $self->{_cache_key} = $self->get_cache_key($path, $config);
 
     return $vgs{$self->{_cache_key}} = $self;

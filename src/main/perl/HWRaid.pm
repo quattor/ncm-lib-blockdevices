@@ -120,8 +120,6 @@ sub _initialize
     $self->{vendor} = $config->getElement (HWPATH . "_$1" .
                                            VENDORSTRING)->getValue;
 
-    # TODO: compute the alignment from the RAID parameters
-    $self->_set_alignment($t, 0, 0);
     return $self;
 }
 

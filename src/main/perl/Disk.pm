@@ -141,12 +141,6 @@ sub _initialize
         }
     }
 
-    # Inherit the topology from the physical device unless it is explicitely
-    # overridden
-    $self->_set_alignment($st,
-                          ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
-                          ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
-
     $self->{_cache_key} = $self->get_cache_key($path, $config);
     $disks{$self->{_cache_key}} = $self;
     return $self;

@@ -182,7 +182,6 @@ sub _initialize
                                            $config);
     $self->{validate} = $st->{validate} if (exists $self->{validate});
 
-    $self->_set_alignment($st, 0, 0);
     return $self;
 }
 
@@ -603,24 +602,6 @@ then
     parted $devpath -s rm $n
 fi
 EOF
-}
-
-sub align_ks
-{
-    my $self = shift;
-
-    return unless $self->should_create_ks;
-
-    my $n = $self->partition_number;
-    my $path = $self->devpath;
-    my $disk = $self->{holding_dev}->devpath;
-    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
-    # TODO: add support for alignment_offset
-
-    if ($align_sect > 1) {
-        print join(" ", "grep", "-q", "'" . $path . "\$'", PART_FILE, "&&",
-                   "align", $disk, $path, $n, $align_sect, "\n");
-    }
 }
 
 sub create_pre_ks
