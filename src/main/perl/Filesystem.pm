@@ -41,7 +41,7 @@ use constant TUNECMDS	=> {
     reiserfs	=> REISERTUNE
 };
 use constant MKFSCMDS	=> {
-    xfs	=> '/sbin/mkfs.xfs',
+    xfs 	=> '/sbin/mkfs.xfs -f',
     ext2	=> '/sbin/mkfs.ext2',
     ext3	=> '/sbin/mkfs.ext3',
     ext4	=> '/sbin/mkfs.ext4',
