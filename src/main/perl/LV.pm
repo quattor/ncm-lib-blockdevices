@@ -467,7 +467,7 @@ EOC
     print <<EOF;
     sed -i '\\:@{[$self->{volume_group}->devpath]}\$:d' @{[PART_FILE]}
 EOF
-    my $size = '-l 100%FREE';
+    my $size = '-l 99%FREE';
     $size = "-L $self->{size}M"
         if (exists($self->{size})
         && defined($self->{size})
