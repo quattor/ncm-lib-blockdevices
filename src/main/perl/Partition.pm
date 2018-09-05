@@ -79,7 +79,6 @@ use constant PARTEDARGS	=> qw (-s --);
 
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant DISK	=> "physical_devs/";
-use constant BLOCKDEV	=> qw (/sbin/blockdev --rereadpt --);
 use constant PARTEDP	=> 'print';
 
 # Returns 1 if $a must be created before $b, -1 if $b must be created
@@ -636,7 +635,7 @@ sub create_pre_ks
     my $prev_n = $n - 1;
 
     my $size = exists $self->{size}? "$self->{size}":'100%';
-    my $offset = exists $self->{offset}? $self->{offset} : 0;
+    my $offset = exists $self->{offset}? $self->{offset} : undef;
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
 
@@ -650,20 +649,38 @@ sub create_pre_ks
     print <<EOF;
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
+    sectsize=\$(blockdev --getss $disk)
+    if ((sectsize == 0)); then
+        sectsize=512
+    fi
+    opt_io=\$(blockdev --getioopt $disk)
+    if ((opt_io == 0)) || ((1024 * 1024 % opt_io == 0)); then
+        opt_io=\$((1024 * 1024))
+    fi
+    align_sec=\$((opt_io / sectsize))
+EOF
+
+    if (defined($offset)) {
+        print <<EOF;
+    offset_sec=\$(($offset * (1024 * 1024 / sectsize)))
+EOF
+    } else {
+        print <<EOF;
+    offset=\$(blockdev --getalignoff $disk)
+    offset_sec=\$((offset / sectsize))
+EOF
+    }
+
+    print <<EOF;
+
     echo "Creating partition $self->{devname}"
-    prev=\`parted $disk -s u MiB p |awk '\$1==$prev_n {print \$5=="$extended_txt" ? \$2:\$3}'\`
+    prev=\`parted $disk -s u s p | awk '\$1==$prev_n {print \$5=="$extended_txt" ? \$2:\$3}'\`
 
     if [ -z \$prev ]
     then
-        prev=1
-EOF
-
-    # The first partition must be aligned to the first MiB (0%)
-    my $begin = $offset || 1;
-    print <<EOF;
-        begin=$begin
+        begin=\$((align_sec + offset_sec))
     else
-        let begin=\${prev/MiB}+$offset
+        begin=\$((((\${prev/s} + align_sec - 1) / align_sec) * align_sec + offset_sec))
     fi
 EOF
 
@@ -671,11 +688,11 @@ EOF
     if ( ($size eq '100%') || ($size == -1) ) {
         $end_txt = "end=$size";
     } else {
-        $end_txt = "let end=\${prev/MiB}+$size";
+        $end_txt = "end=\$((begin + $size * (1024 * 1024 / sectsize) - 1))";
     }
     print <<EOF;
     $end_txt
-    parted $disk -s -- u MiB mkpart $self->{type} \$begin \$end
+    parted $disk -s -- u s mkpart $self->{type} \$begin \$end
 EOF
 
     my @flags = keys(%{$self->{flags}});
