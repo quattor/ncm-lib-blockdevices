@@ -543,11 +543,19 @@ sub print_ks
 {
     my ($self, $fs) = @_;
 
+    return unless $fs;
+
+    my @format = $self->ksfsformat($fs);
+
+    if (exists $fs->{label}) {
+        push @format, "--label", '"' . $fs->{label} . '"';
+    }
+
     print join (" ",
                 "part", $fs->{mountpoint}, "--onpart",
                 $self->{devname},
-                $self->ksfsformat($fs),
-                "\n") if $fs;
+                @format,
+                "\n");
 }
 
 =pod
