@@ -21,36 +21,36 @@ use Fcntl qw(SEEK_END);
 use Cwd qw(abs_path);
 
 use constant MOUNTPOINTPERMS => oct(755);
-use constant BASEPATH	=> "/system/blockdevices/";
-use constant DISK	=> "physical_devs/";
-use constant UMOUNT	=> "/bin/umount";
-use constant MOUNT	=> "/bin/mount";
-use constant REMOUNT	=> qw (/bin/mount -o remount);
-use constant FSTAB	=> "/etc/fstab";
-use constant MTAB	=> "/etc/mtab";
-use constant MKFSLABEL	=> '-L';
-use constant MKFSFORCE	=> '-f';
-use constant SWAPON	=> '/sbin/swapon';
-use constant TUNE2FS	=> '/sbin/tune2fs';
-use constant TUNEXFS	=> '/usr/sbin/xfs_admin';
-use constant REISERTUNE	=> '/usr/sbin/reiserfstune';
-use constant TUNECMDS	=> {
-    xfs	=> TUNEXFS,
-    ext2	=> TUNE2FS,
-    ext3	=> TUNE2FS,
-    reiserfs	=> REISERTUNE
+use constant BASEPATH        => "/system/blockdevices/";
+use constant DISK            => "physical_devs/";
+use constant UMOUNT          => "/bin/umount";
+use constant MOUNT           => "/bin/mount";
+use constant REMOUNT         => qw (/bin/mount -o remount);
+use constant FSTAB           => "/etc/fstab";
+use constant MTAB            => "/etc/mtab";
+use constant MKFSLABEL       => '-L';
+use constant MKFSFORCE       => '-f';
+use constant SWAPON          => '/sbin/swapon';
+use constant TUNE2FS         => '/sbin/tune2fs';
+use constant TUNEXFS         => '/usr/sbin/xfs_admin';
+use constant REISERTUNE      => '/usr/sbin/reiserfstune';
+use constant TUNECMDS        => {
+    xfs        => TUNEXFS,
+    ext2       => TUNE2FS,
+    ext3       => TUNE2FS,
+    reiserfs   => REISERTUNE
 };
-use constant MKFSCMDS	=> {
-    xfs	=> '/sbin/mkfs.xfs',
-    ext2	=> '/sbin/mkfs.ext2',
-    ext3	=> '/sbin/mkfs.ext3',
-    ext4	=> '/sbin/mkfs.ext4',
-    reiserfs	=> '/sbin/mkfs.reiserfs',
-    reiser4	=> '/sbin/mkfs.reiser4',
-    jfs	=> '/sbin/mkfs.jfs',
-    swap	=> '/sbin/mkswap',
-    tmpfs	=> '/bin/true',
-    vfat   => '/sbin/mkfs.vfat',
+use constant MKFSCMDS => {
+    xfs       => '/sbin/mkfs.xfs -f',
+    ext2      => '/sbin/mkfs.ext2',
+    ext3      => '/sbin/mkfs.ext3',
+    ext4      => '/sbin/mkfs.ext4',
+    reiserfs  => '/sbin/mkfs.reiserfs',
+    reiser4   => '/sbin/mkfs.reiser4',
+    jfs       => '/sbin/mkfs.jfs',
+    swap      => '/sbin/mkswap',
+    tmpfs     => '/bin/true',
+    vfat      => '/sbin/mkfs.vfat',
 };
 
 use parent qw(CAF::Object);
