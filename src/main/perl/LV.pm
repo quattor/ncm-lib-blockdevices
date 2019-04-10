@@ -38,6 +38,7 @@ use constant {
     LVTYPE     => '--type',
     LVM        => 'lvm',
     LVMFORCE   => '--force',
+    LVMYES     => '--yes',
     AII_LVMFORCE_PATH => '/system/aii/osinstall/ks/lvmforce',
     USEEXISTING       => '--useexisting',
 };
@@ -497,11 +498,18 @@ EOF
         && "$self->{size}" =~ m/\d+/);
 
     # 'Option --wipesignatures is unsupported with cache pools.'
-    my $wipesignature = ($self->{ks_lvmforce} && (!$self->{type} || $self->{type} ne 'cache-pool')) ? join(" ", LVMWIPESIGNATURE) : '';
+    my @wipe_ops = ();
+    if ($self->{ks_lvmforce} && (!$self->{type} || $self->{type} ne 'cache-pool')) {
+        push(@wipe_ops, LVMWIPESIGNATURE);
+        if ($self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0) {
+            # On RH7, "lvcreate -W y" would still stop waiting for confirmation
+            push(@wipe_ops, LVMYES);
+        }
+    }
 
     print <<EOC;
 
-    lvm lvcreate $wipesignature -n $self->{devname} \\
+    lvm lvcreate @wipe_ops -n $self->{devname} \\
         @type_opts \\
         $self->{volume_group}->{devname} \\
         $size \\
