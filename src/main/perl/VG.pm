@@ -385,10 +385,8 @@ sub create_ks
 
     my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
 
-    my $path = $self->devpath;
-
     print <<EOC;
-if [ ! -e $path ]
+if ! lvm vgdisplay $self->{devname} > /dev/null
 then
 EOC
 
