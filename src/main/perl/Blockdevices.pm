@@ -108,9 +108,8 @@ sub should_create_ks
 # Return the size of metadata to wipe in MB
 sub get_clear_mb
 {
-    my $self = shift;
-
-    return 1;
+	my $self = shift;
+	$self->error ("get_clear_mb is no longer implemented");
 }
 
 =pod
