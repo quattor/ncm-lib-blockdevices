@@ -399,10 +399,9 @@ sub clearpart_ks
 
     print <<EOF;
 wipe_metadata $path 1
-
 parted $path -s -- mklabel $self->{label}
-
 rereadpt $path
+udevadm settle
 
 EOF
 }

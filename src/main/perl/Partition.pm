@@ -627,6 +627,11 @@ sub create_pre_ks
     # make sure this never matches on anything else
     $extended_txt .= "_no_msdos_label" if ($self->{holding_dev}->{label} ne MSDOS);
 
+    # Avoid LVM/mdadm/etc. autodiscovery kicking in after the partition has
+    # been created
+    my $pause_udev = $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 ? "udevadm control --stop-exec-queue" : "";
+    my $unpause_udev = $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 ? "udevadm control --start-exec-queue" : "";
+
     print <<EOF;
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
@@ -673,26 +678,31 @@ EOF
     }
     print <<EOF;
     $end_txt
+    $pause_udev
     parted $disk -s -- u s mkpart $self->{type} \$begin \$end
+    while [ ! -e $path ]; do
+        sleep 1
+        udevadm settle --timeout=5
+    done
+    if [ "$self->{type}" != "$extended_txt" ]
+    then
+        wipe_metadata $path $clear_mb
+    fi
+    $unpause_udev
+    udevadm settle
 EOF
 
     my @flags = keys(%{$self->{flags}});
     if ( @flags > 0 ) {
         for my $flag (sort @flags) {
             my $value = $self->{flags}{$flag} ? "on" : "off";
-            print <<EOF;
-    parted $disk -s -- set $n $flag $value
-EOF
+            print "    parted $disk -s -- set $n $flag $value\n";
         }
+        # Call this once, after all flags have been set
+        print "    udevadm settle\n";
     }
 
     print <<EOF;
-    rereadpt $disk
-    if [ "$self->{type}" != "$extended_txt" ]
-    then
-        wipe_metadata $path $clear_mb
-    fi
-
     echo $path >> @{[PART_FILE]}
 fi
 EOF
