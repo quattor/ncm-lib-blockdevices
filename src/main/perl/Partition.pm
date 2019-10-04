@@ -677,9 +677,10 @@ EOF
     $end_txt
     $pause_udev
     parted $disk -s -- u s mkpart $self->{type} \$begin \$end
-    while [ ! -e $path ]; do
+    while true; do
         sleep 1
         udevadm settle --timeout=5
+        test -e $path && break
     done
 EOF
 

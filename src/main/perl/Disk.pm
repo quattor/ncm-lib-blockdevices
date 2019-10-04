@@ -401,7 +401,7 @@ sub clearpart_ks
 wipe_metadata $path
 
 parted $path -s -- mklabel $self->{label}
-rereadpt $path
+sleep 5
 udevadm settle
 
 EOF
