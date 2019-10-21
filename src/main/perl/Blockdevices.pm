@@ -29,13 +29,14 @@ use constant GET_SIZE_BYTES  => qw (/sbin/blockdev --getsize64);
 use constant ANACONDA_VERSION_EL_5_0 => version->new("11.1");
 use constant ANACONDA_VERSION_EL_6_0 => version->new("13.21");
 use constant ANACONDA_VERSION_EL_7_0 => version->new("19.31");
+use constant ANACONDA_VERSION_EL_8_0 => version->new("29.19");
 use constant ANACONDA_VERSION_LOWEST => ANACONDA_VERSION_EL_5_0;
 
 use parent qw(CAF::Object Exporter);
 
 our $reporter = $main::this_app;
 
-our @EXPORT_OK = qw ($reporter PART_FILE ANACONDA_VERSION_EL_5_0 ANACONDA_VERSION_EL_6_0 ANACONDA_VERSION_EL_7_0);
+our @EXPORT_OK = qw ($reporter PART_FILE ANACONDA_VERSION_EL_5_0 ANACONDA_VERSION_EL_6_0 ANACONDA_VERSION_EL_7_0 ANACONDA_VERSION_EL_8_0);
 
 sub get_cache_key {
      my ($self, $path, $config) = @_;
