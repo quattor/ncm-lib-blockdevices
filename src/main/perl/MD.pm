@@ -16,7 +16,7 @@ use EDG::WP4::CCM::Path qw(unescape);
 
 use CAF::FileReader;
 use CAF::Process;
-use NCM::Blockdevices qw ($reporter PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE ANACONDA_VERSION_EL_7_0);
 use NCM::BlockdevFactory qw (build build_from_dev);
 use parent qw(NCM::Blockdevices);
 
@@ -40,6 +40,12 @@ use constant USEEXISTING    => "--useexisting";
 
 our %mds = ();
 
+# private method to reset the cache. For unittests only.
+sub _reset_cache
+{
+    %mds = ();
+}
+
 =pod
 
 =head2 _initialize
@@ -52,7 +58,8 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
+
     my $st = $config->getElement($path)->getTree;
     $path=~m!/([^/]+)$!;
     $self->{devname} = unescape($1);
@@ -64,9 +71,6 @@ sub _initialize
         my $dev = NCM::BlockdevFactory::build ($config, $devpath, %opts);
         push (@{$self->{device_list}}, $dev);
     }
-    # TODO: compute the alignment from the properties of the component devices
-    # and the RAID parameters
-    $self->_set_alignment($st, 0, 0);
     $self->{_cache_key} = $self->get_cache_key($path, $config);
     return $mds{$self->{_cache_key}} = $self;
 }
@@ -275,18 +279,35 @@ sub should_create_ks
     return 1;
 }
 
+sub ksfsformat {
+    my ($self, $fs) = @_;
+
+    my @format = $self->SUPER::ksfsformat($fs);
+
+    if ($self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0) {
+        push @format, USEEXISTING;
+
+        if (exists $fs->{label}) {
+            push @format, "--label", '"' . $fs->{label} . '"';
+        }
+    }
+
+    # The useexisting_md can be set by AII in ks.pm
+    # TODO: Remove once aii-ks passes anaconda_version
+    if ($fs->{useexisting_md}) {
+        $self->debug(5, 'useexisting flag enabled');
+        push @format, USEEXISTING;
+    }
+
+    return @format;
+};
+
 sub print_ks
 {
     my ($self, $fs) = @_;
 
     return unless $self->should_print_ks;
 
-    my $useexisting = '';
-    # The useexisting_md can be set by AII in ks.pm
-    if ($fs->{useexisting_md}) {
-        $self->debug(5, 'useexisting flag enabled');
-        $useexisting = USEEXISTING;
-    }
     if (scalar (@_) == 2) {
         (my $naming = $self->{devname}) =~ s!^md/!!;
         $_->print_ks foreach (@{$self->{device_list}});
@@ -295,7 +316,6 @@ sub print_ks
                    $fs->{mountpoint},
                    "--device=$naming",
                    $self->ksfsformat($fs),
-                   $useexisting,
                    "\n");
     }
 }

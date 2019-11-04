@@ -27,7 +27,8 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
+
     my $st = $config->getElement($path)->getTree;
 
     $path =~ m!/([^/]+)$!;

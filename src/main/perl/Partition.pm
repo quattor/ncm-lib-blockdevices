@@ -49,7 +49,7 @@ The flags are set with the parted C<set> command.
 =cut
 
 use EDG::WP4::CCM::Path qw (unescape);
-use NCM::Blockdevices qw ($reporter PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE ANACONDA_VERSION_EL_7_0);
 use NCM::Disk;
 use CAF::Process;
 use parent qw(NCM::Blockdevices Exporter);
@@ -79,7 +79,6 @@ use constant PARTEDARGS	=> qw (-s --);
 
 use constant BASEPATH	=> "/system/blockdevices/";
 use constant DISK	=> "physical_devs/";
-use constant BLOCKDEV	=> qw (/sbin/blockdev --rereadpt --);
 use constant PARTEDP	=> 'print';
 
 # Returns 1 if $a must be created before $b, -1 if $b must be created
@@ -167,7 +166,8 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
+
     my $st = $config->getElement($path)->getTree;
     # The block device is indexed by disk name
     $path =~ m!([^/]+)$!;
@@ -182,7 +182,6 @@ sub _initialize
                                            $config);
     $self->{validate} = $st->{validate} if (exists $self->{validate});
 
-    $self->_set_alignment($st, 0, 0);
     return $self;
 }
 
@@ -528,6 +527,26 @@ sub should_create_ks
     return $self->{holding_dev}->should_create_ks;
 }
 
+=head2 ksfsformat
+
+Given a filesystem instance C<fs>, return the kickstart formatting command
+to be used in the kickstart commands section.
+
+=cut
+
+sub ksfsformat
+{
+    my ($self, $fs) = @_;
+
+    my @format = $self->SUPER::ksfsformat($fs);
+
+    if (exists $fs->{label}) {
+        push @format, "--label", '"' . $fs->{label} . '"';
+    }
+
+    return @format;
+}
+
 =head2 print_ks
 
 If the partition must be printed, it prints the related Kickstart
@@ -543,11 +562,13 @@ sub print_ks
 {
     my ($self, $fs) = @_;
 
+    return unless $fs;
+
     print join (" ",
                 "part", $fs->{mountpoint}, "--onpart",
                 $self->{devname},
                 $self->ksfsformat($fs),
-                "\n") if $fs;
+                "\n");
 }
 
 =pod
@@ -583,24 +604,6 @@ fi
 EOF
 }
 
-sub align_ks
-{
-    my $self = shift;
-
-    return unless $self->should_create_ks;
-
-    my $n = $self->partition_number;
-    my $path = $self->devpath;
-    my $disk = $self->{holding_dev}->devpath;
-    my $align_sect = int($self->{holding_dev}->{alignment} / 512);
-    # TODO: add support for alignment_offset
-
-    if ($align_sect > 1) {
-        print join(" ", "grep", "-q", "'" . $path . "\$'", PART_FILE, "&&",
-                   "align", $disk, $path, $n, $align_sect, "\n");
-    }
-}
-
 sub create_pre_ks
 {
     my $self = shift;
@@ -613,7 +616,7 @@ sub create_pre_ks
     my $prev_n = $n - 1;
 
     my $size = exists $self->{size}? "$self->{size}":'100%';
-    my $offset = exists $self->{offset}? $self->{offset} : 0;
+    my $offset = exists $self->{offset}? $self->{offset} : undef;
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
 
@@ -624,23 +627,46 @@ sub create_pre_ks
     # make sure this never matches on anything else
     $extended_txt .= "_no_msdos_label" if ($self->{holding_dev}->{label} ne MSDOS);
 
+    # Avoid LVM/mdadm/etc. autodiscovery kicking in after the partition has
+    # been created
+    my $pause_udev = $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 ? "udevadm control --stop-exec-queue" : "";
+    my $unpause_udev = $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 ? "udevadm control --start-exec-queue" : "";
+
     print <<EOF;
 if ! grep -q '$self->{devname}\$' /proc/partitions
 then
+    sectsize=\$(blockdev --getss $disk)
+    if ((sectsize == 0)); then
+        sectsize=512
+    fi
+    opt_io=\$(blockdev --getioopt $disk)
+    if ((opt_io == 0)) || ((1024 * 1024 % opt_io == 0)); then
+        opt_io=\$((1024 * 1024))
+    fi
+    align_sec=\$((opt_io / sectsize))
+EOF
+
+    if (defined($offset)) {
+        print <<EOF;
+    offset_sec=\$(($offset * (1024 * 1024 / sectsize)))
+EOF
+    } else {
+        print <<EOF;
+    offset=\$(blockdev --getalignoff $disk)
+    offset_sec=\$((offset / sectsize))
+EOF
+    }
+
+    print <<EOF;
+
     echo "Creating partition $self->{devname}"
-    prev=\`parted $disk -s u MiB p |awk '\$1==$prev_n {print \$5=="$extended_txt" ? \$2:\$3}'\`
+    prev=\`parted $disk -s u s p | awk '\$1==$prev_n {print \$5=="$extended_txt" ? \$2:\$3}'\`
 
     if [ -z \$prev ]
     then
-        prev=1
-EOF
-
-    # The first partition must be aligned to the first MiB (0%)
-    my $begin = $offset || 1;
-    print <<EOF;
-        begin=$begin
+        begin=\$((align_sec + offset_sec))
     else
-        let begin=\${prev/MiB}+$offset
+        begin=\$((((\${prev/s} + align_sec - 1) / align_sec) * align_sec + offset_sec))
     fi
 EOF
 
@@ -648,30 +674,35 @@ EOF
     if ( ($size eq '100%') || ($size == -1) ) {
         $end_txt = "end=$size";
     } else {
-        $end_txt = "let end=\${prev/MiB}+$size";
+        $end_txt = "end=\$((begin + $size * (1024 * 1024 / sectsize) - 1))";
     }
     print <<EOF;
     $end_txt
-    parted $disk -s -- u MiB mkpart $self->{type} \$begin \$end
+    $pause_udev
+    parted $disk -s -- u s mkpart $self->{type} \$begin \$end
+    while [ ! -e $path ]; do
+        sleep 1
+        udevadm settle --timeout=5
+    done
+    if [ "$self->{type}" != "$extended_txt" ]
+    then
+        wipe_metadata $path $clear_mb
+    fi
+    $unpause_udev
+    udevadm settle
 EOF
 
     my @flags = keys(%{$self->{flags}});
     if ( @flags > 0 ) {
         for my $flag (sort @flags) {
             my $value = $self->{flags}{$flag} ? "on" : "off";
-            print <<EOF;
-    parted $disk -s -- set $n $flag $value
-EOF
+            print "    parted $disk -s -- set $n $flag $value\n";
         }
+        # Call this once, after all flags have been set
+        print "    udevadm settle\n";
     }
 
     print <<EOF;
-    rereadpt $disk
-    if [ "$self->{type}" != "$extended_txt" ]
-    then
-        wipe_metadata $path $clear_mb
-    fi
-
     echo $path >> @{[PART_FILE]}
 fi
 EOF

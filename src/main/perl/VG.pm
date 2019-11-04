@@ -185,7 +185,8 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
+
     my $st = $config->getElement($path)->getTree;
     if ($config->elementExists(VOLGROUP_REQUIRED_PATH)) {
         $self->{_volgroup_required} = $config->getElement(VOLGROUP_REQUIRED_PATH)->getTree();
@@ -203,8 +204,6 @@ sub _initialize
     $self->{ks_lvmforce} = $config->elementExists(AII_LVMFORCE_PATH) ?
          $config->getElement(AII_LVMFORCE_PATH)->getValue : 0;
 
-    # TODO: check the requirements of the component devices
-    $self->_set_alignment($st, 0, 0);
     $self->{_cache_key} = $self->get_cache_key($path, $config);
 
     return $vgs{$self->{_cache_key}} = $self;
@@ -386,10 +385,8 @@ sub create_ks
 
     my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
 
-    my $path = $self->devpath;
-
     print <<EOC;
-if [ ! -e $path ]
+if ! lvm vgdisplay $self->{devname} > /dev/null
 then
 EOC
 

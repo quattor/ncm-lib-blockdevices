@@ -58,4 +58,14 @@ unique template filesystems;
     fs["block_device"] = "logical_volumes/lv2";
     fs["useexisting_lv"] = true;
     append(fs);
+
+    # append md test with useexisting autoguess
+    fs = value("/system/filesystems/0");
+    fs["block_device"] = format("md/%s", escape("md/myname"));
+    append(fs);
+
+    # append lv test with useexisting autoguess
+    fs = value("/system/filesystems/0");
+    fs["block_device"] = "logical_volumes/lv2";
+    append(fs);
 };

@@ -3,7 +3,7 @@ lvm_create_lv_cache
 ---
 ^if ! lvm lvdisplay vg1/lvCold > /dev/null$
 ^then$
-^if \[ ! -e /dev/vg1 \]$
+^if ! lvm vgdisplay vg1 > /dev/null$
 ^then$
 ^\s{4}lvm pvcreate  /dev/sdc$
 ^\s{4}sed -i '\\:/dev/sdc\$:d' /tmp/created_partitions$
@@ -24,7 +24,7 @@ lvm_create_lv_cache
 ^$
 ^if ! lvm lvdisplay vg1/lvCache > /dev/null$
 ^then$
-^if \[ ! -e /dev/vg1 \]$
+^if ! lvm vgdisplay vg1 > /dev/null$
 ^then$
 ^\s{4}lvm pvcreate  /dev/sdc$
 ^\s{4}sed -i '\\:/dev/sdc\$:d' /tmp/created_partitions$

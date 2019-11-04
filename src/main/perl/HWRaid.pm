@@ -79,7 +79,7 @@ sub _initialize
 {
     my ($self, $path, $config, $parent, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
 
     $path =~ m{^([^/]*)};
     $self->{unit} = $1;
@@ -120,8 +120,6 @@ sub _initialize
     $self->{vendor} = $config->getElement (HWPATH . "_$1" .
                                            VENDORSTRING)->getValue;
 
-    # TODO: compute the alignment from the RAID parameters
-    $self->_set_alignment($t, 0, 0);
     return $self;
 }
 

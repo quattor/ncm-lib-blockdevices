@@ -105,7 +105,7 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
 
     my $st = $config->getElement($path)->getTree;
     $path =~ m(.*/([^/]+));
@@ -140,12 +140,6 @@ sub _initialize
             $self->{_ignore_print_ks} = 1 if $dev eq $self->{devname};
         }
     }
-
-    # Inherit the topology from the physical device unless it is explicitely
-    # overridden
-    $self->_set_alignment($st,
-                          ($hw && exists $hw->{alignment}) ? $hw->{alignment} : 0,
-                          ($hw && exists $hw->{alignment_offset}) ? $hw->{alignment_offset} : 0);
 
     $self->{_cache_key} = $self->get_cache_key($path, $config);
     $disks{$self->{_cache_key}} = $self;
@@ -405,10 +399,9 @@ sub clearpart_ks
 
     print <<EOF;
 wipe_metadata $path 1
-
 parted $path -s -- mklabel $self->{label}
-
 rereadpt $path
+udevadm settle
 
 EOF
 }

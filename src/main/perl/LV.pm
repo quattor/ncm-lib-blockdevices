@@ -12,7 +12,7 @@ blockdevices framework.
 =cut
 
 use CAF::Process;
-use NCM::Blockdevices qw ($reporter PART_FILE);
+use NCM::Blockdevices qw ($reporter PART_FILE ANACONDA_VERSION_EL_7_0);
 use NCM::VG;
 use parent qw(NCM::Blockdevices);
 
@@ -38,6 +38,7 @@ use constant {
     LVTYPE     => '--type',
     LVM        => 'lvm',
     LVMFORCE   => '--force',
+    LVMYES     => '--yes',
     AII_LVMFORCE_PATH => '/system/aii/osinstall/ks/lvmforce',
     USEEXISTING       => '--useexisting',
 };
@@ -56,7 +57,8 @@ sub _initialize
 {
     my ($self, $path, $config, %opts) = @_;
 
-    $self->{log} = $opts{log} || $reporter;
+    $self->SUPER::_initialize(%opts);
+
     my $st = $config->getElement($path)->getTree;
     $path =~ m!/([^/]+)$!;
     $self->{devname}      = $1;
@@ -86,8 +88,6 @@ sub _initialize
     $self->{ks_lvmforce} = $config->elementExists(AII_LVMFORCE_PATH) ?
          $config->getElement(AII_LVMFORCE_PATH)->getValue : 0;
 
-    # TODO: consider the stripe size when computing the alignment
-    $self->_set_alignment($st, $self->{volume_group}->{alignment}, 0);
     return $self;
 }
 
@@ -365,6 +365,38 @@ sub should_create_ks
 
 =pod
 
+=head2 ksfsformat
+
+Given a filesystem instance C<fs>, return the kickstart formatting command
+to be used in the kickstart commands section.
+
+=cut
+
+sub ksfsformat
+{
+    my ($self, $fs) = @_;
+
+    my @format = $self->SUPER::ksfsformat($fs);
+
+    if ($self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0) {
+        push @format, USEEXISTING;
+
+        if (exists $fs->{label}) {
+            push @format, "--label", '"' . $fs->{label} . '"';
+        }
+    }
+
+    # The useexisting_lv can be set by AII in ks.pm
+    # TODO: Remove once aii-ks passes anaconda_version
+    if ($fs->{useexisting_lv}) {
+        $self->debug(5, 'useexisting flag enabled');
+        push @format, USEEXISTING;
+    }
+
+    return @format;
+}
+
+
 =head2 print_ks
 
 If the logical volume must be printed, it prints the appropriate
@@ -381,19 +413,11 @@ sub print_ks
     $self->{volume_group}->print_ks;
     print "\n";
 
-    my $useexisting = '';
-    # The useexisting_lv can be set by AII in ks.pm
-    if ($fs->{useexisting_lv}) {
-        $self->debug(5, 'useexisting flag enabled');
-        $useexisting = USEEXISTING;
-    }
-
     print join(" ",
                "logvol", $fs->{mountpoint},
                "--vgname=$self->{volume_group}->{devname}",
                "--name=$self->{devname}",
                $self->ksfsformat($fs),
-               $useexisting,
                "\n");
 }
 
@@ -467,18 +491,25 @@ EOC
     print <<EOF;
     sed -i '\\:@{[$self->{volume_group}->devpath]}\$:d' @{[PART_FILE]}
 EOF
-    my $size = '-l 100%FREE';
+    my $size = '-l 99%FREE';
     $size = "-L $self->{size}M"
         if (exists($self->{size})
         && defined($self->{size})
         && "$self->{size}" =~ m/\d+/);
 
     # 'Option --wipesignatures is unsupported with cache pools.'
-    my $wipesignature = ($self->{ks_lvmforce} && (!$self->{type} || $self->{type} ne 'cache-pool')) ? join(" ", LVMWIPESIGNATURE) : '';
+    my @wipe_ops = ();
+    if ($self->{ks_lvmforce} && (!$self->{type} || $self->{type} ne 'cache-pool')) {
+        push(@wipe_ops, LVMWIPESIGNATURE);
+        if ($self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0) {
+            # On RH7, "lvcreate -W y" would still stop waiting for confirmation
+            push(@wipe_ops, LVMYES);
+        }
+    }
 
     print <<EOC;
 
-    lvm lvcreate $wipesignature -n $self->{devname} \\
+    lvm lvcreate @wipe_ops -n $self->{devname} \\
         @type_opts \\
         $self->{volume_group}->{devname} \\
         $size \\

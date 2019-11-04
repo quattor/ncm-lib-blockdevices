@@ -339,6 +339,15 @@ like($fhfs_vol1_cre_force, qr{^\s+lvm pvcreate --force /dev/sdb1}m, "Add partiti
 like($fhfs_vol1_cre_force, qr{^\s+lvm vgcreate vg0}m, "Add VG vg0 (no --force)");
 like($fhfs_vol1_cre_force, qr{^\s+lvm lvcreate -W y -n lv1}m, "Add LV lv1 to VG vg0 (-W for wipesignatures)");
 
+# reset the VG cache to make the change of Anaconda version effective
+NCM::VG::_reset_cache;
+
+my $fs_vol1_cre_force_rh7 = NCM::Filesystem->new ("/system/filesystems/8", $cfg_force, anaconda_version => version->new("19.31"));
+my $fhfs_vol1_cre_force_rh7 = CAF::FileWriter->new("target/test/ksfs_vol1_del_force_rh7");
+select($fhfs_vol1_cre_force_rh7);
+$fs_vol1_cre_force_rh7->create_ks;
+like($fhfs_vol1_cre_force_rh7, qr{^\s+lvm lvcreate -W y --yes -n lv1}m, "Add LV lv1 to VG vg0 (-W for wipesignatures)");
+
 # softraid test with useexisting for EL7
 my $fhfs_md2 = CAF::FileWriter->new("target/test/ksfs_md2");
 my $fs_md2 = NCM::Filesystem->new ("/system/filesystems/9", $cfg);
@@ -354,6 +363,23 @@ select($fhfs_lv2);
 ok(exists($fs_lv2->{useexisting_lv}), 'useexisting_lv defined');
 $fs_lv2->print_ks;
 is("$fhfs_lv2", "\nlogvol /Lagoon --vgname=vg0 --name=lv2 --noformat --useexisting \n", "useexisting ok for LV");
+
+use NCM::MD;
+NCM::MD::_reset_cache;
+
+# softraid test with useexisting autoguess for EL7
+my $fhfs_md2_auto = CAF::FileWriter->new("target/test/ksfs_md2_auto");
+my $fs_md2_auto = NCM::Filesystem->new ("/system/filesystems/11", $cfg, anaconda_version => version->new("19.31"));
+select($fhfs_md2_auto);
+$fs_md2_auto->print_ks;
+is("$fhfs_md2_auto", "raid /Lagoon --device=myname --noformat --useexisting \n", "useexisting autoguess ok for MD");
+
+# lv test with useexisting autoguess for EL7
+my $fhfs_lv2_auto = CAF::FileWriter->new("target/test/ksfs_lv2_auto");
+my $fs_lv2_auto = NCM::Filesystem->new ("/system/filesystems/12", $cfg, anaconda_version => version->new("19.31"));
+select($fhfs_lv2_auto);
+$fs_lv2_auto->print_ks;
+is("$fhfs_lv2_auto", "\nlogvol /Lagoon --vgname=vg0 --name=lv2 --noformat --useexisting \n", "useexisting autoguess ok for LV");
 
 # restore FH for DESTROY
 select($origfh);

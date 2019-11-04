@@ -93,10 +93,7 @@ ok(command_history_ok([
 );
 
 # Test get_clear_mb
-ok(! $sdb1->{holding_dev}->{alignment}, "No aligment specified");
 is($sdb1->get_clear_mb(), 1, "Default minimal clearmb of 1");
-$sdb1->{holding_dev}->{alignment} = 10*1024*1024; # 10MB
-is($sdb1->get_clear_mb(), 20, "clearmb twice the aligment");
 
 
 done_testing();

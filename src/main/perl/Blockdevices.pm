@@ -17,16 +17,26 @@ use constant BLKID => "/sbin/blkid";
 use constant FILES => qw (file -s);
 
 use constant PART_FILE  => '/tmp/created_partitions';
-use constant HOSTNAME	=> "/system/network/hostname";
-use constant DOMAINNAME	=> "/system/network/domainname";
+use constant HOSTNAME   => "/system/network/hostname";
+use constant DOMAINNAME => "/system/network/domainname";
 
 use constant GET_SIZE_BYTES  => qw (/sbin/blockdev --getsize64);
+
+# Lowest supported version is 5.0
+# FIXME: there is a circular dependency between aii-ks and
+# ncm-lib-blockdevices. Eventually, we should have a better solution, but
+# duplicating these constants here avoids deeper changes for now.
+use constant ANACONDA_VERSION_EL_5_0 => version->new("11.1");
+use constant ANACONDA_VERSION_EL_6_0 => version->new("13.21");
+use constant ANACONDA_VERSION_EL_7_0 => version->new("19.31");
+use constant ANACONDA_VERSION_EL_8_0 => version->new("29.19");
+use constant ANACONDA_VERSION_LOWEST => ANACONDA_VERSION_EL_5_0;
 
 use parent qw(CAF::Object Exporter);
 
 our $reporter = $main::this_app;
 
-our @EXPORT_OK = qw ($reporter PART_FILE);
+our @EXPORT_OK = qw ($reporter PART_FILE ANACONDA_VERSION_EL_5_0 ANACONDA_VERSION_EL_6_0 ANACONDA_VERSION_EL_7_0 ANACONDA_VERSION_EL_8_0);
 
 sub get_cache_key {
      my ($self, $path, $config) = @_;
@@ -39,18 +49,8 @@ sub _initialize
 {
     my ($self, %opts) = @_;
     $self->{log} = $opts{log} || $reporter;
-	return $_[0];
-}
-
-# Set the alignment from either the profile or the given defaults
-sub _set_alignment
-{
-	my ($self, $cfg, $align, $offset) = @_;
-
-	$self->{alignment} = ($cfg && exists $cfg->{alignment}) ?
-		$cfg->{alignment} : $align;
-	$self->{alignment_offset} = ($cfg && exists $cfg->{alignment_offset}) ?
-		$cfg->{alignment_offset} : $offset;
+    $self->{anaconda_version} = $opts{anaconda_version} || ANACONDA_VERSION_LOWEST;
+    return $_[0];
 }
 
 sub create
@@ -110,13 +110,7 @@ sub get_clear_mb
 {
     my $self = shift;
 
-    # Clear two times the alignment, but at least 1MB
-    # TODO: in what unit is/was the aligment?
-    # assuming bytes because the align_sect does a /512 (512 bytes in a sect)
-    my $align_mb = int($self->{holding_dev}->{alignment} / (1024*1024) );
-    my $clear_mb = $align_mb * 2;
-    $clear_mb = 1 if $clear_mb < 1;
-    return $clear_mb;
+    return 1;
 }
 
 =pod
@@ -406,22 +400,37 @@ sub ksfsformat
 
     my @format;
 
+    my $force_format = 0;
     # Anaconda doesn't recognize existing SWAP labels, if
     # we want a label on swap, we'll have to re-format the
     # partition and let it set its own label.
+    $force_format ||= $fs->{type} eq "swap" && exists $fs->{label};
+
     # (Re)formatting in the kickstart commands section can
     # also be forced if needed (e.g. EL7 anaconda does not
     # allow to use an existing filesystem as /)
-    if (($fs->{type} eq "swap" && exists $fs->{label}) ||
-        (exists($fs->{ksfsformat}) && $fs->{ksfsformat})) {
-            push(@format, "--fstype=$fs->{type}");
-            if (exists($fs->{mountopts})) {
-                push(@format, "--fsoptions='$fs->{mountopts}'");
-            }
-            if (exists($fs->{mkfsopts})) {
+    # TODO: Remove once aii-ks passes anaconda_version
+    $force_format ||= exists($fs->{ksfsformat}) && $fs->{ksfsformat};
+
+    # EL7+ anaconda does not allow a preformatted / filesystem.
+    $force_format ||= $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 && $fs->{mountpoint} eq '/';
+
+    # EL7+ anaconda does not write a preformatted swap partition to /etc/fstab
+    $force_format ||= $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 && $fs->{type} eq 'swap';
+
+    if ($force_format) {
+        push(@format, "--fstype=$fs->{type}");
+        if (exists($fs->{mountopts})) {
+            push(@format, "--fsoptions='$fs->{mountopts}'");
+        }
+        if (exists($fs->{mkfsopts})) {
+            if ($self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0) {
+                push(@format, "--mkfsoptions='$fs->{mkfsopts}'");
+            } else {
                 $self->warn("mkfsopts $fs->{mkfsopts} set for mountpoint $fs->{mountpoint}",
-                                "This is not supported in ksfsformat and ignored here");
+                            "This is not supported in ksfsformat and ignored here");
             }
+        }
     } else {
         push(@format, "--noformat");
     }
