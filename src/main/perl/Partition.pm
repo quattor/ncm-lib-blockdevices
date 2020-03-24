@@ -681,10 +681,15 @@ EOF
         sleep 1
         udevadm settle --timeout=5
     done
-    if [ "$self->{type}" != "$extended_txt" ]
-    then
-        wipe_metadata $path
-    fi
+EOF
+
+    if ($self->{holding_dev}->{label} ne MSDOS || $self->{type} ne $extended_txt) {
+        print <<EOF;
+    wipe_metadata $path
+EOF
+    }
+
+    print <<EOF;
     $unpause_udev
     udevadm settle
 EOF
