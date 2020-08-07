@@ -441,7 +441,7 @@ sub del_pre_ks
     my $force = $self->{ks_lvmforce} ? LVMFORCE : '';
 
     print <<EOF;
-wipe_metadata $devpath 1
+wipe_metadata $devpath
 lvm lvremove $force $devpath
 EOF
 

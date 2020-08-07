@@ -92,8 +92,4 @@ ok(command_history_ok([
     ]), 'Command history partiton removal'
 );
 
-# Test get_clear_mb
-is($sdb1->get_clear_mb(), 1, "Default minimal clearmb of 1");
-
-
 done_testing();

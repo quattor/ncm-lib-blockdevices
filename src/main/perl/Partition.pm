@@ -590,7 +590,6 @@ sub del_pre_ks
     my $devpath = $self->{holding_dev}->devpath;
 
     my $path = $self->devpath;
-    my $clear_mb = $self->get_clear_mb();
 
     # Partitions are deleted only if they exist.
     # This will make the partitioning phase much faster.
@@ -598,7 +597,7 @@ sub del_pre_ks
     print <<EOF;
 if grep -q $self->{devname} /proc/partitions
 then
-    wipe_metadata $path $clear_mb
+    wipe_metadata $path
     parted $devpath -s rm $n
 fi
 EOF
@@ -619,8 +618,6 @@ sub create_pre_ks
     my $offset = exists $self->{offset}? $self->{offset} : undef;
     my $path = $self->devpath;
     my $disk = $self->{holding_dev}->devpath;
-
-    my $clear_mb = $self->get_clear_mb();
 
     my $extended_txt = "extended";
     # extended partitons are only relevant for msdos label
@@ -680,14 +677,20 @@ EOF
     $end_txt
     $pause_udev
     parted $disk -s -- u s mkpart $self->{type} \$begin \$end
-    while [ ! -e $path ]; do
+    while true; do
         sleep 1
         udevadm settle --timeout=5
+        test -e $path && break
     done
-    if [ "$self->{type}" != "$extended_txt" ]
-    then
-        wipe_metadata $path $clear_mb
-    fi
+EOF
+
+    if ($self->{holding_dev}->{label} ne MSDOS || $self->{type} ne $extended_txt) {
+        print <<EOF;
+    wipe_metadata $path
+EOF
+    }
+
+    print <<EOF;
     $unpause_udev
     udevadm settle
 EOF

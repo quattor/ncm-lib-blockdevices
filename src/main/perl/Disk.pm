@@ -398,9 +398,10 @@ sub clearpart_ks
     $self->ks_is_valid_device;
 
     print <<EOF;
-wipe_metadata $path 1
+wipe_metadata $path
+
 parted $path -s -- mklabel $self->{label}
-rereadpt $path
+sleep 5
 udevadm settle
 
 EOF
