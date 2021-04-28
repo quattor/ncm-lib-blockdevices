@@ -3,7 +3,7 @@
   <groupId>org.quattor.maven</groupId>
   <artifactId>blockdevices</artifactId>
   <packaging>pom</packaging>
-  <version>21.4.0-rc1</version>
+  <version>21.4.0-rc2-SNAPSHOT</version>
   <name>Node Configuration Manager Library for Block Devices and File Systems</name>
   <url>https://github.com/quattor/ncm-lib-blockdevices</url>
   <parent>
