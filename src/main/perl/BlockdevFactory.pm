@@ -30,6 +30,7 @@ Readonly my %BUILD_MAP => (
     LV => 'logical_volumes',
     MD => 'md',
     Partition => 'partitions',
+    Proc => qr{^proc$},
     Tmpfs => qr{^tmpfs$},
     VG => 'volume_groups',
     VXVM => 'vxvm',

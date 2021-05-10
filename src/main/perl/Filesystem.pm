@@ -48,6 +48,7 @@ use constant MKFSCMDS => {
     reiserfs  => '/sbin/mkfs.reiserfs',
     reiser4   => '/sbin/mkfs.reiser4',
     jfs       => '/sbin/mkfs.jfs',
+    proc     => '/bin/true',
     swap      => '/sbin/mkswap',
     tmpfs     => '/bin/true',
     vfat      => '/sbin/mkfs.vfat',

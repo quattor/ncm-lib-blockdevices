@@ -1,10 +1,10 @@
-#${PMpre} NCM::Tmpfs${PMpost}
+#${PMpre} NCM::Proc${PMpost}
 
 use parent qw(NCM::DummyBlockdevice);
 
 sub devpath
 {
-    return "tmpfs";
+    return "proc";
 }
 
 1;
