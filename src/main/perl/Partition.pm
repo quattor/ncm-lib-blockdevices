@@ -260,9 +260,10 @@ sub create
     # from the parted guide http://www.gnu.org/software/parted/manual/html_node/mkpart.html
     #   mkpart [part-type fs-type name] start end
     #   ...
-    #   part-type is one of ‘primary’, ‘extended’ or ‘logical’, and may be specified only with ‘msdos’ or ‘dvh’ partition tables.
-    #   A name must be specified for a ‘gpt’ partition table.
-    #   Neither part-type nor name may be used with a ‘sun’ partition table.
+    #   part-type is one of 'primary', 'extended' or 'logical',
+    #   and may be specified only with 'msdos' or 'dvh' partition tables.
+    #   A name must be specified for a 'gpt' partition table.
+    #   Neither part-type nor name may be used with a 'sun' partition table.
     #
     my @partedcmdlist=(PARTED, PARTEDARGS, $hdname, PARTEDEXTRA, CREATE,
                        $self->{type}, $self->begin, $self->end);
