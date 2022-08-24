@@ -360,12 +360,13 @@ EOC
         print "sed -i '\\:@{[$dev->devpath]}\$:d' @{[PART_FILE]}\n";
     }
     my $ndev = scalar(@devnames);
-    print <<EOC;
-    sleep 5; mdadm --create --run $path --level=$self->{raid_level} --metadata=$self->{metadata} \\
-        --chunk=$self->{stripe_size} --raid-devices=$ndev \\
-         @devnames
-    echo @{[$self->devpath]} >> @{[PART_FILE]}
-EOC
+    print "sleep 5;\n";
+    print "mdadm --create --run $path --level=$self->{raid_level} --metadata=$self->{metadata}";
+    if ($self->{raid_level} ne 1) {
+        print " --chunk=$self->{stripe_size}";
+    };
+    print " --raid-devices=$ndev @devnames\n";
+    print "echo @{[$self->devpath]} >> @{[PART_FILE]}\n";
     print "fi\n";
 }
 
