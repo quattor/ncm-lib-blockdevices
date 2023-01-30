@@ -8,8 +8,7 @@ raid_create_ks_2
 ^sed -i '\\:/dev/sdb3\$:d' /tmp/created_partitions$
 ^parted -s -- /dev/sdb set 4 raid on$
 ^sed -i '\\:/dev/sdb4\$:d' /tmp/created_partitions$
-^\s{4}sleep 5; mdadm --create --run /dev/md/myname --level=0 --metadata=1.2 \\$
-^\s{8}--chunk=64 --raid-devices=2 \\$
-^\s{8} /dev/sdb3 /dev/sdb4$
-^\s{4}echo /dev/md/myname >> /tmp/created_partitions$
+^sleep 5;$
+^mdadm --create --run /dev/md/myname --level=0 --metadata=1.2 --chunk=64 --raid-devices=2 /dev/sdb3 /dev/sdb4$
+^echo /dev/md/myname >> /tmp/created_partitions$
 ^fi$
