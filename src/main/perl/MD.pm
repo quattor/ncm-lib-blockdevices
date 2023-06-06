@@ -362,7 +362,7 @@ EOC
     my $ndev = scalar(@devnames);
     print "sleep 5;\n";
     print "mdadm --create --run $path --level=$self->{raid_level} --metadata=$self->{metadata}";
-    if ($self->{raid_level} ne 1) {
+    if ($self->{raid_level} ne "1") {
         print " --chunk=$self->{stripe_size}";
     };
     print " --raid-devices=$ndev @devnames\n";
