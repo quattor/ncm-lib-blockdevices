@@ -482,10 +482,18 @@ sub has_filesystem
         };
     };
 
-    my $p = abs_path($self->devpath);
-    my $f =  CAF::Process->new([FILES, $p], log => $self)->output();
+    my $devpath = $self->devpath;
+    my $abspath = abs_path($devpath);
+    if (defined($abspath)) {
+        $self->debug(4, "abs_path $abspath found for $devpath.");
+        $devpath = $abspath;
+    } else {
+        $self->warn("No abs_path found for $devpath. Possibly missing parent directory.");
+    };
 
-    $self->debug(4, "Checking for filesystem on device $p",
+    my $f = CAF::Process->new([FILES, $devpath], log => $self)->output();
+
+    $self->debug(4, "Checking for filesystem on device $devpath",
                         " with regexp '$fsregex' in output $f.");
 
     # case insensitive match
