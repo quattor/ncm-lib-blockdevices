@@ -29,6 +29,7 @@ use constant REMOUNT         => qw (/bin/mount -o remount);
 use constant FSTAB           => "/etc/fstab";
 use constant MTAB            => "/etc/mtab";
 use constant MKFSLABEL       => '-L';
+use constant MKFSLABELVFAT   => '-n';
 use constant MKFSFORCE       => '-f';
 use constant SWAPON          => '/sbin/swapon';
 use constant TUNE2FS         => '/sbin/tune2fs';
@@ -291,7 +292,7 @@ sub formatfs
     };
 
     my $tunecmd;
-    my @opts = exists $self->{label} ? (MKFSLABEL, $self->{label}):();
+    my @opts = exists $self->{label} ? ($self->{type} eq 'vfat' ? MKFSLABELVFAT : MKFSLABEL, $self->{label}) : ();
     push (@opts, split ('\s+', $self->{mkfsopts})) if exists $self->{mkfsopts};
     push (@opts, MKFSFORCE) if ($self->{type} eq 'xfs');
 
@@ -616,10 +617,10 @@ sub do_format_ks
 
     # Extract the absolute path to make it work on different SL versions.
     if (exists (MKFSCMDS->{$self->{type}})) {
-    my $mkfs = basename (MKFSCMDS->{$self->{type}});
-    print join (' ', $mkfs,
+        my $mkfs = basename (MKFSCMDS->{$self->{type}});
+        print join (' ', $mkfs,
                 $self->{block_device}->devpath,
-                exists ($self->{label}) ? (MKFSLABEL, $self->{label}) : (),
+                exists ($self->{label}) ? ($self->{type} eq 'vfat' ? MKFSLABELVFAT : MKFSLABEL, $self->{label}) : (),
                 exists ($self->{mkfsopts})? $self->{mkfsopts}:())
         , "\n";
     }
