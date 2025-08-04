@@ -182,10 +182,12 @@ sub check_in_fstab
     my $txt = "$fh";
     my $re = qr!^\s*([^#\s]\S+)\s+$self->{mountpoint}\/?\s+(\S+)\s!m;
     my $devpath = $self->{block_device}->devpath;
+    # decides if devpath should be used for mount even when uuid is found. needed for vols such as vxvm
+    my $mount_devpath = $self->{mount_devpath} ? 1 : 0;
     while ($txt =~ m/$re/mg) {
         $add = 0;
         (my $device, $otype) = ($1, $2);
-        if ($device =~ m/^(PART)?UUID=(\S+)/) {
+        if ($device =~ m/^(PART)?UUID=(\S+)/ && !$mount_devpath) {
             my ($type_uuid, $fstab_uuid) = ($1 || '' , $2);
             my $prof_uuid = $self->{block_device}->get_uuid($type_uuid);
             if (!$prof_uuid) {
@@ -204,7 +206,12 @@ sub check_in_fstab
             $ndevice = "LABEL=$self->{label}";
         } else {
             my $uuid = $self->{block_device}->get_uuid('');
-            $ndevice = ($uuid) ? "UUID=$uuid" : $self->{block_device}->devpath;
+            if ($mount_devpath) {
+                $self->verbose("mount_devpath is set, using devpath to mount the vol");
+                $ndevice = $self->{block_device}->devpath;
+            } else {
+                 $ndevice = ($uuid) ? "UUID=$uuid" : $self->{block_device}->devpath;
+            }
         }
     } else {
         if ($protected && $protected->{mounts}->{$self->{mountpoint}}){
