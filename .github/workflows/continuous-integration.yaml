@@ -26,6 +26,11 @@ jobs:
         chown -R quattortest:quattortest . /tmp/m2
         # we have to run as a non-root user to pass the spma tests
         # secondly, we first download all maven dependencies and then run the tests because it fails with hanging downloads otherwise.
-        runuser --shell /bin/bash --preserve-environment --command "source /usr/bin/mvn_test.sh && mvn_run \"dependency:resolve-plugins dependency:go-offline $MVN_ARGS\" && mvn_test" quattortest
+        runuser --shell /bin/bash --preserve-environment --command "source /usr/bin/mvn_test.sh && mvn_run \"dependency:resolve-plugins dependency:go-offline $MVN_ARGS\" && mvn_pack" quattortest
       env:
         MVN_ARGS: -Dmaven.repo.local=/tmp/m2
+    - name: Upload Packages
+      uses: actions/upload-artifact@v4
+      with:
+        name: rpms
+        path: target/rpm/*/RPMS/*/*.rpm
