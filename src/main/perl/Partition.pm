@@ -596,10 +596,12 @@ sub del_pre_ks
     # This will make the partitioning phase much faster.
     # Partitions are also wiped before they are removed.
     print <<EOF;
-if grep -q $self->{devname} /proc/partitions
-then
-    wipe_metadata $path
-    parted $devpath -s rm $n
+DISKDEV="\$(readlink -f $devpath)"
+if [[ "\$DISKDEV" =~ "/dev/" ]]; then
+    if grep -q \${DISKDEV#/dev/} /proc/partitions; then
+        wipe_metadata $path
+        parted $devpath -s rm $n
+    fi
 fi
 EOF
 }
@@ -625,10 +627,20 @@ sub create_pre_ks
     # make sure this never matches on anything else
     $extended_txt .= "_no_msdos_label" if ($self->{holding_dev}->{label} ne MSDOS);
 
-    # Avoid LVM/mdadm/etc. autodiscovery kicking in after the partition has
-    # been created
-    my $pause_udev = $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 ? "udevadm control --stop-exec-queue" : "";
-    my $unpause_udev = $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 ? "udevadm control --start-exec-queue" : "";
+    # Avoid LVM/mdadm/etc. autodiscovery kicking in after the partition has been created
+    my $mask_udev_rules = $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 ? <<EOF
+    echo "Masking DM/LVM udev rules"
+    find /usr/lib/udev/rules.d/ -type f -name \*.rules | grep -E '(dm|lvm)' | xargs basename -a | xargs -I@ touch /etc/udev/rules.d/@
+    udevadm control --reload-rules && udevadm trigger
+EOF
+: "";
+    my $unmask_udev_rules = $self->{anaconda_version} >= ANACONDA_VERSION_EL_7_0 ? <<EOF
+    echo "Unmasking DM/LVM udev rules and waiting for devices to settle"
+    find /etc/udev/rules.d/ -type f -name \*.rules -size 0 -exec rm {} +
+    udevadm control --reload-rules && udevadm trigger
+    udevadm settle
+EOF
+: "";
 
     print <<EOF;
 if ! grep -q '$self->{devname}\$' /proc/partitions
@@ -674,9 +686,11 @@ EOF
     } else {
         $end_txt = "end=\$((begin + $size * (1024 * 1024 / sectsize) - 1))";
     }
+
     print <<EOF;
     $end_txt
-    $pause_udev
+    \n$mask_udev_rules
+
     parted $disk -s -- u s mkpart $self->{type} \$begin \$end
     while true; do
         sleep 1
@@ -691,10 +705,7 @@ EOF
 EOF
     }
 
-    print <<EOF;
-    $unpause_udev
-    udevadm settle
-EOF
+    print "\n$unmask_udev_rules\n";
 
     my @flags = keys(%{$self->{flags}});
     if ( @flags > 0 ) {

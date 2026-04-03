@@ -8,9 +8,11 @@ fs_vol1_del
 ^lvm vgreduce  --removemissing vg0 &&$
 ^lvm vgremove  vg0 && \($
 ^lvm pvremove  /dev/sdb1$
-^if grep -q sdb1 /proc/partitions$
-^then$
-^\s{4}wipe_metadata /dev/sdb1$
-^\s{4}parted /dev/sdb -s rm 1$
+^DISKDEV=\"\$\(readlink -f /dev/sdb\)\"$
+^if \[\[ \"\$DISKDEV\" =~ \"/dev/\" \]\]; then$
+^\s{4}if grep -q \$\{DISKDEV#/dev/\} /proc/partitions; then$
+^\s{8}wipe_metadata /dev/sdb1$
+^\s{8}parted /dev/sdb -s rm 1$
+^\s{4}fi$
 ^fi$
 ^\)$
